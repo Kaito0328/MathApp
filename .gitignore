@@ -1,0 +1,37 @@
+# General
+*.log
+*.tmp
+*.swp
+
+# VS Code - チームで共有したい設定ファイルは除外する
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ----------------------------------------------------------------
+# Rust (backend/)
+# ----------------------------------------------------------------
+# コンパイル成果物。非常にサイズが大きくなるため必須。
+/backend/target/
+
+# ----------------------------------------------------------------
+# Node.js / Frontend (frontend/)
+# ----------------------------------------------------------------
+# 依存パッケージ。`npm install`で再生成するため不要。
+/frontend/node_modules/
+
+# ビルド成果物
+/frontend/dist/
+/frontend/build/
+/frontend/.next/
+
+# 環境変数ファイル (APIキーなどの機密情報を含むため)
+/frontend/.env*
+!/frontend/.env.example
+
+# npmのデバッグログ
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -1,0 +1,35 @@
+{
+    "name": "ubuntu-rust",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "init": true,
+    "capAdd": [
+        "SYS_PTRACE"
+    ],
+    "securityOpt": [
+        "seccomp=unconfined"
+    ],
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "files.watcherExclude": {
+                    "**/target/**": true
+                },
+                "[rust]": {
+                    "editor.formatOnSave": true,
+                    "editor.formatOnPaste": true
+                },
+                "rust-analyzer.checkOnSave": true,
+                "rust-analyzer.check.command": "clippy"
+            },
+            "extensions": [
+                "vadimcn.vscode-lldb",
+                "rust-lang.rust-analyzer",
+                "tamasfe.even-better-toml",
+                "eamodio.gitlens",
+                "GitHub.copilot"  
+            ]
+        }
+    }
+}
