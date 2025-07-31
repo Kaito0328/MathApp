@@ -1,0 +1,12 @@
+# (ルート)/Cargo.toml
+
+[workspace]
+# このワークスペースに含まれるクレートのパスを指定する
+members = [
+    "crates/linalg",
+]
+
+# リリースビルドの最適化設定などをここに集約できる
+[profile.release]
+lto = true
+opt-level = 3
