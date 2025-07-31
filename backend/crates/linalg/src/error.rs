@@ -6,7 +6,7 @@ pub enum LinalgError {
     NotSquareMatrix,
     SingularMatrix,
     IndexOutOfBounds { index: usize, size: usize },
-    InvalidDimension { dim: usize },
+    InvalidDimension { dim: usize, text: String },
     NotImplemented,
 }
 
@@ -25,8 +25,8 @@ impl fmt::Display for LinalgError {
             LinalgError::IndexOutOfBounds { index, size } => {
                 write!(f, "Index {} is out of bounds for size {}", index, size)
             }
-            LinalgError::InvalidDimension { dim } => {
-                write!(f, "Invalid dimension: {}", dim)
+            LinalgError::InvalidDimension { dim, text } => {
+                write!(f, "Invalid dimension ({}): {}", dim, text)
             }
             LinalgError::NotImplemented => write!(f, "Feature not yet implemented"),
         }

@@ -4,7 +4,8 @@ fn main() {
     println!("=== 線形代数の高度な操作例 ===");
 
     // 正方行列の作成
-    let square_matrix = Matrix::new(3, 3, vec![2.0, -1.0, 0.0, -1.0, 2.0, -1.0, 0.0, -1.0, 2.0]);
+    let square_matrix =
+        Matrix::new(3, 3, vec![2.0, -1.0, 0.0, -1.0, 2.0, -1.0, 0.0, -1.0, 2.0]).unwrap();
 
     println!("正方行列 A:");
     print_matrix(&square_matrix);
@@ -49,8 +50,8 @@ fn main() {
     }
 
     // 水平結合の例
-    let m1 = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
-    let m2 = Matrix::new(2, 2, vec![5.0, 6.0, 7.0, 8.0]);
+    let m1 = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]).unwrap();
+    let m2 = Matrix::new(2, 2, vec![5.0, 6.0, 7.0, 8.0]).unwrap();
     match m1.hstack(&m2) {
         Ok(hstacked) => {
             println!("\n水平結合 (hstack):");

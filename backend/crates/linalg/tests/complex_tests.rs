@@ -3,7 +3,7 @@ use linalg::{Matrix, Vector};
 #[test]
 fn test_matrix_vector_integration() {
     // 実際の線形代数の問題を解くテスト
-    let a = Matrix::new(2, 2, vec![2.0, 1.0, 1.0, 3.0]);
+    let a = Matrix::new(2, 2, vec![2.0, 1.0, 1.0, 3.0]).unwrap();
     let b = Vector::new(vec![5.0, 7.0]);
 
     // A * x = b を解く（将来的に）
@@ -39,7 +39,7 @@ fn test_chain_operations() {
 #[test]
 fn test_matrix_operations_chain() {
     // 行列操作の連鎖テスト
-    let m = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
+    let m = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]).unwrap();
     let transposed = m.transpose();
     let identity = Matrix::<f64>::identity(2);
     let result = transposed + identity;

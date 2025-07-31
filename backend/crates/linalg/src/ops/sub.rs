@@ -1,173 +1,118 @@
-use crate::{Matrix, Vector};
+use crate::{Matrix, Ring, Vector};
 use std::ops::Sub;
 
-// Matrix<T> - Matrix<T>
-impl<T> Sub for Matrix<T>
-where
-    T: Sub<Output = T> + Copy,
-{
+// --- Matrix - Matrix ---
+
+// &Matrix<T> - &Matrix<T> (中心となる実装)
+impl<'a, 'b, T: Ring> Sub<&'b Matrix<T>> for &'a Matrix<T> {
     type Output = Matrix<T>;
-    fn sub(self, rhs: Self) -> Self::Output {
-        unimplemented!()
+    fn sub(self, rhs: &'b Matrix<T>) -> Self::Output {
+        if self.rows != rhs.rows || self.cols != rhs.cols {
+            panic!("Dimension mismatch for matrix subtraction.");
+        }
+        let data = self
+            .data
+            .iter()
+            .zip(rhs.data.iter())
+            .map(|(a, b)| a.clone() - b.clone())
+            .collect();
+        Matrix::new(self.rows, self.cols, data).unwrap()
     }
 }
 
-// &Matrix<T> - &Matrix<T>
-impl<T> Sub<&Matrix<T>> for &Matrix<T>
-where
-    T: Sub<Output = T> + Copy,
-{
-    type Output = Matrix<T>;
-    fn sub(self, rhs: &Matrix<T>) -> Self::Output {
-        unimplemented!()
-    }
-}
-
-// Matrix<T> - &Matrix<T>
-impl<T> Sub<&Matrix<T>> for Matrix<T>
-where
-    T: Sub<Output = T> + Copy,
-{
-    type Output = Matrix<T>;
-    fn sub(self, rhs: &Matrix<T>) -> Self::Output {
-        unimplemented!()
-    }
-}
-
-// &Matrix<T> - Matrix<T>
-impl<T> Sub<Matrix<T>> for &Matrix<T>
-where
-    T: Sub<Output = T> + Copy,
-{
+// 他の3パターンは上記の実装を呼び出す
+impl<T: Ring> Sub<Matrix<T>> for Matrix<T> {
     type Output = Matrix<T>;
     fn sub(self, rhs: Matrix<T>) -> Self::Output {
-        unimplemented!()
+        &self - &rhs
+    }
+}
+impl<'a, T: Ring> Sub<Matrix<T>> for &'a Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: Matrix<T>) -> Self::Output {
+        self - &rhs
+    }
+}
+impl<'b, T: Ring> Sub<&'b Matrix<T>> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: &'b Matrix<T>) -> Self::Output {
+        &self - rhs
     }
 }
 
-// Vector<T> - Vector<T>
-impl<T> Sub for Vector<T>
-where
-    T: Sub<Output = T> + Copy,
-{
+// --- Vector - Vector ---
+
+// &Vector<T> - &Vector<T> (中心となる実装)
+impl<'a, 'b, T: Ring> Sub<&'b Vector<T>> for &'a Vector<T> {
     type Output = Vector<T>;
-    fn sub(self, rhs: Self) -> Self::Output {
-        unimplemented!()
+    fn sub(self, rhs: &'b Vector<T>) -> Self::Output {
+        if self.dim() != rhs.dim() {
+            panic!("Vector dimensions must match for subtraction.");
+        }
+        let data = self
+            .data
+            .iter()
+            .zip(rhs.data.iter())
+            .map(|(a, b)| a.clone() - b.clone())
+            .collect();
+        Vector::new(data)
     }
 }
 
-// &Vector<T> - &Vector<T>
-impl<T> Sub<&Vector<T>> for &Vector<T>
-where
-    T: Sub<Output = T> + Copy,
-{
-    type Output = Vector<T>;
-    fn sub(self, rhs: &Vector<T>) -> Self::Output {
-        unimplemented!()
-    }
-}
-
-// Vector<T> - &Vector<T>
-impl<T> Sub<&Vector<T>> for Vector<T>
-where
-    T: Sub<Output = T> + Copy,
-{
-    type Output = Vector<T>;
-    fn sub(self, rhs: &Vector<T>) -> Self::Output {
-        unimplemented!()
-    }
-}
-
-// &Vector<T> - Vector<T>
-impl<T> Sub<Vector<T>> for &Vector<T>
-where
-    T: Sub<Output = T> + Copy,
-{
+// 他の3パターンは上記の実装を呼び出す
+impl<T: Ring> Sub<Vector<T>> for Vector<T> {
     type Output = Vector<T>;
     fn sub(self, rhs: Vector<T>) -> Self::Output {
-        unimplemented!()
+        &self - &rhs
+    }
+}
+impl<'a, T: Ring> Sub<Vector<T>> for &'a Vector<T> {
+    type Output = Vector<T>;
+    fn sub(self, rhs: Vector<T>) -> Self::Output {
+        self - &rhs
+    }
+}
+impl<'b, T: Ring> Sub<&'b Vector<T>> for Vector<T> {
+    type Output = Vector<T>;
+    fn sub(self, rhs: &'b Vector<T>) -> Self::Output {
+        &self - rhs
     }
 }
 
-// Matrix<T> - T (スカラー減算)
-impl<T> Sub<T> for Matrix<T>
-where
-    T: Sub<Output = T> + Copy,
-{
+// --- Matrix - Scalar ---
+
+// &Matrix<T> - T (中心となる実装)
+impl<'a, T: Ring> Sub<T> for &'a Matrix<T> {
     type Output = Matrix<T>;
     fn sub(self, rhs: T) -> Self::Output {
-        unimplemented!()
+        let data = self.data.iter().map(|v| v.clone() - rhs.clone()).collect();
+        Matrix::new(self.rows, self.cols, data).unwrap()
     }
 }
 
-// &Matrix<T> - T
-impl<T> Sub<T> for &Matrix<T>
-where
-    T: Sub<Output = T> + Copy,
-{
+// Matrix<T> - T
+impl<T: Ring> Sub<T> for Matrix<T> {
     type Output = Matrix<T>;
     fn sub(self, rhs: T) -> Self::Output {
-        unimplemented!()
+        &self - rhs
     }
 }
-// Vector<T> - T (スカラー減算)
-impl<T> Sub<T> for Vector<T>
-where
-    T: Sub<Output = T> + Copy,
-{
+
+// --- Vector - Scalar ---
+
+// &Vector<T> - T (中心となる実装)
+impl<'a, T: Ring> Sub<T> for &'a Vector<T> {
     type Output = Vector<T>;
     fn sub(self, rhs: T) -> Self::Output {
-        unimplemented!()
+        let data = self.data.iter().map(|v| v.clone() - rhs.clone()).collect();
+        Vector::new(data)
     }
 }
 
-// &Vector<T> - T
-impl<T> Sub<T> for &Vector<T>
-where
-    T: Sub<Output = T> + Copy,
-{
+// Vector<T> - T
+impl<T: Ring> Sub<T> for Vector<T> {
     type Output = Vector<T>;
     fn sub(self, rhs: T) -> Self::Output {
-        unimplemented!()
-    }
-}
-// 単項マイナス演算子
-impl<T> std::ops::Neg for Matrix<T>
-where
-    T: std::ops::Neg<Output = T> + Copy,
-{
-    type Output = Matrix<T>;
-    fn neg(self) -> Self::Output {
-        unimplemented!()
-    }
-}
-
-impl<T> std::ops::Neg for &Matrix<T>
-where
-    T: std::ops::Neg<Output = T> + Copy,
-{
-    type Output = Matrix<T>;
-    fn neg(self) -> Self::Output {
-        unimplemented!()
-    }
-}
-
-impl<T> std::ops::Neg for Vector<T>
-where
-    T: std::ops::Neg<Output = T> + Copy,
-{
-    type Output = Vector<T>;
-    fn neg(self) -> Self::Output {
-        unimplemented!()
-    }
-}
-
-impl<T> std::ops::Neg for &Vector<T>
-where
-    T: std::ops::Neg<Output = T> + Copy,
-{
-    type Output = Vector<T>;
-    fn neg(self) -> Self::Output {
-        unimplemented!()
+        &self - rhs
     }
 }

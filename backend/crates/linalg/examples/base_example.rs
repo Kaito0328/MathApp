@@ -18,7 +18,7 @@ fn main() {
 
     // 行列の作成
     let matrix_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-    let matrix = Matrix::new(2, 3, matrix_data);
+    let matrix = Matrix::new(2, 3, matrix_data).unwrap();
     println!("\n行列 (2x3):");
     for i in 0..matrix.rows {
         for j in 0..matrix.cols {
