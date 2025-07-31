@@ -15,7 +15,7 @@ mod matrix_tests {
 
     #[test]
     fn test_matrix_zeros() {
-        let matrix = Matrix::zeros(3, 3);
+        let matrix = Matrix::<f64>::zeros(3, 3);
         assert_eq!(matrix.rows, 3);
         assert_eq!(matrix.cols, 3);
         for &val in &matrix.data {
@@ -25,7 +25,7 @@ mod matrix_tests {
 
     #[test]
     fn test_matrix_identity() {
-        let matrix = Matrix::identity(3);
+        let matrix = Matrix::<f64>::identity(3);
         assert_eq!(matrix.rows, 3);
         assert_eq!(matrix.cols, 3);
         // 対角成分は1、それ以外は0であることをテスト
@@ -82,8 +82,8 @@ mod matrix_tests {
 
     #[test]
     fn test_matrix_is_square() {
-        let square_matrix = Matrix::new(3, 3, vec![0.0; 9]);
-        let rect_matrix = Matrix::new(2, 3, vec![0.0; 6]);
+        let square_matrix = Matrix::<f64>::new(3, 3, vec![0.0; 9]);
+        let rect_matrix = Matrix::<f64>::new(2, 3, vec![0.0; 6]);
         assert!(square_matrix.is_square());
         assert!(!rect_matrix.is_square());
     }
@@ -96,5 +96,41 @@ mod matrix_tests {
         assert_eq!(matrix[(0, 1)], 2.0);
         assert_eq!(matrix[(1, 0)], 3.0);
         assert_eq!(matrix[(1, 1)], 4.0);
+    }
+
+    #[test]
+    fn test_matrix_trace() {
+        let data = vec![1.0, 2.0, 3.0, 4.0];
+        let matrix = Matrix::new(2, 2, data);
+        let trace = matrix.trace();
+        // 1.0 + 4.0 = 5.0
+        assert_eq!(trace, 5.0);
+    }
+
+    #[test]
+    fn test_matrix_submatrix() {
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
+        let matrix = Matrix::new(3, 3, data);
+        let sub = matrix.submatrix(0, 2, 0, 2);
+        assert_eq!(sub.rows, 2);
+        assert_eq!(sub.cols, 2);
+    }
+
+    #[test]
+    fn test_matrix_hstack() {
+        let m1 = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
+        let m2 = Matrix::new(2, 2, vec![5.0, 6.0, 7.0, 8.0]);
+        let result = m1.hstack(&m2).unwrap();
+        assert_eq!(result.rows, 2);
+        assert_eq!(result.cols, 4);
+    }
+
+    #[test]
+    fn test_matrix_vstack() {
+        let m1 = Matrix::new(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
+        let m2 = Matrix::new(2, 2, vec![5.0, 6.0, 7.0, 8.0]);
+        let result = m1.vstack(&m2).unwrap();
+        assert_eq!(result.rows, 4);
+        assert_eq!(result.cols, 2);
     }
 }

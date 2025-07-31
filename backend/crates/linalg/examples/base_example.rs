@@ -31,11 +31,14 @@ fn main() {
     let transposed = matrix.transpose();
     println!("\n転置行列 (3x2):");
     for i in 0..transposed.rows {
-        for j in 0..transposed.cols {}
+        for j in 0..transposed.cols {
+            print!("{:8.2} ", transposed[(i, j)]);
+        }
+        println!();
     }
 
     // 単位行列の作成
-    let identity = Matrix::identity(3);
+    let identity: Matrix = Matrix::identity(3);
     println!("\n単位行列 (3x3):");
     for i in 0..identity.rows {
         for j in 0..identity.cols {
