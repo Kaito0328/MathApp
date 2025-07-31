@@ -46,21 +46,72 @@ impl<T: Scalar> Matrix<T> {
         Matrix::new(self.cols, self.rows, data).unwrap()
     }
 
-    pub fn swap_rows(&mut self, r1: usize, r2: usize) {
-        unimplemented!()
+    pub fn swap_rows(&mut self, r1: usize, r2: usize) -> Result<()> {
+        let row1 = self.row(r1)?;
+        let row2 = self.row(r2)?;
+        self.set_row(r1, &row2)?;
+        self.set_row(r2, &row1)?;
+        Ok(())
     }
 
-    pub fn col(&self, c: usize) -> Vector<T> {
-        unimplemented!()
+    pub fn col(&self, c: usize) -> Result<Vector<T>> {
+        if c >= self.cols {
+            return Err(LinalgError::IndexOutOfBounds {
+                index: c,
+                size: self.cols,
+            });
+        }
+        let col_data = (0..self.rows).map(|r| self[(r, c)].clone()).collect();
+        Ok(Vector::new(col_data))
     }
-    pub fn row(&self, r: usize) -> Matrix<T> {
-        unimplemented!()
+    pub fn row(&self, r: usize) -> Result<Vector<T>> {
+        if r >= self.rows {
+            return Err(LinalgError::IndexOutOfBounds {
+                index: r,
+                size: self.rows,
+            });
+        }
+        let row_data = (0..self.cols).map(|c| self[(r, c)].clone()).collect();
+        Ok(Vector::new(row_data))
     }
-    pub fn set_col(&mut self, c: usize, col_vec: &Vector<T>) {
-        unimplemented!()
+    pub fn set_col(&mut self, c: usize, col_vec: &Vector<T>) -> Result<()> {
+        if c >= self.cols {
+            return Err(LinalgError::IndexOutOfBounds {
+                index: c,
+                size: self.cols,
+            });
+        }
+        if col_vec.dim() != self.rows {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{} rows", self.rows),
+                found: format!("{} rows", col_vec.dim()),
+            });
+        }
+        for r in 0..self.rows {
+            self[(r, c)] = col_vec[r].clone();
+        }
+        Ok(())
     }
-    pub fn set_row(&mut self, r: usize, row_vec: &Matrix<T>) {
-        unimplemented!()
+    pub fn set_row(&mut self, r: usize, row_vec: &Vector<T>) -> Result<()> {
+        if r >= self.rows {
+            return Err(LinalgError::IndexOutOfBounds {
+                index: r,
+                size: self.rows,
+            });
+        }
+
+        if row_vec.dim() != self.cols {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{} columns", self.cols),
+                found: format!("{} columns", row_vec.dim()),
+            });
+        }
+        let row_start = r * self.cols;
+        let row_end = row_start + self.cols;
+
+        self.data[row_start..row_end].clone_from_slice(&row_vec.data);
+
+        Ok(())
     }
     pub fn is_square(&self) -> bool {
         self.rows == self.cols
@@ -72,13 +123,42 @@ impl<T: Scalar> Matrix<T> {
         start_col: usize,
         end_col: usize,
     ) -> Matrix<T> {
-        unimplemented!()
+        let data = (start_row..end_row)
+            .flat_map(|i| (start_col..end_col).map(move |j| self[(i, j)].clone()))
+            .collect();
+        Matrix::new(end_row - start_row, end_col - start_col, data).unwrap()
     }
     pub fn hstack(&self, other: &Matrix<T>) -> Result<Matrix<T>> {
-        unimplemented!()
+        if other.rows != self.rows {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{} rows", self.rows),
+                found: format!("{} rows", other.rows),
+            });
+        }
+        let self_rows = self.data.chunks(self.cols);
+        let other_rows = other.data.chunks(other.cols);
+        let combined_data = self_rows
+            .zip(other_rows)
+            .flat_map(|(self_row, other_row)| {
+                self_row.iter().cloned().chain(other_row.iter().cloned())
+            })
+            .collect();
+        Matrix::new(self.rows, self.cols + other.cols, combined_data)
     }
     pub fn vstack(&self, other: &Matrix<T>) -> Result<Matrix<T>> {
-        unimplemented!()
+        if other.cols != self.cols {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{} columns", self.cols),
+                found: format!("{} columns", other.cols),
+            });
+        }
+        let data = self
+            .data
+            .iter()
+            .cloned()
+            .chain(other.data.iter().cloned())
+            .collect();
+        Matrix::new(self.rows + other.rows, self.cols, data)
     }
 }
 
@@ -96,11 +176,35 @@ impl<T: Ring> Matrix<T> {
         matrix
     }
 
-    pub fn scale_row(&mut self, r: usize, scalar: T) {
-        unimplemented!()
+    pub fn scale_row(&mut self, r: usize, scalar: T) -> Result<()> {
+        if r >= self.rows {
+            return Err(LinalgError::IndexOutOfBounds {
+                index: r,
+                size: self.rows,
+            });
+        }
+        for c in 0..self.cols {
+            self[(r, c)] = self[(r, c)].clone() * scalar.clone();
+        }
+        Ok(())
     }
-    pub fn add_scaled_row_to_row(&mut self, source_row: usize, dest_row: usize, scalar: T) {
-        unimplemented!()
+    pub fn add_scaled_row_to_row(
+        &mut self,
+        source_row: usize,
+        dest_row: usize,
+        scalar: T,
+    ) -> Result<()> {
+        if source_row >= self.rows || dest_row >= self.rows {
+            return Err(LinalgError::IndexOutOfBounds {
+                index: source_row,
+                size: self.rows,
+            });
+        }
+        for c in 0..self.cols {
+            self[(dest_row, c)] =
+                self[(dest_row, c)].clone() + self[(source_row, c)].clone() * scalar.clone();
+        }
+        Ok(())
     }
 
     pub fn trace(&self) -> T {
