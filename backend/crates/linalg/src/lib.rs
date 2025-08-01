@@ -3,7 +3,6 @@
 // 各ファイルをモジュールとして宣言する
 pub mod error;
 pub mod matrix;
-pub mod ops;
 pub mod traits;
 pub mod vector; // `pub`を付けなければ、ライブラリ内部でのみ使用するプライベートモジュールになる
 

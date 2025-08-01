@@ -28,12 +28,12 @@ fn main() {
         Ok(cross_product) => {
             println!("\na × b = {:?}", cross_product.data);
         }
-        Err(e) => println!("外積の計算でエラー: {:?}", e),
+        Err(e) => println!("外積の計算でエラー: {e}"),
     }
 
     // 内積の計算
     let dot_product = v1.dot(&v3);
-    println!("v1とv3の内積: {}", dot_product);
+    println!("v1とv3の内積: {dot_product}");
 
     // ベクトルの加算
     let v_sum = &v1 + &v3;

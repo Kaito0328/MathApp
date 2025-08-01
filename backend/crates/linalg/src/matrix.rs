@@ -1,5 +1,5 @@
 use crate::{Field, LinalgError, Result, Ring, Scalar, Vector};
-use std::ops::{Index, IndexMut};
+use std::ops::{Add, Index, IndexMut, Mul, Neg, Sub};
 
 /// 固有値と固有ベクトルのペアを格納するジェネリックな構造体
 #[derive(Debug, PartialEq)]
@@ -176,6 +176,105 @@ impl<T: Ring> Matrix<T> {
         matrix
     }
 
+    pub fn checked_add(&self, other: &Matrix<T>) -> Result<Matrix<T>> {
+        if self.rows != other.rows || self.cols != other.cols {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{}x{}", self.rows, self.cols),
+                found: format!("{}x{}", other.rows, other.cols),
+            });
+        }
+        let data = self
+            .data
+            .iter()
+            .zip(other.data.iter())
+            .map(|(a, b)| a.clone() + b.clone())
+            .collect();
+        Matrix::new(self.rows, self.cols, data)
+    }
+
+    pub fn checked_sub(&self, other: &Matrix<T>) -> Result<Matrix<T>> {
+        if self.rows != other.rows || self.cols != other.cols {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{}x{}", self.rows, self.cols),
+                found: format!("{}x{}", other.rows, other.cols),
+            });
+        }
+        let data = self
+            .data
+            .iter()
+            .zip(other.data.iter())
+            .map(|(a, b)| a.clone() - b.clone())
+            .collect();
+        Matrix::new(self.rows, self.cols, data)
+    }
+
+    pub fn checked_mul(&self, rhs: &Matrix<T>) -> Result<Matrix<T>> {
+        if self.cols != rhs.rows {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{}x{}", self.rows, self.cols),
+                found: format!("{}x{}", rhs.rows, rhs.cols),
+            });
+        }
+        let mut data = vec![T::zero(); self.rows * rhs.cols];
+        for i in 0..self.rows {
+            for j in 0..rhs.cols {
+                let sum = (0..self.cols)
+                    .map(|k| self[(i, k)].clone() * rhs[(k, j)].clone())
+                    .sum();
+                data[i * rhs.cols + j] = sum;
+            }
+        }
+        Matrix::new(self.rows, rhs.cols, data)
+    }
+
+    pub fn checked_mul_vector(&self, rhs: &Vector<T>) -> Result<Vector<T>> {
+        if self.cols != rhs.dim() {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{} columns", self.cols),
+                found: format!("{} elements in vector", rhs.dim()),
+            });
+        }
+        let mut data = vec![T::zero(); self.rows];
+        for i in 0..self.rows {
+            data[i] = (0..self.cols)
+                .map(|j| self[(i, j)].clone() * rhs[j].clone())
+                .sum();
+        }
+        Ok(Vector::new(data))
+    }
+
+    pub fn checked_mul_scalar(&self, scalar: T) -> Matrix<T> {
+        let data = self
+            .data
+            .iter()
+            .map(|x| x.clone() * scalar.clone())
+            .collect();
+        Matrix::new(self.rows, self.cols, data).unwrap()
+    }
+
+    pub fn checked_add_scalar(&self, scalar: T) -> Matrix<T> {
+        let data = self
+            .data
+            .iter()
+            .map(|x| x.clone() + scalar.clone())
+            .collect();
+        Matrix::new(self.rows, self.cols, data).unwrap()
+    }
+
+    pub fn checked_sub_scalar(&self, scalar: T) -> Matrix<T> {
+        let data = self
+            .data
+            .iter()
+            .map(|x| x.clone() - scalar.clone())
+            .collect();
+        Matrix::new(self.rows, self.cols, data).unwrap()
+    }
+
+    pub fn checked_neg(&self) -> Matrix<T> {
+        let data = self.data.iter().map(|v| -v.clone()).collect();
+        Matrix::new(self.rows, self.cols, data).unwrap()
+    }
+
     pub fn scale_row(&mut self, r: usize, scalar: T) -> Result<()> {
         if r >= self.rows {
             return Err(LinalgError::IndexOutOfBounds {
@@ -218,16 +317,103 @@ impl<T: Ring> Matrix<T> {
 
 // --- Level 3: Fieldに対する実装 (除算を必要とする操作) ---
 impl<T: Field> Matrix<T> {
-    pub fn rank(&self) -> usize {
-        unimplemented!()
+    fn _gauss_elimination(&self) -> Result<(Self, T)> {
+        let mut pivot_row = 0;
+        let mut det_factor = T::one();
+        let mut rref_matrix = self.clone();
+
+        for c in 0..self.cols {
+            if pivot_row >= self.rows {
+                break;
+            }
+
+            // ピボット要素を見つける
+            let mut not_zero_index = None;
+            for r in pivot_row..self.rows {
+                if !rref_matrix[(r, c)].clone().is_zero() {
+                    not_zero_index = Some(r);
+                    break;
+                }
+            }
+
+            if not_zero_index.is_none() {
+                det_factor = T::zero(); // ピボットが見つからない場合、行列式はゼロ
+                continue; // この列にはピボットがない
+            }
+
+            if pivot_row != not_zero_index.unwrap() {
+                rref_matrix.swap_rows(pivot_row, not_zero_index.unwrap())?;
+                det_factor = -det_factor;
+            }
+
+            let pivot_value = rref_matrix[(pivot_row, c)].clone();
+            rref_matrix.scale_row(pivot_row, T::one() / pivot_value.clone())?;
+            det_factor = det_factor * pivot_value.clone();
+
+            for r in 0..self.rows {
+                if r == pivot_row {
+                    continue; // ピボット行はスキップ
+                }
+
+                let scale = rref_matrix[(r, c)].clone();
+                rref_matrix.add_scaled_row_to_row(pivot_row, r, -scale)?;
+            }
+
+            pivot_row += 1; // 次のピボット行へ
+        }
+
+        Ok((rref_matrix, det_factor))
+    }
+
+    pub fn rref(&self) -> Result<Matrix<T>> {
+        let (mat, _) = self._gauss_elimination()?;
+        Ok(mat)
+    }
+
+    pub fn rank(&self) -> Result<usize> {
+        let rref = self.rref()?;
+        let rank = Self::rank_from_rref(&rref);
+        Ok(rank)
+    }
+
+    pub fn rank_from_rref(rref_matrix: &Matrix<T>) -> usize {
+        let mut rank = 0;
+        for r in 0..rref_matrix.rows {
+            // is_zero()を実装している前提
+            if rref_matrix.row(r).unwrap().iter().any(|x| !x.is_zero()) {
+                rank += 1;
+            }
+        }
+        rank
     }
 
     pub fn determinant(&self) -> Result<T> {
-        unimplemented!()
+        if !self.is_square() {
+            return Err(LinalgError::DimensionMismatch {
+                expected: "square matrix".to_string(),
+                found: format!("{}x{}", self.rows, self.cols),
+            });
+        }
+        let (_, det) = self._gauss_elimination()?;
+        Ok(det)
     }
 
     pub fn inverse(&self) -> Option<Matrix<T>> {
-        unimplemented!()
+        if !self.is_square() {
+            return None; // 正方行列でない場合は逆行列は存在しない
+        }
+
+        let i_mat = Self::identity(self.rows);
+        let augmented = self.hstack(&i_mat).unwrap();
+
+        let (rref, _) = augmented._gauss_elimination().ok()?;
+        let left_half = rref.submatrix(0, self.rows, 0, self.cols);
+
+        if Self::rank_from_rref(&left_half) != self.rows {
+            return None; // 逆行列が存在しない
+        }
+
+        Some(rref.submatrix(0, self.rows, self.cols, self.cols * 2))
     }
 }
 
@@ -261,5 +447,234 @@ impl<T: Scalar> Index<(usize, usize)> for Matrix<T> {
 impl<T: Scalar> IndexMut<(usize, usize)> for Matrix<T> {
     fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
         &mut self.data[index.0 * self.cols + index.1]
+    }
+}
+
+impl<T: Ring> Neg for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn neg(self) -> Self::Output {
+        self.checked_neg()
+    }
+}
+
+impl<T: Ring> Neg for Matrix<T> {
+    type Output = Matrix<T>;
+    fn neg(self) -> Self::Output {
+        -&self
+    }
+}
+
+impl<'b, T: Ring> Add<&'b Matrix<T>> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: &'b Matrix<T>) -> Self::Output {
+        let result = self.checked_add(rhs);
+        match result {
+            Ok(mat) => mat,
+            Err(e) => panic!("Matrix addition failed: {e}"),
+        }
+    }
+}
+
+impl<'b, T: Ring> Sub<&'b Matrix<T>> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: &'b Matrix<T>) -> Self::Output {
+        let result = self.checked_sub(rhs);
+        match result {
+            Ok(mat) => mat,
+            Err(e) => panic!("Matrix subtraction failed: {e}"),
+        }
+    }
+}
+
+impl<'b, T: Ring> Mul<&'b Matrix<T>> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn mul(self, rhs: &'b Matrix<T>) -> Self::Output {
+        let result = self.checked_mul(rhs);
+        match result {
+            Ok(mat) => mat,
+            Err(e) => panic!("Matrix multiplication failed: {e}"),
+        }
+    }
+}
+
+impl<'b, T: Ring> Mul<&'b Vector<T>> for &Matrix<T> {
+    type Output = Vector<T>;
+    fn mul(self, rhs: &'b Vector<T>) -> Self::Output {
+        let result = self.checked_mul_vector(rhs);
+        match result {
+            Ok(vec) => vec,
+            Err(e) => panic!("Matrix-vector multiplication failed: {e}"),
+        }
+    }
+}
+
+impl<'b, T: Ring> Mul<&'b T> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn mul(self, rhs: &'b T) -> Self::Output {
+        let data = self.data.iter().map(|x| x.clone() * rhs.clone()).collect();
+        Matrix::new(self.rows, self.cols, data).unwrap()
+    }
+}
+
+impl<'b, T: Ring> Add<&'b T> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: &'b T) -> Self::Output {
+        let data = self.data.iter().map(|x| x.clone() + rhs.clone()).collect();
+        Matrix::new(self.rows, self.cols, data).unwrap()
+    }
+}
+
+impl<'b, T: Ring> Sub<&'b T> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: &'b T) -> Self::Output {
+        let data = self.data.iter().map(|x| x.clone() - rhs.clone()).collect();
+        Matrix::new(self.rows, self.cols, data).unwrap()
+    }
+}
+
+impl<T: Ring> Add<Matrix<T>> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: Matrix<T>) -> Self::Output {
+        self + &rhs
+    }
+}
+
+impl<T: Ring> Sub<Matrix<T>> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: Matrix<T>) -> Self::Output {
+        self - &rhs
+    }
+}
+
+impl<T: Ring> Mul<Matrix<T>> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn mul(self, rhs: Matrix<T>) -> Self::Output {
+        self * &rhs
+    }
+}
+
+impl<T: Ring> Mul<Vector<T>> for &Matrix<T> {
+    type Output = Vector<T>;
+    fn mul(self, rhs: Vector<T>) -> Self::Output {
+        self * &rhs
+    }
+}
+
+impl<T: Ring> Mul<T> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn mul(self, rhs: T) -> Self::Output {
+        self * &rhs
+    }
+}
+
+impl<T: Ring> Add<T> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: T) -> Self::Output {
+        self + &rhs
+    }
+}
+
+impl<T: Ring> Sub<T> for &Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: T) -> Self::Output {
+        self - &rhs
+    }
+}
+
+impl<'b, T: Ring> Add<&'b Matrix<T>> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: &'b Matrix<T>) -> Self::Output {
+        &self + rhs
+    }
+}
+
+impl<'b, T: Ring> Sub<&'b Matrix<T>> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: &'b Matrix<T>) -> Self::Output {
+        &self - rhs
+    }
+}
+
+impl<'b, T: Ring> Mul<&'b Matrix<T>> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn mul(self, rhs: &'b Matrix<T>) -> Self::Output {
+        &self * rhs
+    }
+}
+
+impl<'b, T: Ring> Mul<&'b Vector<T>> for Matrix<T> {
+    type Output = Vector<T>;
+    fn mul(self, rhs: &'b Vector<T>) -> Self::Output {
+        &self * rhs
+    }
+}
+
+impl<'b, T: Ring> Mul<&'b T> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn mul(self, rhs: &'b T) -> Self::Output {
+        &self * rhs
+    }
+}
+
+impl<'b, T: Ring> Add<&'b T> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: &'b T) -> Self::Output {
+        &self + rhs
+    }
+}
+
+impl<'b, T: Ring> Sub<&'b T> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: &'b T) -> Self::Output {
+        &self - rhs
+    }
+}
+
+impl<T: Ring> Add<Matrix<T>> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: Matrix<T>) -> Self::Output {
+        &self + &rhs
+    }
+}
+
+impl<T: Ring> Sub<Matrix<T>> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: Matrix<T>) -> Self::Output {
+        &self - &rhs
+    }
+}
+
+impl<T: Ring> Mul<Matrix<T>> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn mul(self, rhs: Matrix<T>) -> Self::Output {
+        &self * &rhs
+    }
+}
+
+impl<T: Ring> Mul<Vector<T>> for Matrix<T> {
+    type Output = Vector<T>;
+    fn mul(self, rhs: Vector<T>) -> Self::Output {
+        &self * &rhs
+    }
+}
+
+impl<T: Ring> Mul<T> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn mul(self, rhs: T) -> Self::Output {
+        &self * &rhs
+    }
+}
+
+impl<T: Ring> Add<T> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn add(self, rhs: T) -> Self::Output {
+        &self + &rhs
+    }
+}
+
+impl<T: Ring> Sub<T> for Matrix<T> {
+    type Output = Matrix<T>;
+    fn sub(self, rhs: T) -> Self::Output {
+        &self - &rhs
     }
 }

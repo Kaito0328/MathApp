@@ -1,4 +1,4 @@
-use linalg::{Matrix, Vector};
+use linalg::Matrix;
 
 fn main() {
     println!("=== 線形代数の高度な操作例 ===");
@@ -12,13 +12,13 @@ fn main() {
 
     // 行列式の計算（f64専用メソッド）
     match square_matrix.determinant() {
-        Ok(det) => println!("行列式: {}", det),
-        Err(e) => println!("行列式の計算でエラー: {}", e),
+        Ok(det) => println!("行列式: {det}"),
+        Err(e) => println!("行列式の計算でエラー: {e}"),
     }
 
     // トレースの計算
     let trace = square_matrix.trace();
-    println!("トレース: {}", trace);
+    println!("トレース: {trace}");
 
     // 逆行列の計算（f64専用メソッド）
     match square_matrix.inverse() {
@@ -57,7 +57,7 @@ fn main() {
             println!("\n水平結合 (hstack):");
             print_matrix(&hstacked);
         }
-        Err(e) => println!("水平結合でエラー: {}", e),
+        Err(e) => println!("水平結合でエラー: {e}"),
     }
 }
 
