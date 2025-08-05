@@ -31,11 +31,13 @@ fn main() {
 
     // LU分解（f64専用メソッド）
     match square_matrix.lu_decomposition() {
-        Some((l, u)) => {
+        Some((l, u, p)) => {
             println!("\nLU分解 - L行列:");
             print_matrix(&l);
             println!("LU分解 - U行列:");
             print_matrix(&u);
+            println!("LU分解 - P行列:");
+            print_matrix(&p);
         }
         None => println!("LU分解できませんでした"),
     }

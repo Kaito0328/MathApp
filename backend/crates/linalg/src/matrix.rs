@@ -1,4 +1,5 @@
 use crate::{Field, LinalgError, Result, Ring, Scalar, Vector};
+use core::fmt;
 use std::ops::{Add, Index, IndexMut, Mul, Neg, Sub};
 
 /// 固有値と固有ベクトルのペアを格納するジェネリックな構造体
@@ -423,16 +424,113 @@ impl Matrix<f64> {
         unimplemented!()
     }
     pub fn frobenius_norm(&self) -> f64 {
-        unimplemented!()
+        if self.rows == 0 || self.cols == 0 {
+            return 0.0; // 空の行列の場合は0を返す
+        }
+        let mut sum = 0.0;
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                if self[(i, j)].is_nan() || self[(i, j)].is_infinite() {
+                    return f64::NAN; // NaNまたは無限大が含まれている場合はNaNを返す
+                }
+                sum += self[(i, j)].powi(2);
+            }
+        }
+        sum.sqrt()
     }
-    pub fn lu_decomposition(&self) -> Option<(Matrix<f64>, Matrix<f64>)> {
-        unimplemented!()
+    /// PA = LU 分解を行う.
+    /// 返り値は成功した場合 Some((P, L, U))、失敗した場合は None
+    /// PA = LU 分解を行う.
+    /// 返り値は成功した場合 Some((P, L, U))、失敗した場合は None
+    pub fn lu_decomposition(&self) -> Option<(Matrix<f64>, Matrix<f64>, Matrix<f64>)> {
+        if !self.is_square() {
+            return None;
+        }
+        let n = self.rows;
+        // Lはゼロ行列から始め、UはAのコピーから始めるのがシンプル
+        let mut l = Matrix::zeros(n, n);
+        let mut u = self.clone();
+        let mut p = Matrix::identity(n);
+
+        for k in 0..n {
+            // --- 1. ピボット選択 ---
+            let mut max_val = 0.0;
+            let mut pivot_row = k;
+            for i in k..n {
+                if u[(i, k)].abs() > max_val {
+                    max_val = u[(i, k)].abs();
+                    pivot_row = i;
+                }
+            }
+
+            if max_val < 1e-10 {
+                println!("L行列: {l:?}");
+                println!("U行列: {u:?}");
+                println!("P行列: {p:?}");
+                println!("pivot_row: {pivot_row}, k: {k}, max_val: {max_val}");
+                // 行列が正則でない
+                return None;
+            }
+
+            // --- 2. 行の交換 ---
+            if pivot_row != k {
+                let _ = p.swap_rows(k, pivot_row);
+                let _ = u.swap_rows(k, pivot_row);
+                // L行列の計算済み部分(k列目より前)だけを交換する
+                for j in 0..k {
+                    let temp = l[(k, j)];
+                    l[(k, j)] = l[(pivot_row, j)];
+                    l[(pivot_row, j)] = temp;
+                }
+            }
+
+            // --- 3. LとUの計算 (ガウスの消去法) ---
+            // Lの対角成分は1
+            l[(k, k)] = 1.0;
+
+            // Lのk列目の計算
+            for i in k + 1..n {
+                l[(i, k)] = u[(i, k)] / u[(k, k)];
+            }
+
+            // Uの更新 (前方消去)
+            for i in k + 1..n {
+                for j in k..n {
+                    u[(i, j)] -= l[(i, k)] * u[(k, j)];
+                }
+            }
+        }
+
+        Some((p, l, u))
     }
     pub fn qr_decomposition(&self) -> Option<(Matrix<f64>, Matrix<f64>)> {
         unimplemented!()
     }
     pub fn svd(&self) -> Option<(Matrix<f64>, Matrix<f64>, Matrix<f64>)> {
         unimplemented!()
+    }
+}
+
+impl<T: Scalar + fmt::Display> fmt::Display for Matrix<T> {
+    // fmtメソッドを実装するのが Display トレイトの「契約」
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // --- 1. ヘッダー行を書き込む ---
+        // writeln! は、指定されたフォーマッタ(f)に改行付きで書き込むマクロ
+        writeln!(f, "rows: {}, cols: {}", self.rows, self.cols)?;
+
+        // --- 2. 行列の要素をループで書き込む ---
+        for r in 0..self.rows {
+            for c in 0..self.cols {
+                // write! は、改行なしで書き込むマクロ
+                // 各要素の後ろにタブ文字 `\t` を追加して整形
+                write!(f, "{}\t", self[(r, c)])?;
+            }
+            // 各行の終わりに改行を入れる
+            writeln!(f)?;
+        }
+
+        // 全ての書き込みが成功したら Ok(()) を返す
+        Ok(())
     }
 }
 
