@@ -13,4 +13,4 @@ path = "src/lib.rs"
 # linalgクレートが直接依存するライブラリがあればここに記述
 [dependencies]
 num-traits = "0.2"
-# 例: num-complex = "0.4"
+num-complex = "0.4"

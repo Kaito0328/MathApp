@@ -1,12 +1,14 @@
 use crate::{Field, LinalgError, Result, Ring, Scalar, Vector};
 use core::fmt;
+use num_complex::Complex;
+use std::cmp::min;
 use std::ops::{Add, Index, IndexMut, Mul, Neg, Sub};
 
 /// 固有値と固有ベクトルのペアを格納するジェネリックな構造体
 #[derive(Debug, PartialEq)]
-pub struct EigenDecomposition<T: Scalar> {
-    pub eigenvalues: Vec<T>,
-    pub eigenvectors: Vec<Vector<T>>,
+pub struct EigenDecomposition {
+    pub eigenvalues: Vec<Complex<f64>>,
+    pub eigenvectors: Vec<Vector<f64>>,
 }
 
 /// Matrix構造体の定義。Tは最低限Scalarであることを要求
@@ -65,6 +67,33 @@ impl<T: Scalar> Matrix<T> {
         let col_data = (0..self.rows).map(|r| self[(r, c)].clone()).collect();
         Ok(Vector::new(col_data))
     }
+
+    pub fn partial_col(
+        &self,
+        col_idx: usize,
+        start_row: usize,
+        end_row: usize,
+    ) -> Result<Vector<T>> {
+        if col_idx >= self.cols {
+            return Err(LinalgError::IndexOutOfBounds {
+                index: col_idx,
+                size: self.cols,
+            });
+        }
+        if end_row > self.rows || start_row > end_row {
+            return Err(LinalgError::InvalidDimension {
+                dim: (end_row),
+                text: ("Invalid row range for column extraction".to_string()),
+            });
+        }
+
+        let data = (start_row..end_row)
+            .map(|r| self[(r, col_idx)].clone())
+            .collect();
+
+        Ok(Vector::new(data))
+    }
+
     pub fn row(&self, r: usize) -> Result<Vector<T>> {
         if r >= self.rows {
             return Err(LinalgError::IndexOutOfBounds {
@@ -129,6 +158,27 @@ impl<T: Scalar> Matrix<T> {
             .collect();
         Matrix::new(end_row - start_row, end_col - start_col, data).unwrap()
     }
+
+    pub fn set_submatrix(
+        &mut self,
+        start_row: usize,
+        start_col: usize,
+        submatrix: &Matrix<T>,
+    ) -> Result<()> {
+        if start_row + submatrix.rows > self.rows || start_col + submatrix.cols > self.cols {
+            return Err(LinalgError::IndexOutOfBounds {
+                index: start_row + submatrix.rows,
+                size: self.rows,
+            });
+        }
+        for i in 0..submatrix.rows {
+            for j in 0..submatrix.cols {
+                self[(start_row + i, start_col + j)] = submatrix[(i, j)].clone();
+            }
+        }
+        Ok(())
+    }
+
     pub fn hstack(&self, other: &Matrix<T>) -> Result<Matrix<T>> {
         if other.rows != self.rows {
             return Err(LinalgError::DimensionMismatch {
@@ -288,6 +338,19 @@ impl<T: Ring> Matrix<T> {
         }
         Ok(())
     }
+
+    pub fn scale_col(&mut self, c: usize, scalar: T) -> Result<()> {
+        if c >= self.cols {
+            return Err(LinalgError::IndexOutOfBounds {
+                index: c,
+                size: self.cols,
+            });
+        }
+        for r in 0..self.rows {
+            self[(r, c)] = self[(r, c)].clone() * scalar.clone();
+        }
+        Ok(())
+    }
     pub fn add_scaled_row_to_row(
         &mut self,
         source_row: usize,
@@ -420,9 +483,168 @@ impl<T: Field> Matrix<T> {
 
 // --- f64専用の高度な数値計算メソッド ---
 impl Matrix<f64> {
-    pub fn eigen_decomposition(&self) -> Option<EigenDecomposition<f64>> {
-        unimplemented!()
+    fn householder_reflection_matrix(x: &Vector<f64>) -> Option<Matrix<f64>> {
+        let norm_x = x.norm();
+        let mut u = x.clone();
+
+        let sign = if u[0] < 0.0 { -1.0 } else { 1.0 };
+        u[0] += sign * norm_x;
+
+        let norm_u = u.norm();
+        if norm_u < 1e-10 {
+            // 変換不要、またはゼロベクトルなので単位行列を返すかNoneを返す
+            return Some(Matrix::identity(x.dim()));
+        }
+
+        let u_normalized = &u * (1.0 / norm_u);
+        let outer_prod = u_normalized.clone() * u_normalized.transpose();
+        let h_prime = Matrix::identity(x.dim()) - &outer_prod * 2.0;
+
+        Some(h_prime)
     }
+    fn to_hessenberg(&self) -> Option<(Matrix<f64>, Matrix<f64>)> {
+        if !self.is_square() {
+            return None; // 正方行列でない場合は変換できない
+        }
+        let mut h = self.clone();
+        let mut v = Matrix::identity(self.rows);
+
+        for k in 0..self.rows - 2 {
+            // k列目の下の部分をゼロにする
+            let x: Vector<f64> = h.partial_col(k, k + 1, self.rows).unwrap();
+            let h_prime = Self::householder_reflection_matrix(&x)?;
+
+            // H' を n x n の行列 H に埋め込む
+            let mut full_h = Matrix::identity(self.rows);
+            full_h.set_submatrix(k + 1, k + 1, &h_prime).unwrap();
+
+            // Aを変換
+            h = &full_h * &h * &full_h;
+        }
+        Some((h, v))
+    }
+    pub fn eigen_decomposition(&self) -> Option<EigenDecomposition> {
+        if !self.is_square() {
+            return None;
+        }
+
+        const MAX_ITERATIONS_PER_EIGENVALUE: usize = 100;
+        let n = self.rows;
+
+        // 1. ヘッセンベルグ形式に変換 (H) と、そのための変換行列 (V) を得る
+        let (mut h, mut v) = self.to_hessenberg()?;
+
+        let mut eigenvalues = Vec::with_capacity(n);
+        let mut end = n;
+
+        // メインループ: 右下から固有値を確定させていく
+        while end > 0 {
+            let mut iter = 0;
+            loop {
+                if iter >= MAX_ITERATIONS_PER_EIGENVALUE * end {
+                    // 全体として収束しない場合は失敗
+                    return None;
+                }
+                iter += 1;
+
+                // --- 2. デフレーションのチェック ---
+                // m は現在注目している部分行列の末尾-1
+                let m = end - 1;
+
+                // (Case 1) 1x1 ブロックの分離 (実数固有値)
+                // h[m, m-1] がほぼ0なら、h[m,m]が固有値として確定
+                if m == 0
+                    || h[(m, m - 1)].abs() < 1e-12 * (h[(m - 1, m - 1)].abs() + h[(m, m)].abs())
+                {
+                    eigenvalues.push(Complex::new(h[(m, m)], 0.0));
+                    end -= 1; // 問題のサイズを1つ小さくする
+                    break; // 内側ループを抜けて次の固有値へ
+                }
+
+                // (Case 2) 2x2 ブロックの分離 (複素共役な固有値ペア)
+                // h[m-1, m-2]がほぼ0なら、右下の2x2ブロックが確定
+                let m_minus_1 = m - 1;
+                if m_minus_1 > 0
+                    && h[(m_minus_1, m_minus_1 - 1)].abs()
+                        < 1e-12
+                            * (h[(m_minus_1 - 1, m_minus_1 - 1)].abs()
+                                + h[(m_minus_1, m_minus_1)].abs())
+                {
+                    // 2x2ブロックの要素を取得
+                    let a = h[(m_minus_1, m_minus_1)];
+                    let b = h[(m_minus_1, m)];
+                    let c = h[(m, m_minus_1)];
+                    let d = h[(m, m)];
+
+                    // 特性方程式 λ^2 - tr*λ + det = 0 を解く
+                    let trace = a + d;
+                    let det = a * d - b * c;
+                    let discriminant = trace * trace - 4.0 * det;
+
+                    let real_part = trace / 2.0;
+                    let imag_part = discriminant.abs().sqrt() / 2.0;
+
+                    eigenvalues.push(Complex::new(real_part, imag_part));
+                    eigenvalues.push(Complex::new(real_part, -imag_part));
+
+                    end -= 2; // 問題のサイズを2つ小さくする
+                    break; // 内側ループを抜けて次の固有値へ
+                }
+
+                // --- 3. QR法の1ステップ (デフレーションしなかった場合) ---
+
+                // シフト量の計算 (ウィルキンソンシフト)
+                let s = h[(m, m)];
+                let t = h[(m - 1, m - 1)];
+                let u = h[(m - 1, m)];
+                let p = h[(m, m - 1)];
+
+                let trace = t + s;
+                let det = t * s - u * p;
+                let discriminant = (trace * trace / 4.0) - det;
+
+                let mu1 = trace / 2.0 + discriminant.abs().sqrt().copysign(trace);
+                let mu2 = det / mu1;
+
+                let shift = if (mu1 - s).abs() < (mu2 - s).abs() {
+                    mu1
+                } else {
+                    mu2
+                };
+
+                // QR法の1ステップを実行
+                // 簡単のため、行列全体に適用する
+                let mut shifted_h = h.clone();
+                for j in 0..end {
+                    shifted_h[(j, j)] -= shift;
+                }
+
+                if let Some((q, _)) = shifted_h.submatrix(0, end, 0, end).qr_decomposition() {
+                    let mut q_full = Matrix::identity(n);
+                    q_full.set_submatrix(0, 0, &q).ok()?;
+
+                    h = &(&q_full.transpose() * &h) * &q_full;
+                    v = &v * &q_full;
+                } else {
+                    return None; // QR分解失敗
+                }
+            }
+        }
+
+        // 固有値は逆順（右下から確定させたため）なので、並べ替える
+        eigenvalues.reverse();
+
+        let mut eigenvectors = Vec::with_capacity(n);
+        for j in 0..n {
+            eigenvectors.push(v.col(j).ok()?);
+        }
+
+        Some(EigenDecomposition {
+            eigenvalues,
+            eigenvectors,
+        })
+    }
+
     pub fn frobenius_norm(&self) -> f64 {
         if self.rows == 0 || self.cols == 0 {
             return 0.0; // 空の行列の場合は0を返す
@@ -464,11 +686,6 @@ impl Matrix<f64> {
             }
 
             if max_val < 1e-10 {
-                println!("L行列: {l:?}");
-                println!("U行列: {u:?}");
-                println!("P行列: {p:?}");
-                println!("pivot_row: {pivot_row}, k: {k}, max_val: {max_val}");
-                // 行列が正則でない
                 return None;
             }
 
@@ -503,33 +720,109 @@ impl Matrix<f64> {
 
         Some((p, l, u))
     }
+
     pub fn qr_decomposition(&self) -> Option<(Matrix<f64>, Matrix<f64>)> {
-        unimplemented!()
+        let (rows, cols) = (self.rows, self.cols);
+
+        let mut r = self.clone();
+        let mut q = Matrix::identity(rows);
+
+        for k in 0..min(rows, cols) {
+            // --- 1. 部分ベクトルを抽出 ---
+            let x: Vector<f64> = r.partial_col(k, k, rows).unwrap();
+
+            let h_prime = Self::householder_reflection_matrix(&x)?;
+
+            // --- 4. H' を n x n の行列 H に埋め込む ---
+            let mut h = Matrix::identity(rows);
+            h.set_submatrix(k, k, &h_prime).unwrap();
+
+            // --- 5. QとRを更新 ---
+            r = &h * &r;
+            q = &q * &h;
+        }
+
+        for k in 0..min(rows, cols) {
+            if r[(k, k)] >= 0.0 {
+                continue;
+            }
+
+            let _ = q.scale_col(k, -1.0);
+            let _ = r.scale_row(k, -1.0);
+        }
+
+        Some((q, r))
     }
     pub fn svd(&self) -> Option<(Matrix<f64>, Matrix<f64>, Matrix<f64>)> {
         unimplemented!()
     }
 }
 
-impl<T: Scalar + fmt::Display> fmt::Display for Matrix<T> {
-    // fmtメソッドを実装するのが Display トレイトの「契約」
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // --- 1. ヘッダー行を書き込む ---
-        // writeln! は、指定されたフォーマッタ(f)に改行付きで書き込むマクロ
-        writeln!(f, "rows: {}, cols: {}", self.rows, self.cols)?;
+trait UseDefaultFormatting {}
 
-        // --- 2. 行列の要素をループで書き込む ---
-        for r in 0..self.rows {
-            for c in 0..self.cols {
-                // write! は、改行なしで書き込むマクロ
-                // 各要素の後ろにタブ文字 `\t` を追加して整形
-                write!(f, "{}\t", self[(r, c)])?;
+// 1. トレイトの定義を変更
+pub trait DisplayElement {
+    fn to_formatted_string(&self) -> String;
+}
+
+// 2. マクロも String を返すように修正
+macro_rules! impl_default_display_element {
+    ($($t:ty),*) => {
+        $(
+            impl DisplayElement for $t {
+                fn to_formatted_string(&self) -> String {
+                    self.to_string()
+                }
             }
-            // 各行の終わりに改行を入れる
-            writeln!(f)?;
+        )*
+    };
+}
+const DISPLAY_PRECISION: i32 = 4;
+
+impl DisplayElement for f64 {
+    fn to_formatted_string(&self) -> String {
+        let factor = 10.0_f64.powi(DISPLAY_PRECISION);
+        let mut rounded_val = (self * factor).round() / factor;
+
+        if rounded_val == 0.0 {
+            rounded_val = 0.0;
         }
 
-        // 全ての書き込みが成功したら Ok(()) を返す
+        rounded_val.to_string()
+    }
+}
+
+// 4. マクロを呼び出して、他の型に対する実装を自動生成
+impl_default_display_element!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, String, &str, bool, char
+);
+impl<T: Scalar + DisplayElement> fmt::Display for Matrix<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // --- 1. 事前計算パス：全要素のフォーマット済み文字列を先に作ってしまう ---
+        let formatted_strings: Vec<String> = self
+            .data
+            .iter()
+            .map(|val| val.to_formatted_string())
+            .collect();
+
+        // --- 2. 文字列から最大幅を計算 ---
+        let max_width = formatted_strings.iter().map(|s| s.len()).max().unwrap_or(0);
+
+        // --- 3. 書き込みパス ---
+        writeln!(f, "rows: {}, cols: {}", self.rows, self.cols)?;
+        for r in 0..self.rows {
+            for c in 0..self.cols {
+                // 事前計算した文字列を取得
+                let s = &formatted_strings[r * self.cols + c];
+                // 右揃えで表示
+                write!(f, "{:>width$}", s, width = max_width)?;
+                // セパレータ（タブ文字）
+                if c < self.cols - 1 {
+                    write!(f, "\t")?;
+                }
+            }
+            writeln!(f)?;
+        }
         Ok(())
     }
 }
