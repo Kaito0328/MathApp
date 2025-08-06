@@ -282,6 +282,13 @@ mod svd_tests {
 
         println!("Symmetric matrix A: {matrix}");
 
+        let ata = &matrix.transpose() * &matrix;
+        println!("A^T * A: {ata}");
+
+        let eigen = ata.eigen_decomposition().unwrap();
+        println!("Eigenvalues of A^T * A: {:?}", eigen.eigenvalues);
+        println!("Eigenvectors of A^T * A: {m}", m = eigen.eigenvectors);
+
         match matrix.svd() {
             Some(svd_result) => {
                 println!("SVD successful!");

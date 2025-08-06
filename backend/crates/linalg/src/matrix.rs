@@ -530,7 +530,8 @@ impl Matrix<f64> {
             return None; // 正方行列でない場合は変換できない
         }
         let mut h = self.clone();
-        let v = Matrix::identity(self.rows);
+        // v は変換行列を累積していくので、mut をつける
+        let mut v = Matrix::identity(self.rows);
 
         for k in 0..self.rows - 2 {
             // k列目の下の部分をゼロにする
@@ -542,10 +543,15 @@ impl Matrix<f64> {
             full_h.set_submatrix(k + 1, k + 1, &h_prime).unwrap();
 
             // Aを変換
-            h = &full_h * &h * &full_h;
+            h = &(&full_h * &h) * &full_h;
+
+            // ★★★★★ ここが修正箇所 ★★★★★
+            // 固有ベクトルを計算するために、変換行列を累積していく
+            v = &v * &full_h;
         }
         Some((h, v))
     }
+
     fn solve_2x2_eigenvalues(a: f64, b: f64, c: f64, d: f64) -> (Complex<f64>, Complex<f64>) {
         let trace = a + d;
         let det = a * d - b * c;
@@ -592,7 +598,6 @@ impl Matrix<f64> {
         let n = self.rows;
 
         let (mut h, mut v) = self.to_hessenberg()?;
-        let mut eigenvalues = Vec::with_capacity(n);
         let mut end = n;
 
         // ... while end > 0 ループの中身は変更なし ...
@@ -604,26 +609,31 @@ impl Matrix<f64> {
                 }
                 iter += 1;
                 let m = end - 1;
+
+                // 2x2 ブロックに分割された場合の処理
                 if end == 2 {
+                    // このブロックは固有値を計算するだけなので、このまま残しても良いが、
+                    // ループ後の対角成分から取得する方が一貫性がある。
+                    // ただし、2x2のままループが終わる場合もあるため、この処理は安全策として有効。
                     let (lambda1, lambda2) =
                         Self::solve_2x2_eigenvalues(h[(0, 0)], h[(0, 1)], h[(1, 0)], h[(1, 1)]);
-                    eigenvalues.push(lambda1);
-                    eigenvalues.push(lambda2);
+                    h[(0, 0)] = lambda1.re;
+                    h[(1, 1)] = lambda2.re;
+                    h[(0, 1)] = 0.0;
+                    h[(1, 0)] = 0.0;
                     end = 0;
                     break;
-                } else if h[(m, m - 1)].abs() < 1e-14 {
-                    eigenvalues.push(Complex::new(h[(m, m)], 0.0));
+                }
+                // 1x1 ブロックが分離した場合
+                else if h[(m, m - 1)].abs() < 1e-14 {
+                    // ★★★ 修正点：ここでは固有値をpushせず、デフレーション（endを減らす）だけ行う
                     end -= 1;
                     break;
-                } else if h[(m - 1, m - 2)].abs() < 1e-14 {
-                    let (lambda1, lambda2) = Self::solve_2x2_eigenvalues(
-                        h[(m - 1, m - 1)],
-                        h[(m - 1, m)],
-                        h[(m, m - 1)],
-                        h[(m, m)],
-                    );
-                    eigenvalues.push(lambda1);
-                    eigenvalues.push(lambda2);
+                }
+                // 2x2 ブロックが分離した場合
+                else if h[(m - 1, m - 2)].abs() < 1e-14 {
+                    // ★★★ 修正点：ここでも固有値をpushせず、デフレーションだけ行う
+                    // この2x2ブロックは次のQRステップで対角化される
                     end -= 2;
                     break;
                 } else {
@@ -661,12 +671,10 @@ impl Matrix<f64> {
                 }
             }
         }
-        // --- ここからが変更点 ---
 
-        eigenvalues.reverse();
+        let eigenvalues: Vec<Complex<f64>> = (0..n).map(|i| Complex::new(h[(i, i)], 0.0)).collect();
 
-        // v はQRステップを通じて更新されてきた固有ベクトル行列そのもの
-        // そのまま返すのが最も効率的
+        // v は、h の対角成分（固有値）に対応する固有ベクトル行列になっている。
         let eigenvectors_matrix = v;
 
         Some(EigenDecomposition {
@@ -824,7 +832,7 @@ impl Matrix<f64> {
         let sigma = Vector::new(sigma_vec);
         let v_final = sorted_v;
 
-        let mut u = Matrix::zeros(self.rows, self.cols);
+        let mut u = Matrix::zeros(self.rows, self.rows);
         for i in 0..self.cols {
             let sigma_i = sigma[i];
             let v_i = v_final.col(i).unwrap();

@@ -481,7 +481,7 @@ mod eigen_decomposition_tests {
             println!("Sum of eigenvalues: {eigenvalue_sum}");
 
             let trace_error = (trace - eigenvalue_sum).abs();
-            println!("Trace error: {:.2e}", trace_error);
+            println!("Trace error: {trace:.2e}");
 
             // 数値的に不安定な行列でも合理的な結果が得られることを確認
             assert!(trace_error < 1e-8, "Trace error should be reasonably small");
