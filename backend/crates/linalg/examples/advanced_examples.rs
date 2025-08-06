@@ -46,7 +46,7 @@ fn main() {
     match square_matrix.eigen_decomposition() {
         Some(eigen) => {
             println!("\n固有値: {:?}", eigen.eigenvalues);
-            println!("固有ベクトル数: {}", eigen.eigenvectors.len());
+            println!("固有ベクトル数: {}", eigen.eigenvectors.cols);
         }
         None => println!("固有値分解できませんでした"),
     }

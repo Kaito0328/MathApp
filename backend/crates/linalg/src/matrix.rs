@@ -8,7 +8,17 @@ use std::ops::{Add, Index, IndexMut, Mul, Neg, Sub};
 #[derive(Debug, PartialEq)]
 pub struct EigenDecomposition {
     pub eigenvalues: Vec<Complex<f64>>,
-    pub eigenvectors: Vec<Vector<f64>>,
+    pub eigenvectors: Matrix<f64>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct SVD {
+    /// 左特異ベクトル行列 U
+    pub u: Matrix<f64>,
+    /// 特異値ベクトル Σ (対角行列の対角成分)
+    pub sigma: Vector<f64>,
+    /// 右特異ベクトル行列 V
+    pub v: Matrix<f64>,
 }
 
 /// Matrix構造体の定義。Tは最低限Scalarであることを要求
@@ -223,6 +233,19 @@ impl<T: Ring> Matrix<T> {
         let mut matrix = Self::zeros(size, size);
         for i in 0..size {
             matrix[(i, i)] = T::one();
+        }
+        matrix
+    }
+
+    pub fn diag(rows: usize, cols: usize, diag_elements: &Vector<T>) -> Self {
+        let mut matrix = Matrix::zeros(rows, cols);
+        // 対角線の長さは、行数と列数の小さい方
+        let diag_len = std::cmp::min(rows, cols);
+        // ベクトルの長さと対角線の長さの、さらに小さい方までを埋める
+        let fill_len = std::cmp::min(diag_len, diag_elements.dim());
+
+        for i in 0..fill_len {
+            matrix[(i, i)] = diag_elements[i].clone();
         }
         matrix
     }
@@ -507,7 +530,7 @@ impl Matrix<f64> {
             return None; // 正方行列でない場合は変換できない
         }
         let mut h = self.clone();
-        let mut v = Matrix::identity(self.rows);
+        let v = Matrix::identity(self.rows);
 
         for k in 0..self.rows - 2 {
             // k列目の下の部分をゼロにする
@@ -523,125 +546,132 @@ impl Matrix<f64> {
         }
         Some((h, v))
     }
+    fn solve_2x2_eigenvalues(a: f64, b: f64, c: f64, d: f64) -> (Complex<f64>, Complex<f64>) {
+        let trace = a + d;
+        let det = a * d - b * c;
+        let discriminant = trace * trace - 4.0 * det;
+
+        if discriminant >= 0.0 {
+            // 実数固有値の場合
+            let sqrt_disc = discriminant.sqrt();
+            let lambda1 = (trace + sqrt_disc) / 2.0;
+            let lambda2 = (trace - sqrt_disc) / 2.0;
+            (Complex::new(lambda1, 0.0), Complex::new(lambda2, 0.0))
+        } else {
+            // 複素共役な固有値の場合
+            let real_part = trace / 2.0;
+            let imag_part = (-discriminant).sqrt() / 2.0;
+            (
+                Complex::new(real_part, imag_part),
+                Complex::new(real_part, -imag_part),
+            )
+        }
+    }
+
     pub fn eigen_decomposition(&self) -> Option<EigenDecomposition> {
+        // --- エッジケースの事前処理 ---
+        if self.rows == 0 {
+            return Some(EigenDecomposition {
+                eigenvalues: vec![],
+                // 空のMatrixを返す
+                eigenvectors: Matrix::new(0, 0, vec![]).unwrap(),
+            });
+        }
         if !self.is_square() {
             return None;
         }
+        if self.rows == 1 {
+            return Some(EigenDecomposition {
+                eigenvalues: vec![Complex::new(self[(0, 0)], 0.0)],
+                // 1x1の単位行列を返す
+                eigenvectors: Matrix::identity(1),
+            });
+        }
 
-        const MAX_ITERATIONS_PER_EIGENVALUE: usize = 100;
+        const MAX_ITERATIONS: usize = 30;
         let n = self.rows;
 
-        // 1. ヘッセンベルグ形式に変換 (H) と、そのための変換行列 (V) を得る
         let (mut h, mut v) = self.to_hessenberg()?;
-
         let mut eigenvalues = Vec::with_capacity(n);
         let mut end = n;
 
-        // メインループ: 右下から固有値を確定させていく
+        // ... while end > 0 ループの中身は変更なし ...
         while end > 0 {
             let mut iter = 0;
             loop {
-                if iter >= MAX_ITERATIONS_PER_EIGENVALUE * end {
-                    // 全体として収束しない場合は失敗
+                if iter >= MAX_ITERATIONS * n {
                     return None;
                 }
                 iter += 1;
-
-                // --- 2. デフレーションのチェック ---
-                // m は現在注目している部分行列の末尾-1
                 let m = end - 1;
-
-                // (Case 1) 1x1 ブロックの分離 (実数固有値)
-                // h[m, m-1] がほぼ0なら、h[m,m]が固有値として確定
-                if m == 0
-                    || h[(m, m - 1)].abs() < 1e-12 * (h[(m - 1, m - 1)].abs() + h[(m, m)].abs())
-                {
+                if end == 2 {
+                    let (lambda1, lambda2) =
+                        Self::solve_2x2_eigenvalues(h[(0, 0)], h[(0, 1)], h[(1, 0)], h[(1, 1)]);
+                    eigenvalues.push(lambda1);
+                    eigenvalues.push(lambda2);
+                    end = 0;
+                    break;
+                } else if h[(m, m - 1)].abs() < 1e-14 {
                     eigenvalues.push(Complex::new(h[(m, m)], 0.0));
-                    end -= 1; // 問題のサイズを1つ小さくする
-                    break; // 内側ループを抜けて次の固有値へ
-                }
-
-                // (Case 2) 2x2 ブロックの分離 (複素共役な固有値ペア)
-                // h[m-1, m-2]がほぼ0なら、右下の2x2ブロックが確定
-                let m_minus_1 = m - 1;
-                if m_minus_1 > 0
-                    && h[(m_minus_1, m_minus_1 - 1)].abs()
-                        < 1e-12
-                            * (h[(m_minus_1 - 1, m_minus_1 - 1)].abs()
-                                + h[(m_minus_1, m_minus_1)].abs())
-                {
-                    // 2x2ブロックの要素を取得
-                    let a = h[(m_minus_1, m_minus_1)];
-                    let b = h[(m_minus_1, m)];
-                    let c = h[(m, m_minus_1)];
-                    let d = h[(m, m)];
-
-                    // 特性方程式 λ^2 - tr*λ + det = 0 を解く
-                    let trace = a + d;
-                    let det = a * d - b * c;
-                    let discriminant = trace * trace - 4.0 * det;
-
-                    let real_part = trace / 2.0;
-                    let imag_part = discriminant.abs().sqrt() / 2.0;
-
-                    eigenvalues.push(Complex::new(real_part, imag_part));
-                    eigenvalues.push(Complex::new(real_part, -imag_part));
-
-                    end -= 2; // 問題のサイズを2つ小さくする
-                    break; // 内側ループを抜けて次の固有値へ
-                }
-
-                // --- 3. QR法の1ステップ (デフレーションしなかった場合) ---
-
-                // シフト量の計算 (ウィルキンソンシフト)
-                let s = h[(m, m)];
-                let t = h[(m - 1, m - 1)];
-                let u = h[(m - 1, m)];
-                let p = h[(m, m - 1)];
-
-                let trace = t + s;
-                let det = t * s - u * p;
-                let discriminant = (trace * trace / 4.0) - det;
-
-                let mu1 = trace / 2.0 + discriminant.abs().sqrt().copysign(trace);
-                let mu2 = det / mu1;
-
-                let shift = if (mu1 - s).abs() < (mu2 - s).abs() {
-                    mu1
+                    end -= 1;
+                    break;
+                } else if h[(m - 1, m - 2)].abs() < 1e-14 {
+                    let (lambda1, lambda2) = Self::solve_2x2_eigenvalues(
+                        h[(m - 1, m - 1)],
+                        h[(m - 1, m)],
+                        h[(m, m - 1)],
+                        h[(m, m)],
+                    );
+                    eigenvalues.push(lambda1);
+                    eigenvalues.push(lambda2);
+                    end -= 2;
+                    break;
                 } else {
-                    mu2
-                };
-
-                // QR法の1ステップを実行
-                // 簡単のため、行列全体に適用する
-                let mut shifted_h = h.clone();
-                for j in 0..end {
-                    shifted_h[(j, j)] -= shift;
-                }
-
-                if let Some((q, _)) = shifted_h.submatrix(0, end, 0, end).qr_decomposition() {
-                    let mut q_full = Matrix::identity(n);
-                    q_full.set_submatrix(0, 0, &q).ok()?;
-
-                    h = &(&q_full.transpose() * &h) * &q_full;
-                    v = &v * &q_full;
-                } else {
-                    return None; // QR分解失敗
+                    let s = h[(m, m)];
+                    let t = h[(m - 1, m - 1)];
+                    let u = h[(m - 1, m)];
+                    let p = h[(m, m - 1)];
+                    let trace = t + s;
+                    let det = t * s - u * p;
+                    let discriminant = (trace * trace / 4.0) - det;
+                    let mu1_denom = trace / 2.0 + discriminant.abs().sqrt().copysign(trace);
+                    let mu1 = if mu1_denom.abs() > 1e-14 {
+                        mu1_denom
+                    } else {
+                        0.0
+                    };
+                    let mu2 = if mu1.abs() > 1e-14 { det / mu1 } else { 0.0 };
+                    let shift = if (mu1 - s).abs() < (mu2 - s).abs() {
+                        mu1
+                    } else {
+                        mu2
+                    };
+                    let mut shifted_h = h.clone();
+                    for j in 0..end {
+                        shifted_h[(j, j)] -= shift;
+                    }
+                    if let Some((q, _)) = shifted_h.submatrix(0, end, 0, end).qr_decomposition() {
+                        let mut q_full = Matrix::identity(n);
+                        q_full.set_submatrix(0, 0, &q).ok()?;
+                        h = &(&q_full.transpose() * &h) * &q_full;
+                        v = &v * &q_full;
+                    } else {
+                        return None;
+                    }
                 }
             }
         }
+        // --- ここからが変更点 ---
 
-        // 固有値は逆順（右下から確定させたため）なので、並べ替える
         eigenvalues.reverse();
 
-        let mut eigenvectors = Vec::with_capacity(n);
-        for j in 0..n {
-            eigenvectors.push(v.col(j).ok()?);
-        }
+        // v はQRステップを通じて更新されてきた固有ベクトル行列そのもの
+        // そのまま返すのが最も効率的
+        let eigenvectors_matrix = v;
 
         Some(EigenDecomposition {
             eigenvalues,
-            eigenvectors,
+            eigenvectors: eigenvectors_matrix,
         })
     }
 
@@ -753,12 +783,97 @@ impl Matrix<f64> {
 
         Some((q, r))
     }
-    pub fn svd(&self) -> Option<(Matrix<f64>, Matrix<f64>, Matrix<f64>)> {
-        unimplemented!()
+
+    /// 特異値分解 A = UΣV^T を計算します
+    pub fn svd(&self) -> Option<SVD> {
+        if self.rows < self.cols {
+            let svd_t = self.transpose().svd()?;
+            return Some(SVD {
+                u: svd_t.v,
+                sigma: svd_t.sigma,
+                v: svd_t.u,
+            });
+        }
+
+        let ata = &self.transpose() * self;
+        let eigen_decomp = ata.eigen_decomposition()?;
+
+        let eigenvalues = eigen_decomp.eigenvalues;
+        let v = eigen_decomp.eigenvectors;
+
+        let mut pairs: Vec<_> = eigenvalues.into_iter().zip(0..v.cols).collect();
+        pairs.sort_by(|a, b| {
+            b.0.re
+                .partial_cmp(&a.0.re)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        let mut sorted_v = Matrix::zeros(v.rows, v.cols);
+        let mut sigma_vec = Vec::with_capacity(self.cols);
+
+        for (i, (eigenval, original_idx)) in pairs.iter().enumerate() {
+            let mut v_col = v.col(*original_idx).unwrap();
+            let norm = v_col.norm();
+            if norm > 1e-14 {
+                v_col = v_col * (1.0 / norm);
+            }
+            sorted_v.set_col(i, &v_col).ok()?;
+            sigma_vec.push(eigenval.re.sqrt());
+        }
+
+        let sigma = Vector::new(sigma_vec);
+        let v_final = sorted_v;
+
+        let mut u = Matrix::zeros(self.rows, self.cols);
+        for i in 0..self.cols {
+            let sigma_i = sigma[i];
+            let v_i = v_final.col(i).unwrap();
+
+            if sigma_i.abs() < 1e-14 {
+                // ★★★★★ 修正点：グラム・シュミット法の実装を堅牢化 ★★★★★
+                // 特異値がゼロの場合、他のu_jと直交する単位ベクトルを生成する
+
+                let mut new_basis_found = false;
+                // 標準基底ベクトルを候補として試す
+                for k in 0..self.rows {
+                    let mut candidate_vec = Vector::zeros(self.rows);
+                    candidate_vec[k] = 1.0;
+
+                    // 1. 今までに計算したu_j成分を、候補ベクトルから引く
+                    for j in 0..i {
+                        let u_j = u.col(j).unwrap();
+                        let proj = u_j.dot(&candidate_vec);
+                        candidate_vec = &candidate_vec - &(&u_j * proj);
+                    }
+
+                    // 2. ゼロベクトルになっていなければ、正規化してu_iとする
+                    let norm = candidate_vec.norm();
+                    if norm > 1e-12 {
+                        u.set_col(i, &(&candidate_vec * (1.0 / norm))).unwrap();
+                        new_basis_found = true;
+                        break; // 新しい基底が見つかったのでループを抜ける
+                    }
+                }
+
+                if !new_basis_found {
+                    // 全ての標準基底が既存のu_jで張れる空間にあった場合。
+                    // 数学的にはありえないが、数値誤差で起こる可能性もゼロではない。
+                    // その場合はゼロベクトルをセットする。
+                    u.set_col(i, &Vector::zeros(self.rows)).unwrap();
+                }
+            } else {
+                let u_i = self * &v_i * (1.0 / sigma_i);
+                u.set_col(i, &u_i).unwrap();
+            }
+        }
+
+        Some(SVD {
+            u,
+            sigma,
+            v: v_final,
+        })
     }
 }
-
-trait UseDefaultFormatting {}
 
 // 1. トレイトの定義を変更
 pub trait DisplayElement {
@@ -815,7 +930,7 @@ impl<T: Scalar + DisplayElement> fmt::Display for Matrix<T> {
                 // 事前計算した文字列を取得
                 let s = &formatted_strings[r * self.cols + c];
                 // 右揃えで表示
-                write!(f, "{:>width$}", s, width = max_width)?;
+                write!(f, "{s:>max_width$}")?;
                 // セパレータ（タブ文字）
                 if c < self.cols - 1 {
                     write!(f, "\t")?;
