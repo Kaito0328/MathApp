@@ -1,0 +1,16 @@
+# crates/linalg/Cargo.toml
+
+[package]
+name = "linalg"
+version = "0.1.0"
+edition = "2021"
+
+# このセクションは、このクレートがライブラリであることを示す
+[lib]
+name = "linalg"
+path = "src/lib.rs"
+
+# linalgクレートが直接依存するライブラリがあればここに記述
+[dependencies]
+num-traits = "0.2"
+num-complex = "0.4"
