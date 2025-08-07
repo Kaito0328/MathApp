@@ -525,4 +525,95 @@ mod svd_tests {
             }
         }
     }
+
+    #[test]
+    fn test_svd_rectangular_matrix_large() {
+        println!("=== SVD Decomposition Rectangular Matrix (Large 6x5) Test ===");
+
+        // 6x5のテスト行列を定義
+        let matrix = Matrix::new(
+            6,
+            5,
+            vec![
+                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0,
+                16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0,
+                30.0,
+            ],
+        )
+        .unwrap();
+
+        println!("Original large matrix A (6x5): {matrix}");
+
+        match matrix.svd() {
+            Some(svd_result) => {
+                println!("SVD decomposition successful for large matrix!");
+                println!("U matrix: {}", svd_result.u);
+                println!("Singular values: {:?}", svd_result.sigma);
+                println!("V matrix: {}", svd_result.v);
+
+                // --- 検証 ---
+
+                // U^T * U = I をテスト
+                let u_transpose = svd_result.u.transpose();
+                let u_t_u = &u_transpose * &svd_result.u;
+                println!("U^T * U: {u_t_u}");
+
+                let identity_u = Matrix::<f64>::identity(svd_result.u.cols);
+                println!("Expected identity for U: {identity_u}");
+
+                for i in 0..svd_result.u.cols {
+                    for j in 0..svd_result.u.cols {
+                        let expected = if i == j { 1.0 } else { 0.0 };
+                        let diff = (u_t_u[(i, j)] - expected).abs();
+                        println!(
+                            "U^T*U element ({i}, {j}): {:.6}, expected: {}, diff: {:.2e}",
+                            u_t_u[(i, j)],
+                            expected,
+                            diff
+                        );
+                        assert!(diff < 1e-8, "U should be orthogonal");
+                    }
+                }
+
+                // V^T * V = I をテスト
+                let v_transpose = svd_result.v.transpose();
+                let v_t_v = &v_transpose * &svd_result.v;
+                println!("V^T * V: {v_t_v}");
+
+                for i in 0..v_t_v.rows {
+                    for j in 0..v_t_v.cols {
+                        let expected = if i == j { 1.0 } else { 0.0 };
+                        let diff = (v_t_v[(i, j)] - expected).abs();
+                        println!(
+                            "V^T*V element ({i}, {j}): {:.6}, expected: {}, diff: {:.2e}",
+                            v_t_v[(i, j)],
+                            expected,
+                            diff
+                        );
+                        assert!(diff < 1e-8, "V should be orthogonal");
+                    }
+                }
+
+                // 2. A = U * S * V^T の再構成をチェック
+                let mut s_matrix = Matrix::zeros(matrix.rows, matrix.cols);
+                for i in 0..svd_result.sigma.dim() {
+                    s_matrix[(i, i)] = svd_result.sigma[i];
+                }
+
+                let v_transpose = svd_result.v.transpose();
+                let reconstructed = &svd_result.u * &s_matrix * &v_transpose;
+                println!("Reconstructed matrix: {reconstructed}");
+
+                let diff_norm = (&matrix - &reconstructed).frobenius_norm();
+                println!("Frobenius norm of (A - U*S*V^T): {diff_norm:.2e}");
+                assert!(diff_norm < 1e-8);
+                println!("Reconstruction verified.");
+
+                println!("Large matrix SVD test passed!");
+            }
+            None => {
+                panic!("SVD failed for large rectangular matrix");
+            }
+        }
+    }
 }

@@ -594,7 +594,7 @@ impl Matrix<f64> {
             });
         }
 
-        const MAX_ITERATIONS: usize = 30;
+        const MAX_ITERATIONS: usize = 1000;
         let n = self.rows;
 
         let (mut h, mut v) = self.to_hessenberg()?;
@@ -605,6 +605,7 @@ impl Matrix<f64> {
             let mut iter = 0;
             loop {
                 if iter >= MAX_ITERATIONS * n {
+                    println!("Maximum iterations reached, returning None.");
                     return None;
                 }
                 iter += 1;
@@ -624,17 +625,10 @@ impl Matrix<f64> {
                     end = 0;
                     break;
                 }
-                // 1x1 ブロックが分離した場合
-                else if h[(m, m - 1)].abs() < 1e-14 {
-                    // ★★★ 修正点：ここでは固有値をpushせず、デフレーション（endを減らす）だけ行う
+                let tol = f64::EPSILON * (h[(m, m)].abs() + h[(m - 1, m - 1)].abs());
+                if h[(m, m - 1)].abs() <= tol {
+                    // 分離成功。問題サイズを1小さくして、内側ループを抜ける
                     end -= 1;
-                    break;
-                }
-                // 2x2 ブロックが分離した場合
-                else if h[(m - 1, m - 2)].abs() < 1e-14 {
-                    // ★★★ 修正点：ここでも固有値をpushせず、デフレーションだけ行う
-                    // この2x2ブロックは次のQRステップで対角化される
-                    end -= 2;
                     break;
                 } else {
                     let s = h[(m, m)];
@@ -676,6 +670,8 @@ impl Matrix<f64> {
 
         // v は、h の対角成分（固有値）に対応する固有ベクトル行列になっている。
         let eigenvectors_matrix = v;
+
+        println!("Eigenvalues: {eigenvectors_matrix}");
 
         Some(EigenDecomposition {
             eigenvalues,
@@ -795,6 +791,7 @@ impl Matrix<f64> {
     /// 特異値分解 A = UΣV^T を計算します
     pub fn svd(&self) -> Option<SVD> {
         if self.rows < self.cols {
+            // Aが横長の行列(m < n)の場合、A^TのSVDを計算して結果を変換する
             let svd_t = self.transpose().svd()?;
             return Some(SVD {
                 u: svd_t.v,
@@ -803,80 +800,88 @@ impl Matrix<f64> {
             });
         }
 
+        // 1. A^T * A の固有値問題を解く
         let ata = &self.transpose() * self;
         let eigen_decomp = ata.eigen_decomposition()?;
-
         let eigenvalues = eigen_decomp.eigenvalues;
-        let v = eigen_decomp.eigenvectors;
+        let v_raw = eigen_decomp.eigenvectors; // 固有値分解直後のV
 
-        let mut pairs: Vec<_> = eigenvalues.into_iter().zip(0..v.cols).collect();
+        // 2. 固有値を降順にソートし、対応する固有ベクトルも並べ替える
+        let mut pairs: Vec<_> = eigenvalues.into_iter().zip(0..v_raw.cols).collect();
         pairs.sort_by(|a, b| {
             b.0.re
                 .partial_cmp(&a.0.re)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        let mut sorted_v = Matrix::zeros(v.rows, v.cols);
+        let mut sorted_v = Matrix::zeros(v_raw.rows, v_raw.cols);
         let mut sigma_vec = Vec::with_capacity(self.cols);
 
         for (i, (eigenval, original_idx)) in pairs.iter().enumerate() {
-            let mut v_col = v.col(*original_idx).unwrap();
-            let norm = v_col.norm();
-            if norm > 1e-14 {
-                v_col = v_col * (1.0 / norm);
-            }
-            sorted_v.set_col(i, &v_col).ok()?;
+            let v_col = v_raw.col(*original_idx).unwrap();
+            sorted_v.set_col(i, &v_col).ok()?; // この時点ではまだ正規化も直交化も不完全
             sigma_vec.push(eigenval.re.sqrt());
         }
 
-        let sigma = Vector::new(sigma_vec);
-        let v_final = sorted_v;
+        // ★★★ 変更点 ① ★★★
+        // ソート後のV行列の直交性が崩れている可能性があるため、QR分解で直交性を回復させる
+        // v_final は V^T ではなく V なので注意
+        let (v_final, _) = sorted_v.qr_decomposition()?;
 
+        // 3. 特異値ベクトル Σ と 左特異ベクトル U を計算する
+        let sigma = Vector::new(sigma_vec);
         let mut u = Matrix::zeros(self.rows, self.rows);
+
         for i in 0..self.cols {
             let sigma_i = sigma[i];
             let v_i = v_final.col(i).unwrap();
 
             if sigma_i.abs() < 1e-14 {
-                // ★★★★★ 修正点：グラム・シュミット法の実装を堅牢化 ★★★★★
-                // 特異値がゼロの場合、他のu_jと直交する単位ベクトルを生成する
-
+                // 特異値がゼロの場合、グラム・シュミット法でUの基底を補充する
+                // (この部分は元の堅牢な実装をそのまま利用)
                 let mut new_basis_found = false;
-                // 標準基底ベクトルを候補として試す
                 for k in 0..self.rows {
                     let mut candidate_vec = Vector::zeros(self.rows);
                     candidate_vec[k] = 1.0;
-
-                    // 1. 今までに計算したu_j成分を、候補ベクトルから引く
                     for j in 0..i {
                         let u_j = u.col(j).unwrap();
                         let proj = u_j.dot(&candidate_vec);
                         candidate_vec = &candidate_vec - &(&u_j * proj);
                     }
-
-                    // 2. ゼロベクトルになっていなければ、正規化してu_iとする
                     let norm = candidate_vec.norm();
                     if norm > 1e-12 {
                         u.set_col(i, &(&candidate_vec * (1.0 / norm))).unwrap();
                         new_basis_found = true;
-                        break; // 新しい基底が見つかったのでループを抜ける
+                        break;
                     }
                 }
-
                 if !new_basis_found {
-                    // 全ての標準基底が既存のu_jで張れる空間にあった場合。
-                    // 数学的にはありえないが、数値誤差で起こる可能性もゼロではない。
-                    // その場合はゼロベクトルをセットする。
                     u.set_col(i, &Vector::zeros(self.rows)).unwrap();
                 }
             } else {
+                // u_i = A * v_i / sigma_i
                 let u_i = self * &v_i * (1.0 / sigma_i);
                 u.set_col(i, &u_i).unwrap();
             }
         }
 
+        // ★★★ 変更点 ② ★★★
+        // 計算されたU行列の直交性が崩れている可能性があるため、QR分解で直交性を回復させる
+        let (u_final, _) = if self.rows == self.cols {
+            // Aが正方行列の場合、uは正方行列なのでそのままQR分解
+            u.qr_decomposition()?
+        } else {
+            // Aが縦長行列(m > n)の場合、uはm x mだが最初のn列しか計算していない。
+            // そのため、計算済みのn列部分だけを直交化し、残りのm-n列を補完する必要がある。
+            // ここでは簡単のため、m x n のU行列を返すことを想定し、
+            // Uの最初のn列部分でQR分解を行う。
+            // (もしm x mのUが必要な場合は、残りの列を埋める処理が必要)
+            let u_sub = u.submatrix(0, self.rows, 0, self.cols);
+            u_sub.qr_decomposition()?
+        };
+
         Some(SVD {
-            u,
+            u: u_final,
             sigma,
             v: v_final,
         })
