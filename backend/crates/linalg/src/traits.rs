@@ -1,3 +1,4 @@
+use num_complex::Complex;
 use num_traits::{One, Zero};
 use std::fmt::Debug;
 use std::iter::Sum;
@@ -31,6 +32,10 @@ impl Field for f32 {}
 // i32はRingの条件を満たすが、Fieldではない
 impl Scalar for i32 {}
 impl Ring for i32 {}
+
+impl Scalar for Complex<f64> {}
+impl Ring for Complex<f64> {}
+impl Field for Complex<f64> {}
 
 // StringはCloneとDebugを持つので、最低限のScalarにはなれる
 impl Scalar for String {}

@@ -1,13 +1,21 @@
 // backend/src/lib.rs
 
-// 各ファイルをモジュールとして宣言する
+// --- モジュール宣言 ---
+// これらの宣言は、各ファイル/ディレクトリをモジュールとして認識させるために必要です。
 pub mod error;
 pub mod matrix;
 pub mod traits;
-pub mod vector; // `pub`を付けなければ、ライブラリ内部でのみ使用するプライベートモジュールになる
+pub mod vector;
 
-// 外部に公開したい型や関数を `pub use` で再エクスポートする
+// --- 公開APIの再エクスポート ---
+// `pub use` を使うことで、ライブラリの利用者が短いパスで型やトレイトにアクセスできるようになります。
+
+// エラーハンドリング関連
 pub use error::{LinalgError, Result};
-pub use matrix::{EigenDecomposition, Matrix};
-pub use traits::{Field, Ring, Scalar};
+
+// 主要なデータ構造
+pub use matrix::{Direction, Matrix};
 pub use vector::Vector;
+
+// 基本的な振る舞いを定義するトレイト
+pub use traits::{Field, Ring, Scalar};

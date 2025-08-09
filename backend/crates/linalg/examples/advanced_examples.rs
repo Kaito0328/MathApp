@@ -1,3 +1,4 @@
+use linalg::matrix::numerical::{EigenDecomposition, LuDecomposition};
 use linalg::Matrix;
 
 fn main() {
@@ -31,13 +32,13 @@ fn main() {
 
     // LU分解（f64専用メソッド）
     match square_matrix.lu_decomposition() {
-        Some((l, u, p)) => {
+        Some(lu) => {
             println!("\nLU分解 - L行列:");
-            print_matrix(&l);
+            print_matrix(&lu.l);
             println!("LU分解 - U行列:");
-            print_matrix(&u);
+            print_matrix(&lu.u);
             println!("LU分解 - P行列:");
-            print_matrix(&p);
+            print_matrix(&lu.p);
         }
         None => println!("LU分解できませんでした"),
     }
@@ -45,8 +46,8 @@ fn main() {
     // 固有値・固有ベクトルの計算（f64専用メソッド）
     match square_matrix.eigen_decomposition() {
         Some(eigen) => {
-            println!("\n固有値: {:?}", eigen.eigenvalues);
-            println!("固有ベクトル数: {}", eigen.eigenvectors.cols);
+            println!("\n固有値: {:?}", eigen.eigen_values);
+            println!("固有ベクトル数: {}", eigen.eigen_vectors.cols);
         }
         None => println!("固有値分解できませんでした"),
     }
