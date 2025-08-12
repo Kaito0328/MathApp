@@ -1,4 +1,3 @@
-use super::*;
 use crate::Vector;
 
 fn approx(a: f64, b: f64, tol: f64) -> bool {

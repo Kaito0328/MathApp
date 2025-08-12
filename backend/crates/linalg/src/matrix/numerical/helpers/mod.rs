@@ -83,17 +83,6 @@ impl Matrix<f64> {
         Some(())
     }
 
-    pub(super) fn givens_rotation(a: f64, b: f64) -> (f64, f64) {
-        if b.abs() < f64::EPSILON {
-            (1.0, 0.0)
-        } else {
-            let r = a.hypot(b); // sqrt(a^2 + b^2) を計算
-            let c = a / r;
-            let s = b / r;
-            (c, s)
-        }
-    }
-
     /// 実数行列を、虚数部がゼロの複素数行列に変換する。
     /// 最終段階の固有ベクトル計算 (X = QY) で必要になる。
     pub(super) fn to_complex(&self) -> Matrix<Complex<f64>> {

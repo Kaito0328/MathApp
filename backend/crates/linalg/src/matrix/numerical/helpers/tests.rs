@@ -188,28 +188,6 @@ fn test_to_hessenberg_trivial_small() {
 use num_complex::Complex;
 
 #[test]
-fn test_givens_rotation_properties() {
-    let cases = vec![
-        (3.0, 4.0),
-        (0.0, 5.0),
-        (5.0, 0.0),
-        (1e-12, 1e-9),
-        (1e9, -1e8),
-    ];
-    for (a, b) in cases {
-        let (c, s) = Matrix::<f64>::givens_rotation(a, b);
-        // 規格化
-        assert!(((c * c + s * s) - 1.0).abs() < 1e-12, "c^2+s^2=1 violated");
-        // 回転で (a, b) -> (r, 0)
-        let r = c * a + s * b;
-        let z = -s * a + c * b;
-        assert!(z.abs() < 1e-10, "second component not zero: {z}");
-        // r はノルム
-        assert!((r.abs() - a.hypot(b)).abs() < 1e-10, "r != hypot(a,b)");
-    }
-}
-
-#[test]
 fn test_to_complex_converts_values_and_shape() {
     let a = Matrix::new(2, 3, vec![1.0, -2.5, 0.0, 3.0, 4.5, -7.0]).unwrap();
     let ac = a.to_complex();

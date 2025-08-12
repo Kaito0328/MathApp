@@ -74,7 +74,7 @@ fn ring_identity_diag_and_scaling_ops() {
 
     // diag
     let dvec = Vector::new(vec![2.0, -1.0, 3.0]);
-    let d = Matrix::diag(3, 4, &dvec);
+    let d = Matrix::form_diag(3, 4, &dvec);
     println!("diag=\n{d}");
     for r in 0..3 {
         for c in 0..4 {

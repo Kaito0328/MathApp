@@ -14,7 +14,7 @@ impl<T: Ring> Matrix<T> {
         matrix
     }
 
-    pub fn diag(rows: usize, cols: usize, diag_elements: &Vector<T>) -> Self {
+    pub fn form_diag(rows: usize, cols: usize, diag_elements: &Vector<T>) -> Self {
         let mut matrix = Matrix::zeros(rows, cols);
         // 対角線の長さは、行数と列数の小さい方
         let diag_len = std::cmp::min(rows, cols);

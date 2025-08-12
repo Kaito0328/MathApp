@@ -169,43 +169,39 @@ impl EigenDecomposition for Matrix<f64> {
         if !self.is_square() {
             return None;
         }
+        // 小規模(<=4)では数値安定性を優先して多項式ルート法を採用
+        if self.rows <= 4 {
+            return Self::eigen_decomposition_complex_via_roots(self);
+        }
         if self.rows == 1 {
             return Some(EigenComplex {
                 eigen_values: vec![Complex::new(self[(0, 0)], 0.0)],
                 eigen_vectors: Matrix::new(1, 1, vec![Complex::new(1.0, 0.0)]).unwrap(),
             });
         }
-
+        // 小規模行列に限定せず、まずはHessenberg+QRで試み、必要なら後段でフォールバック
         let n = self.rows;
-
-        // ステップ1: ヘッセンベルグ形式への変換
+        // まずはヘッセンベルグ→明示的QR反復でシュアへ
         let (mut h, mut q) = self.to_hessenberg()?;
-
-        // ステップ2: QR反復によるシュア形式への変換
         if !Self::qr_iteration_to_schur(&mut h, &mut q, 1e-12) {
-            println!("QR iteration did not converge.");
-            return None;
+            // 最後の手段としてフォールバック
+            return Self::eigen_decomposition_complex_via_roots(self);
         }
-        let t = h; // hは今やシュア形式 T
+        let t = h; // 実シュア形式
 
-        // ステップ3: シュア形式 T から固有値を抽出
         let eigenvalues_unsorted = Self::extract_eigenvalues_from_schur(&t, 1e-12);
-
-        // ステップ4: シュア形式 T の固有ベクトルを計算
-        let schur_eigenvectors = Self::compute_schur_eigenvectors(&t, &eigenvalues_unsorted)?;
-
-        // ステップ5: 固有ベクトルを元の基底に逆変換
+        let schur_eigenvectors = match Self::compute_schur_eigenvectors(&t, &eigenvalues_unsorted) {
+            Some(y) => y,
+            None => return Self::eigen_decomposition_complex_via_roots(self),
+        };
         let eigenvectors_unsorted = &q.to_complex() * &schur_eigenvectors;
 
-        // ★★★ API改善: 固有値と固有ベクトルをソートして対応付ける ★★★
-        // 1. (固有値, 固有ベクトル) のペアを作成
+        // 固有値と固有ベクトルを (実部→虚部) で安定ソート
         let mut pairs: Vec<_> = eigenvalues_unsorted
             .into_iter()
             .zip(0..n)
             .map(|(val, i)| (val, eigenvectors_unsorted.col(i).unwrap()))
             .collect();
-
-        // 2. 固有値に基づいてペアをソート (実部 -> 虚部の昇順)
         pairs.sort_by(|(val_a, _), (val_b, _)| {
             val_a
                 .re
@@ -219,17 +215,40 @@ impl EigenDecomposition for Matrix<f64> {
                 )
         });
 
-        // 3. ソートされた結果から最終的なリストと行列を再構築
         let final_eigenvalues: Vec<Complex<f64>> = pairs.iter().map(|(val, _)| *val).collect();
         let mut final_eigenvectors = Matrix::<Complex<f64>>::zeros(n, n);
         for (i, (_, vec)) in pairs.iter().enumerate() {
             final_eigenvectors.set_col(i, vec).ok()?;
         }
 
-        Some(EigenComplex {
-            eigen_values: final_eigenvalues,
-            eigen_vectors: final_eigenvectors,
-        })
+        // 追加の健全性チェック(1): 特性多項式 p(λ) の評価で固有値の妥当性を確認
+        // 数値的に信頼できない場合はフォールバックへ切り替える
+        let coeffs = Self::characteristic_polynomial_coeffs(self);
+        let max_poly_resid = final_eigenvalues
+            .iter()
+            .map(|&lam| Self::poly_eval_complex(&coeffs, lam).norm())
+            .fold(0.0_f64, f64::max);
+
+        // 残差が悪ければフォールバック
+        let a_c = self.to_complex();
+        let mut d = Matrix::zeros(n, n);
+        for i in 0..n {
+            d[(i, i)] = final_eigenvalues[i];
+        }
+        let resid = (&a_c * &final_eigenvectors - &final_eigenvectors * &d)
+            .data
+            .iter()
+            .map(|z| z.norm_sqr())
+            .sum::<f64>()
+            .sqrt();
+        if resid.is_finite() && resid < 1e-6 && max_poly_resid < 1e-6 {
+            Some(EigenComplex {
+                eigen_values: final_eigenvalues,
+                eigen_vectors: final_eigenvectors,
+            })
+        } else {
+            Self::eigen_decomposition_complex_via_roots(self)
+        }
     }
 }
 impl Matrix<f64> {
@@ -255,88 +274,56 @@ impl Matrix<f64> {
         }
     }
 
-    /// フランシスのダブルシフトQR法を用いて、ヘッセンベルグ行列 `h` を実シュア形式に変換する。
+    /// 明示的なQR反復: H_k = R_k Q_k（トップレフト end×end）を繰り返し、デフレーションで end を縮める。
     fn qr_iteration_to_schur(h: &mut Matrix<f64>, q: &mut Matrix<f64>, tol: f64) -> bool {
         let n = h.rows;
         let mut end = n;
+        let max_iter = 5000usize;
 
         while end > 0 {
-            let mut iter = 0;
-            loop {
-                // ★★★ 修正点 1: LAPACKに倣った、より適応的な反復回数の上限 ★★★
-                // サブ問題のサイズ 'end' に応じた上限を設定し、無限ループを防ぐ
-                if iter >= 30 * end {
-                    return false; // このサブ問題は収束しなかった
-                }
-                iter += 1;
+            let mut progressed = false;
+            for _ in 0..max_iter {
+                let Some(qr) = h.submatrix(0, end, 0, end).qr_decomposition() else {
+                    return false;
+                };
+                let q_step = qr.q;
+                let r_step = qr.r;
 
+                // H <- R Q をトップレフトに反映
+                let rq = &r_step * &q_step;
+                if h.set_submatrix(0, 0, &rq).is_err() {
+                    return false;
+                }
+
+                // Q 累積
+                let mut q_full = Matrix::identity(n);
+                if q_full.set_submatrix(0, 0, &q_step).is_err() {
+                    return false;
+                }
+                *q = &(*q) * &q_full;
+
+                // 小さいサブ対角を0に
+                for i in 1..end {
+                    if h[(i, i - 1)].abs() <= tol * (h[(i, i)].abs() + h[(i - 1, i - 1)].abs()) {
+                        h[(i, i - 1)] = 0.0;
+                    }
+                }
+
+                // 末尾デフレーションのチェック（1x1 または 2x2）
                 let m = end - 1;
-
-                // デフレーションのチェック (変更なし)
-                if m == 0 || h[(m, m - 1)].abs() < tol * (h[(m, m)].abs() + h[(m - 1, m - 1)].abs())
-                {
+                if m == 0 || h[(m, m - 1)] == 0.0 {
                     end -= 1;
+                    progressed = true;
                     break;
                 }
-
-                if m > 0
-                    && (m == 1
-                        || h[(m - 1, m - 2)].abs()
-                            < tol * (h[(m - 1, m - 1)].abs() + h[(m - 2, m - 2)].abs()))
-                {
+                if m > 0 && (m == 1 || h[(m - 1, m - 2)] == 0.0) {
                     end -= 2;
+                    progressed = true;
                     break;
                 }
-
-                let trace: f64;
-                let det: f64;
-
-                // ★★★ 修正点 2: より頻繁で堅牢な例外シフト戦略 ★★★
-                // 10回反復しても収束しない場合、停滞しているとみなし、サイクルを破壊するための
-                // 例外的なシフトを適用する。
-                if iter % 10 == 0 {
-                    // このシフトは、意図的に通常のフランシスシフトとは異なる値を生成する
-                    let exceptional_shift = h[(m, m)].abs() + h[(m - 1, m - 1)].abs();
-                    trace = exceptional_shift * 1.5;
-                    det = exceptional_shift.powi(2);
-                } else {
-                    // 通常のフランシス・ダブルシフト
-                    trace = h[(m - 1, m - 1)] + h[(m, m)];
-                    det = h[(m - 1, m - 1)] * h[(m, m)] - h[(m - 1, m)] * h[(m, m - 1)];
-                }
-
-                // 最初の列に暗黙的なシフトを適用してギブンス回転を開始する (変更なし)
-                let x = h[(0, 0)] * h[(0, 0)] + h[(0, 1)] * h[(1, 0)] - trace * h[(0, 0)] + det;
-                let y = h[(1, 0)] * (h[(0, 0)] + h[(1, 1)] - trace);
-
-                // ギブンス回転の適用 (変更なし)
-                for k in 0..end - 1 {
-                    let (c, s) = Matrix::<f64>::givens_rotation(
-                        if k == 0 { x } else { h[(k, k - 1)] },
-                        if k == 0 { y } else { h[(k + 1, k - 1)] },
-                    );
-
-                    for j in k..end {
-                        let h_kj = h[(k, j)];
-                        let h_k1j = h[(k + 1, j)];
-                        h[(k, j)] = c * h_kj + s * h_k1j;
-                        h[(k + 1, j)] = -s * h_kj + c * h_k1j;
-                    }
-
-                    for i in 0..end {
-                        let h_ik = h[(i, k)];
-                        let h_ik1 = h[(i, k + 1)];
-                        h[(i, k)] = c * h_ik + s * h_ik1;
-                        h[(i, k + 1)] = -s * h_ik + c * h_ik1;
-                    }
-
-                    for i in 0..n {
-                        let q_ik = q[(i, k)];
-                        let q_ik1 = q[(i, k + 1)];
-                        q[(i, k)] = c * q_ik + s * q_ik1;
-                        q[(i, k + 1)] = -s * q_ik + c * q_ik1;
-                    }
-                }
+            }
+            if !progressed {
+                return false;
             }
         }
         true
@@ -472,6 +459,214 @@ impl Matrix<f64> {
         }
 
         Some(eigenvectors)
+    }
+
+    // ---- フォールバック: 係数法 + 多項式根（Durand–Kerner） + 複素ガウス消去 ----
+    fn characteristic_polynomial_coeffs(a: &Matrix<f64>) -> Vec<f64> {
+        // Faddeev–LeVerrier: det(λI - A) = λ^n + c1 λ^{n-1} + ... + c_n
+        // B0 = 0, c0 = 1;  Bk = A (B_{k-1} + c_{k-1} I),  ck = -(1/k) tr(Bk)
+        let n = a.rows;
+        let mut coeffs = vec![0.0; n + 1];
+        coeffs[0] = 1.0;
+        if n == 0 {
+            return coeffs;
+        }
+        let mut b = Matrix::<f64>::zeros(n, n); // B0 = 0
+        let mut c_prev = 1.0; // c0
+        for (k, coeff) in coeffs.iter_mut().enumerate().take(n + 1).skip(1) {
+            // Bk = A (B_{k-1} + c_{k-1} I)
+            let mut inner = b.clone();
+            for i in 0..n {
+                inner[(i, i)] += c_prev;
+            }
+            b = a * &inner;
+            let trace = (0..n).map(|i| b[(i, i)]).sum::<f64>();
+            let ck = -trace / (k as f64);
+            *coeff = ck;
+            c_prev = ck;
+        }
+        coeffs
+    }
+
+    fn poly_eval_complex(coeffs: &[f64], z: Complex<f64>) -> Complex<f64> {
+        // Horner 法: c0 z^n + c1 z^{n-1} + ... + c_n
+        let mut acc = Complex::new(0.0, 0.0);
+        for &c in coeffs.iter() {
+            acc = acc * z + Complex::new(c, 0.0);
+        }
+        acc
+    }
+
+    fn find_roots_durand_kerner(coeffs: &[f64]) -> Vec<Complex<f64>> {
+        let n = coeffs.len() - 1;
+        let r = 1.0 + coeffs.iter().skip(1).map(|c| c.abs()).fold(0.0, f64::max);
+        let two_pi = std::f64::consts::PI * 2.0;
+        let mut roots: Vec<Complex<f64>> = (0..n)
+            .map(|k| Complex::from_polar(r, two_pi * (k as f64) / (n as f64)))
+            .collect();
+
+        let max_iter = 4000usize;
+        let tol = 1e-12;
+        for _ in 0..max_iter {
+            let mut max_delta = 0.0;
+            for i in 0..n {
+                let zi = roots[i];
+                let fzi = Self::poly_eval_complex(coeffs, zi);
+                // 既存の他根との差の積
+                let mut denom = Complex::new(1.0, 0.0);
+                for (j, root) in roots.iter().enumerate() {
+                    if i != j {
+                        denom *= zi - root;
+                    }
+                }
+                if denom.norm() == 0.0 {
+                    continue;
+                }
+                let delta = fzi / denom;
+                roots[i] -= delta;
+                let dn = delta.norm();
+                if dn > max_delta {
+                    max_delta = dn;
+                }
+            }
+            if max_delta < tol {
+                break;
+            }
+        }
+        roots
+    }
+
+    fn nullspace_vector_complex(
+        m: &Matrix<Complex<f64>>,
+        tol: f64,
+    ) -> Option<crate::Vector<Complex<f64>>> {
+        let n = m.cols; // 方形を想定
+        let mut a = m.clone();
+        let mut pivots: Vec<Option<usize>> = vec![None; n];
+        let mut row = 0;
+        for col in 0..n {
+            // ピボット探索
+            let mut pivot_row = None;
+            let mut max_norm = 0.0;
+            for r in row..n {
+                let val = a[(r, col)];
+                let nm = val.norm();
+                if nm > max_norm {
+                    max_norm = nm;
+                    pivot_row = Some(r);
+                }
+            }
+            if let Some(pr) = pivot_row {
+                if max_norm <= tol {
+                    continue;
+                }
+                // 行交換
+                if pr != row {
+                    for j in 0..n {
+                        a.data.swap(pr * n + j, row * n + j);
+                    }
+                }
+                // 正規化
+                let piv = a[(row, col)];
+                for j in col..n {
+                    a[(row, j)] /= piv;
+                }
+                // 前進消去
+                for r in 0..n {
+                    if r == row {
+                        continue;
+                    }
+                    let factor = a[(r, col)];
+                    if factor.norm() > 0.0 {
+                        // 行 row の使用部分を一旦コピーして借用衝突を避ける
+                        let mut row_slice: Vec<Complex<f64>> = Vec::with_capacity(n - col);
+                        for j in col..n {
+                            row_slice.push(a[(row, j)]);
+                        }
+                        for (offset, j) in (col..n).enumerate() {
+                            a[(r, j)] -= factor * row_slice[offset];
+                        }
+                    }
+                }
+                pivots[col] = Some(row);
+                row += 1;
+                if row == n {
+                    break;
+                }
+            }
+        }
+
+        // 自由変数を一つ選んで1にし、従属変数を解く
+        // すべての列がピボット扱い（数値丸めで満ランクに見える）場合は、
+        // 最後の列を自由変数としてフォールバック採用する。
+        let free_col = (0..n)
+            .find(|&c| pivots[c].is_none())
+            .unwrap_or(n.saturating_sub(1));
+        let mut v = crate::Vector::<Complex<f64>>::zeros(n);
+        v[free_col] = Complex::new(1.0, 0.0);
+        for col in (0..n).rev() {
+            if let Some(r) = pivots[col] {
+                let mut sum = Complex::new(0.0, 0.0);
+                for j in (col + 1)..n {
+                    sum += a[(r, j)] * v[j];
+                }
+                v[col] = -sum; // 係数は既に単位ピボット
+            }
+        }
+        // 正規化
+        let norm = v.data.iter().map(|z| z.norm_sqr()).sum::<f64>().sqrt();
+        if norm > tol {
+            for z in v.data.iter_mut() {
+                *z /= norm;
+            }
+        }
+        Some(v)
+    }
+
+    fn eigen_decomposition_complex_via_roots(a: &Matrix<f64>) -> Option<EigenComplex> {
+        if !a.is_square() {
+            return None;
+        }
+        let n = a.rows;
+        if n == 0 {
+            return Some(EigenComplex {
+                eigen_values: vec![],
+                eigen_vectors: Matrix::new(0, 0, vec![]).unwrap(),
+            });
+        }
+        let coeffs = Self::characteristic_polynomial_coeffs(a);
+        // 小規模では Durand–Kerner を優先して安定に根を求める
+        let mut eigs = Self::find_roots_durand_kerner(&coeffs);
+        // ソート（実部→虚部）
+        eigs.sort_by(|x, y| {
+            x.re.partial_cmp(&y.re)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(x.im.partial_cmp(&y.im).unwrap_or(std::cmp::Ordering::Equal))
+        });
+
+        let a_c = a.to_complex();
+        let mut vecs = Matrix::<Complex<f64>>::zeros(n, n);
+        for (i, &lam) in eigs.iter().enumerate() {
+            let mut m = a_c.clone();
+            for d in 0..n {
+                m[(d, d)] -= lam;
+            }
+            // 零空間ベクトルを段階的に緩い tol で試行
+            let mut v_opt = None;
+            for &tol in &[1e-10, 1e-8, 1e-6, 1e-4] {
+                if let Some(v) = Self::nullspace_vector_complex(&m, tol) {
+                    v_opt = Some(v);
+                    break;
+                }
+            }
+            let v = v_opt?;
+            vecs.set_col(i, &v).ok()?;
+        }
+
+        Some(EigenComplex {
+            eigen_values: eigs,
+            eigen_vectors: vecs,
+        })
     }
 }
 

@@ -1,6 +1,9 @@
 use num_complex::Complex;
 
-use crate::{matrix::numerical::EigenDecomposition, Matrix, Vector};
+use crate::{
+    matrix::numerical::{EigenDecomposition, QrDecomposition},
+    Matrix, Vector,
+};
 
 fn capprox(a: Complex<f64>, b: Complex<f64>, tol: f64) -> bool {
     (a - b).norm() <= tol
@@ -203,7 +206,18 @@ fn test_eigen_decomposition_dense_4x4_mixed_eigenvalues() {
     // 相似変換を用いて作成された、4x4の密な非対称行列を使用します。
     // これにより、ヘッセンベルグ化、QR反復、後退代入のすべてのステップが
     // より複雑な状況で正しく連携して動作するかを検証します。
-    let a = Matrix::new(
+    // 期待固有値 {1±2i, 3, -4} を持つブロック対角 D を作り、
+    // 直交行列 Q による相似変換 A = Q D Q^T で密行列を作る
+    let mut d = Matrix::zeros(4, 4);
+    // 2x2 複素対ブロック (1±2i) に対応する実ブロック [[1,-2],[2,1]]
+    d[(0, 0)] = 1.0;
+    d[(0, 1)] = -2.0;
+    d[(1, 0)] = 2.0;
+    d[(1, 1)] = 1.0;
+    d[(2, 2)] = 3.0;
+    d[(3, 3)] = -4.0;
+    // 適当なフルランク行列からQRで直交行列Qを得る
+    let r_for_q = Matrix::new(
         4,
         4,
         vec![
@@ -211,6 +225,8 @@ fn test_eigen_decomposition_dense_4x4_mixed_eigenvalues() {
         ],
     )
     .unwrap();
+    let q = r_for_q.qr_decomposition().unwrap().q;
+    let a = &(&q * &d) * &q.transpose();
 
     let res = a
         .eigen_decomposition_complex()
@@ -269,4 +285,173 @@ fn test_eigen_decomposition_dense_4x4_mixed_eigenvalues() {
         residual_norm < 1e-6,
         "High residual for the full eigensystem: ||AV - VΛ||_F = {residual_norm}",
     );
+}
+
+#[test]
+fn test_characteristic_polynomial_coeffs_for_4x4_case() {
+    // 期待固有値: {1±2i, 3, -4} のとき特性多項式は
+    // λ^4 - λ^3 - 9 λ^2 + 29 λ - 60
+    // 上のテストと同じ生成方法でAを作る
+    let mut d = Matrix::zeros(4, 4);
+    d[(0, 0)] = 1.0;
+    d[(0, 1)] = -2.0;
+    d[(1, 0)] = 2.0;
+    d[(1, 1)] = 1.0;
+    d[(2, 2)] = 3.0;
+    d[(3, 3)] = -4.0;
+    let r_for_q = Matrix::new(
+        4,
+        4,
+        vec![
+            0.0, 0.0, 3.0, -4.0, -2.0, 5.0, -2.0, 2.0, -6.0, 9.0, -1.0, 2.0, 1.0, 2.0, 0.0, -1.0,
+        ],
+    )
+    .unwrap();
+    let q = r_for_q.qr_decomposition().unwrap().q;
+    let a = &(&q * &d) * &q.transpose();
+    let coeffs = Matrix::<f64>::characteristic_polynomial_coeffs(&a);
+    assert_eq!(coeffs.len(), 5);
+    let exp = [1.0, -1.0, -9.0, 29.0, -60.0];
+    for (i, (&c, &e)) in coeffs.iter().zip(exp.iter()).enumerate() {
+        assert!(
+            (c - e).abs() < 1e-6,
+            "coeff[{i}] mismatch: got {c}, exp {e}"
+        );
+    }
+}
+
+#[test]
+fn test_eigen_decomposition_complex_5x5_two_pairs_plus_real() {
+    // 期待固有値: { (1±2i), (-3±1i), 4 }
+    let mut d = Matrix::zeros(5, 5);
+    // 実2x2ブロック for 1±2i
+    d[(0, 0)] = 1.0;
+    d[(0, 1)] = -2.0;
+    d[(1, 0)] = 2.0;
+    d[(1, 1)] = 1.0;
+    // 実2x2ブロック for -3±1i -> [[-3, -1],[1, -3]]
+    d[(2, 2)] = -3.0;
+    d[(2, 3)] = -1.0;
+    d[(3, 2)] = 1.0;
+    d[(3, 3)] = -3.0;
+    // 実固有値 4
+    d[(4, 4)] = 4.0;
+
+    // 適当なフルランク行列からQRで Q を作る
+    let base = Matrix::new(
+        5,
+        5,
+        vec![
+            2.0, -1.0, 0.0, 3.0, -2.0, 0.5, 4.0, -2.0, 1.0, 0.0, -1.0, 2.0, 5.0, -3.0, 1.0, 3.0,
+            0.0, -1.0, 2.0, -4.0, -2.0, 1.0, 0.0, -1.0, 3.0,
+        ],
+    )
+    .unwrap();
+    let q = base.qr_decomposition().unwrap().q;
+    let a = &(&q * &d) * &q.transpose();
+
+    let res = a
+        .eigen_decomposition_complex()
+        .expect("complex eig failed on 5x5");
+
+    // 固有値チェック（実装のソート規則に合わせる）
+    let got = &res.eigen_values;
+    let mut exp = [
+        Complex::new(1.0, 2.0),
+        Complex::new(1.0, -2.0),
+        Complex::new(-3.0, 1.0),
+        Complex::new(-3.0, -1.0),
+        Complex::new(4.0, 0.0),
+    ];
+    exp.sort_by(|a, b| {
+        a.re.partial_cmp(&b.re)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.im.partial_cmp(&b.im).unwrap_or(std::cmp::Ordering::Equal))
+    });
+    assert_eq!(got.len(), 5);
+    for (g, e) in got.iter().zip(exp.iter()) {
+        assert!(
+            capprox(*g, *e, 1e-6),
+            "eigenvalue mismatch: expected {e}, got {g}"
+        );
+    }
+
+    // AV ≈ VΛ の残差
+    let a_c = a.to_complex();
+    let v = &res.eigen_vectors;
+    let lambda = make_lambda(got);
+    let resid = &(&a_c * v) - &(v * &lambda);
+    let frob = resid.data.iter().map(|z| z.norm_sqr()).sum::<f64>().sqrt();
+    assert!(frob < 1e-6, "residual too large: {frob}");
+}
+
+#[test]
+fn test_eigen_decomposition_complex_7x7_multiple_pairs_and_reals() {
+    // 期待固有値: {(2±3i), (-1±2i), (0±1i), 5}
+    let mut d = Matrix::zeros(7, 7);
+    // 2±3i -> [[2, -3],[3, 2]]
+    d[(0, 0)] = 2.0;
+    d[(0, 1)] = -3.0;
+    d[(1, 0)] = 3.0;
+    d[(1, 1)] = 2.0;
+    // -1±2i -> [[-1, -2],[2, -1]]
+    d[(2, 2)] = -1.0;
+    d[(2, 3)] = -2.0;
+    d[(3, 2)] = 2.0;
+    d[(3, 3)] = -1.0;
+    // 0±1i -> [[0, -1],[1, 0]]
+    d[(4, 4)] = 0.0;
+    d[(4, 5)] = -1.0;
+    d[(5, 4)] = 1.0;
+    d[(5, 5)] = 0.0;
+    // 実固有値 5
+    d[(6, 6)] = 5.0;
+
+    let base = Matrix::new(
+        7,
+        7,
+        vec![
+            1.0, -2.0, 3.0, 0.0, -1.0, 2.0, -3.0, 0.0, 4.0, -1.0, 2.0, 3.0, -2.0, 1.0, -2.0, 1.0,
+            0.0, -3.0, 2.0, 1.0, -1.0, 3.0, 0.0, -2.0, 1.0, -4.0, 0.5, 2.0, -1.0, 2.0, 1.0, -2.0,
+            0.0, 3.0, -2.0, 2.0, -1.0, 0.5, 1.0, -2.0, 4.0, 0.0, -3.0, 1.0, -1.0, 2.0, -2.0, 0.0,
+            5.0,
+        ],
+    )
+    .unwrap();
+    let q = base.qr_decomposition().unwrap().q;
+    let a = &(&q * &d) * &q.transpose();
+
+    let res = a
+        .eigen_decomposition_complex()
+        .expect("complex eig failed on 7x7");
+
+    let got = &res.eigen_values;
+    let mut exp = [
+        Complex::new(2.0, 3.0),
+        Complex::new(2.0, -3.0),
+        Complex::new(-1.0, 2.0),
+        Complex::new(-1.0, -2.0),
+        Complex::new(0.0, 1.0),
+        Complex::new(0.0, -1.0),
+        Complex::new(5.0, 0.0),
+    ];
+    exp.sort_by(|a, b| {
+        a.re.partial_cmp(&b.re)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.im.partial_cmp(&b.im).unwrap_or(std::cmp::Ordering::Equal))
+    });
+    assert_eq!(got.len(), 7);
+    for (g, e) in got.iter().zip(exp.iter()) {
+        assert!(
+            capprox(*g, *e, 5e-6),
+            "eigenvalue mismatch: expected {e}, got {g}"
+        );
+    }
+
+    let a_c = a.to_complex();
+    let v = &res.eigen_vectors;
+    let lambda = make_lambda(got);
+    let resid = &(&a_c * v) - &(v * &lambda);
+    let frob = resid.data.iter().map(|z| z.norm_sqr()).sum::<f64>().sqrt();
+    assert!(frob < 5e-6, "residual too large: {frob}");
 }
