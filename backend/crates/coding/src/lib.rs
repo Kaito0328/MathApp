@@ -1,0 +1,21 @@
+pub mod gf256;
+pub mod prime;
+pub mod gfext;
+pub mod poly;
+pub mod rs;
+pub mod linear;
+pub mod hamming;
+pub mod code_utils;
+pub mod cyclic;
+pub mod bch;
+
+pub use gf256::{GF256, PolyGF256};
+pub use prime::GFp;
+pub use gfext::GFExt;
+pub use poly::Poly;
+pub use rs::{ReedSolomon, RSDecodeResult};
+pub use linear::LinearCode;
+pub use hamming::Hamming74;
+pub use code_utils::*;
+pub use cyclic::CyclicCode;
+pub use bch::BCHCode;
