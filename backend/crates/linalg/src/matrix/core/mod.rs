@@ -1,5 +1,6 @@
 use super::{LinalgError, Matrix, Result, Scalar};
 pub use crate::vector::Vector;
+use crate::Field;
 
 impl<T: Scalar> Matrix<T> {
     pub fn new(rows: usize, cols: usize, data: Vec<T>) -> Result<Self> {
@@ -153,6 +154,75 @@ impl<T: Scalar> Matrix<T> {
     pub fn is_square(&self) -> bool {
         self.rows == self.cols
     }
+
+    // RREF（行基本変形の既約化）を返す実装は Field 向けの専用実装（algebra/field.rs）を使用します。
+
+    pub fn rref_with<F>(&self, other: &Matrix<F>) -> Result<(Matrix<F>, Matrix<F>)>
+    where
+        F: Field + PartialEq + Clone,
+        T: Into<F> + Clone,
+    {
+        if self.rows != other.rows {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{} rows", self.rows),
+                found: format!("{} rows", other.rows),
+            });
+        }
+        let mut a = Matrix::new(
+            self.rows,
+            self.cols,
+            self.data.iter().cloned().map(|x| x.into()).collect(),
+        )
+        .unwrap();
+        let mut b = other.clone();
+        let mut row = 0usize;
+        for col in 0..a.cols {
+            if row >= a.rows {
+                break;
+            }
+            // ピボット探索
+            let mut pivot = None;
+            for r in row..a.rows {
+                if a[(r, col)].clone() != F::zero() {
+                    pivot = Some(r);
+                    break;
+                }
+            }
+            let Some(piv_row) = pivot else { continue };
+            // 行入替
+            a.swap_rows(row, piv_row)?;
+            b.swap_rows(row, piv_row)?;
+            // スケーリング
+            let piv = a[(row, col)].clone();
+            let inv = F::one() / piv;
+            for j in 0..a.cols {
+                a[(row, j)] = a[(row, j)].clone() * inv.clone();
+            }
+            for j in 0..b.cols {
+                b[(row, j)] = b[(row, j)].clone() * inv.clone();
+            }
+            // 他行の消去
+            for r in 0..a.rows {
+                if r == row {
+                    continue;
+                }
+                let factor = a[(r, col)].clone();
+                if factor == F::zero() {
+                    continue;
+                }
+                for j in 0..a.cols {
+                    a[(r, j)] = a[(r, j)].clone() - factor.clone() * a[(row, j)].clone();
+                }
+                for j in 0..b.cols {
+                    b[(r, j)] = b[(r, j)].clone() - factor.clone() * b[(row, j)].clone();
+                }
+            }
+            row += 1;
+        }
+        Ok((a, b))
+    }
+
+    // zeros/identity は Ring 向けの実装（algebra/ring.rs）に集約しました。
     pub fn submatrix(
         &self,
         start_row: usize,

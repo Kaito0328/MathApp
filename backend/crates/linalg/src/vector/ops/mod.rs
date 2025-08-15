@@ -255,3 +255,25 @@ impl<T: Ring> Mul<T> for &Vector<T> {
         self * &rhs
     }
 }
+
+// Display トレイト実装（Matrix と同様の整形ロジックを利用）
+use crate::matrix::DisplayElement;
+use ::core::fmt;
+
+impl<T: crate::Scalar + DisplayElement> fmt::Display for Vector<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let parts: Vec<String> = self
+            .data
+            .iter()
+            .map(|val| val.to_formatted_string())
+            .collect();
+        write!(f, "dim: {} [", self.dim())?;
+        for (i, s) in parts.iter().enumerate() {
+            if i > 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{s}")?;
+        }
+        write!(f, "]")
+    }
+}

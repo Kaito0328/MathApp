@@ -1,5 +1,5 @@
-use crate::matrix::numerical::svd::SvdDeComposition;
-use crate::Matrix;
+use linalg::matrix::numerical::svd::SvdDeComposition;
+use linalg::Matrix;
 
 fn approx(a: f64, b: f64, tol: f64) -> bool {
     (a - b).abs() <= tol

@@ -27,72 +27,7 @@ impl<T: Ring> Matrix<T> {
         matrix
     }
 
-    pub fn checked_add(&self, other: &Matrix<T>) -> Result<Matrix<T>> {
-        if self.rows != other.rows || self.cols != other.cols {
-            return Err(LinalgError::DimensionMismatch {
-                expected: format!("{}x{}", self.rows, self.cols),
-                found: format!("{}x{}", other.rows, other.cols),
-            });
-        }
-        let data = self
-            .data
-            .iter()
-            .zip(other.data.iter())
-            .map(|(a, b)| a.clone() + b.clone())
-            .collect();
-        Matrix::new(self.rows, self.cols, data)
-    }
-
-    pub fn checked_sub(&self, other: &Matrix<T>) -> Result<Matrix<T>> {
-        if self.rows != other.rows || self.cols != other.cols {
-            return Err(LinalgError::DimensionMismatch {
-                expected: format!("{}x{}", self.rows, self.cols),
-                found: format!("{}x{}", other.rows, other.cols),
-            });
-        }
-        let data = self
-            .data
-            .iter()
-            .zip(other.data.iter())
-            .map(|(a, b)| a.clone() - b.clone())
-            .collect();
-        Matrix::new(self.rows, self.cols, data)
-    }
-
-    pub fn checked_mul(&self, rhs: &Matrix<T>) -> Result<Matrix<T>> {
-        if self.cols != rhs.rows {
-            return Err(LinalgError::DimensionMismatch {
-                expected: format!("{}x{}", self.rows, self.cols),
-                found: format!("{}x{}", rhs.rows, rhs.cols),
-            });
-        }
-        let mut data = vec![T::zero(); self.rows * rhs.cols];
-        for i in 0..self.rows {
-            for j in 0..rhs.cols {
-                let sum = (0..self.cols)
-                    .map(|k| self[(i, k)].clone() * rhs[(k, j)].clone())
-                    .sum();
-                data[i * rhs.cols + j] = sum;
-            }
-        }
-        Matrix::new(self.rows, rhs.cols, data)
-    }
-
-    pub fn checked_mul_vector(&self, rhs: &Vector<T>) -> Result<Vector<T>> {
-        if self.cols != rhs.dim() {
-            return Err(LinalgError::DimensionMismatch {
-                expected: format!("{} columns", self.cols),
-                found: format!("{} elements in vector", rhs.dim()),
-            });
-        }
-        let mut data = vec![T::zero(); self.rows];
-        for i in 0..self.rows {
-            data[i] = (0..self.cols)
-                .map(|j| self[(i, j)].clone() * rhs[j].clone())
-                .sum();
-        }
-        Ok(Vector::new(data))
-    }
+    // checked_* 系は algebra/mod.rs に実装があるため、ここでは保持しません（重複回避）。
 
     pub fn checked_mul_scalar(&self, scalar: T) -> Matrix<T> {
         let data = self

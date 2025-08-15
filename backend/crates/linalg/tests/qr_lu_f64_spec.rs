@@ -1,5 +1,5 @@
-use crate::matrix::numerical::{lu::LuDecomposition, QrDecomposition};
-use crate::Matrix;
+use linalg::matrix::numerical::{lu::LuDecomposition, QrDecomposition};
+use linalg::Matrix;
 
 fn approx(a: f64, b: f64, tol: f64) -> bool {
     (a - b).abs() <= tol

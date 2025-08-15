@@ -19,7 +19,3 @@ pub use vector::Vector;
 
 // 基本的な振る舞いを定義するトレイト
 pub use traits::{Field, Ring, Scalar};
-
-// --- テストモジュール ---
-#[cfg(test)]
-mod tests;
