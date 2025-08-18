@@ -5,6 +5,8 @@
 members = [
     "crates/linalg",
     "crates/coding",
+    "crates/utils",
+    "crates/signal_processing",
 ]
 
 # リリースビルドの最適化設定などをここに集約できる

@@ -1,0 +1,17 @@
+[package]
+name = "signal_processing"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "signal_processing"
+path = "src/lib.rs"
+
+[dependencies]
+num-traits = "0.2"
+num-complex = "0.4"
+linalg = { path = "../linalg" }
+
+[dev-dependencies]
+textplots = "0.8"
+plotters = { version = "0.3", default-features = false, features = ["svg_backend"] }
