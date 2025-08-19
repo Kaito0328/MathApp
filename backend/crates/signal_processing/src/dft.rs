@@ -50,6 +50,28 @@ pub fn ift(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
     Vector::new(dft_result)
 }
 
+pub fn conv_with_dft(x: &Vector<Complex<f64>>, h: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
+    let n = x.dim() + h.dim() - 1;
+    let mut x_padded = x.data.clone();
+    x_padded.resize(n, Complex::new(0.0, 0.0));
+    let mut h_padded = h.data.clone();
+    h_padded.resize(n, Complex::new(0.0, 0.0));
+
+    let dft_x = dft(&Vector::new(x_padded));
+    let dft_h = dft(&Vector::new(h_padded));
+
+    let dft_result = dft_x * dft_h;
+
+    ift(&dft_result)
+}
+
+pub fn conv_with_dft_for_f64(x: &Vector<f64>, h: &Vector<f64>) -> Vector<f64> {
+    let complex_x: Vec<Complex<f64>> = x.iter().map(|&v| Complex::new(v, 0.0)).collect();
+    let complex_h: Vec<Complex<f64>> = h.iter().map(|&v| Complex::new(v, 0.0)).collect();
+    let result = conv_with_dft(&Vector::new(complex_x), &Vector::new(complex_h));
+    Vector::new(result.data.iter().map(|c| c.re).collect())
+}
+
 fn dft_cooley_tukey(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
     let n = x.dim();
     if n == 0 {

@@ -136,6 +136,16 @@ impl<T: Ring> Vector<T> {
             .sum()
     }
 
+    pub fn conv(&self, other: &Self) -> Vector<T> {
+        let mut result = vec![T::zero(); self.data.len() + other.data.len() - 1];
+        for (i, a) in self.data.iter().enumerate() {
+            for (j, b) in other.data.iter().enumerate() {
+                result[i + j] = result[i + j].clone() + a.clone() * b.clone();
+            }
+        }
+        Vector::new(result)
+    }
+
     pub fn cross(&self, other: &Self) -> Result<Vector<T>>
     where
         T: Ring + Copy,

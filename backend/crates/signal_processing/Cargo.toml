@@ -11,6 +11,8 @@ path = "src/lib.rs"
 num-traits = "0.2"
 num-complex = "0.4"
 linalg = { path = "../linalg" }
+image = { version = "0.24", default-features = false, features = ["png", "jpeg"] }
+hound = "3"
 
 [dev-dependencies]
 textplots = "0.8"

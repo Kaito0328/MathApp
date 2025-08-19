@@ -8,6 +8,7 @@ members = [
     "crates/utils",
     "crates/signal_processing",
 ]
+resolver = "2"
 
 # リリースビルドの最適化設定などをここに集約できる
 [profile.release]
