@@ -21,7 +21,7 @@ impl<F: Field> RationalFunction<F> {
         }
     }
 
-    fn new_internal(numerator: Polynomial<F>, denominator: Polynomial<F>) -> Self {
+    pub fn new_internal(numerator: Polynomial<F>, denominator: Polynomial<F>) -> Self {
         if denominator.is_zero() {
             panic!("Denominator cannot be zero");
         }
