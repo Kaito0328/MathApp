@@ -1,5 +1,6 @@
 use std::ops::{Add, Index, IndexMut, Mul, Neg, Sub};
 
+use super::super::Matrix;
 use super::*;
 
 #[cfg(test)]
@@ -109,152 +110,18 @@ impl<'b, T: Ring> Mul<&'b T> for &Vector<T> {
     }
 }
 
-impl<'b, T: Ring> Add<&'b Vector<T>> for Vector<T> {
-    type Output = Vector<T>;
-    fn add(self, rhs: &'b Vector<T>) -> Self::Output {
-        &self + rhs
-    }
-}
+// マクロで所有/参照の派生を一括実装
+impl_ops_by_ref_variants!(Vector<T>, Add, add, crate::Ring);
+impl_ops_by_ref_variants!(Vector<T>, Sub, sub, crate::Ring);
+impl_ops_by_ref_variants!(Vector<T>, Mul, mul, crate::Ring); // ベクトル同士（Hadamard）
 
-impl<'b, T: Ring> Sub<&'b Vector<T>> for Vector<T> {
-    type Output = Vector<T>;
-    fn sub(self, rhs: &'b Vector<T>) -> Self::Output {
-        &self - rhs
-    }
-}
+// ベクトル×行列（結果は行列）
+impl_mixed_ops_by_ref_variants!(Vector<T>, Matrix<T>, Matrix<T>, Mul, mul, crate::Ring);
 
-impl<'b, T: Ring> Mul<&'b Vector<T>> for Vector<T> {
-    type Output = Vector<T>;
-    fn mul(self, rhs: &'b Vector<T>) -> Self::Output {
-        &self * rhs
-    }
-}
-
-impl<'b, T: Ring> Mul<&'b Matrix<T>> for Vector<T> {
-    type Output = Matrix<T>;
-    fn mul(self, rhs: &'b Matrix<T>) -> Self::Output {
-        &self * rhs
-    }
-}
-
-impl<'b, T: Ring> Add<&'b T> for Vector<T> {
-    type Output = Vector<T>;
-    fn add(self, rhs: &'b T) -> Self::Output {
-        &self + rhs
-    }
-}
-
-impl<'b, T: Ring> Sub<&'b T> for Vector<T> {
-    type Output = Vector<T>;
-    fn sub(self, rhs: &'b T) -> Self::Output {
-        &self - rhs
-    }
-}
-
-impl<'b, T: Ring> Mul<&'b T> for Vector<T> {
-    type Output = Vector<T>;
-    fn mul(self, rhs: &'b T) -> Self::Output {
-        &self * rhs
-    }
-}
-
-impl<T: Ring> Add<Vector<T>> for Vector<T> {
-    type Output = Vector<T>;
-    fn add(self, rhs: Vector<T>) -> Self::Output {
-        &self + &rhs
-    }
-}
-
-impl<T: Ring> Sub<Vector<T>> for Vector<T> {
-    type Output = Vector<T>;
-    fn sub(self, rhs: Vector<T>) -> Self::Output {
-        &self - &rhs
-    }
-}
-
-impl<T: Ring> Mul<Vector<T>> for Vector<T> {
-    type Output = Vector<T>;
-    fn mul(self, rhs: Vector<T>) -> Self::Output {
-        &self * &rhs
-    }
-}
-
-impl<T: Ring> Mul<Matrix<T>> for Vector<T> {
-    type Output = Matrix<T>;
-    fn mul(self, rhs: Matrix<T>) -> Self::Output {
-        &self * &rhs
-    }
-}
-
-impl<T: Ring> Add<T> for Vector<T> {
-    type Output = Vector<T>;
-    fn add(self, rhs: T) -> Self::Output {
-        &self + &rhs
-    }
-}
-
-impl<T: Ring> Sub<T> for Vector<T> {
-    type Output = Vector<T>;
-    fn sub(self, rhs: T) -> Self::Output {
-        &self - &rhs
-    }
-}
-
-impl<T: Ring> Mul<T> for Vector<T> {
-    type Output = Vector<T>;
-    fn mul(self, rhs: T) -> Self::Output {
-        &self * &rhs
-    }
-}
-
-impl<T: Ring> Add<Vector<T>> for &Vector<T> {
-    type Output = Vector<T>;
-    fn add(self, rhs: Vector<T>) -> Self::Output {
-        self + &rhs
-    }
-}
-
-impl<T: Ring> Sub<Vector<T>> for &Vector<T> {
-    type Output = Vector<T>;
-    fn sub(self, rhs: Vector<T>) -> Self::Output {
-        self - &rhs
-    }
-}
-
-impl<T: Ring> Mul<Vector<T>> for &Vector<T> {
-    type Output = Vector<T>;
-    fn mul(self, rhs: Vector<T>) -> Self::Output {
-        self * &rhs
-    }
-}
-
-impl<T: Ring> Mul<Matrix<T>> for &Vector<T> {
-    type Output = Matrix<T>;
-    fn mul(self, rhs: Matrix<T>) -> Self::Output {
-        self * &rhs
-    }
-}
-
-impl<T: Ring> Add<T> for &Vector<T> {
-    type Output = Vector<T>;
-    fn add(self, rhs: T) -> Self::Output {
-        self + &rhs
-    }
-}
-
-impl<T: Ring> Sub<T> for &Vector<T> {
-    type Output = Vector<T>;
-    fn sub(self, rhs: T) -> Self::Output {
-        self - &rhs
-    }
-}
-
-impl<T: Ring> Mul<T> for &Vector<T> {
-    type Output = Vector<T>;
-    fn mul(self, rhs: T) -> Self::Output {
-        self * &rhs
-    }
-}
+// スカラー右辺（結果はベクトル）
+impl_scalar_rhs_by_ref_variants!(Vector<T>, Add, add, crate::Ring);
+impl_scalar_rhs_by_ref_variants!(Vector<T>, Sub, sub, crate::Ring);
+impl_scalar_rhs_by_ref_variants!(Vector<T>, Mul, mul, crate::Ring);
 
 // Display トレイト実装（Matrix と同様の整形ロジックを利用）
 use crate::matrix::DisplayElement;

@@ -6,6 +6,7 @@ members = [
     "crates/linalg",
     "crates/coding",
     "crates/polynomial",
+    "crates/utils",
 ]
 
 # リリースビルドの最適化設定などをここに集約できる

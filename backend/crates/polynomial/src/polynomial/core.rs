@@ -33,6 +33,9 @@ impl<F: Field> Polynomial<F> {
             coeffs: vec![F::one()],
         }
     }
+    pub fn is_zero(&self) -> bool {
+        self.coeffs.len() == 1 && self.coeffs[0].is_zero()
+    }
     pub fn deg(&self) -> isize {
         // 慣習に従い、ゼロ多項式 (coeffs == [0]) の次数は -1 とする
         if self.coeffs.len() == 1 && self.coeffs[0].is_zero() {
@@ -192,6 +195,14 @@ impl<F: Field> Div<F> for &Polynomial<F> {
     }
 }
 
+// 所有型に対するスカラー除算（テスト利便性のため）
+impl<F: Field> Div<F> for Polynomial<F> {
+    type Output = Polynomial<F>;
+    fn div(self, rhs: F) -> Self::Output {
+        (&self).div(rhs)
+    }
+}
+
 // 多項式 ÷ 多項式 は商のみを返す（余りは `div_rem` を使用）
 impl<F: Field> Div for &Polynomial<F> {
     type Output = Polynomial<F>;
@@ -200,3 +211,9 @@ impl<F: Field> Div for &Polynomial<F> {
         q
     }
 }
+
+// 所有/参照の3パターン (Poly op &Poly, &Poly op Poly, Poly op Poly) を自動実装
+impl_ops_by_ref_variants!(Polynomial<F>, Add, add, linalg::Field);
+impl_ops_by_ref_variants!(Polynomial<F>, Sub, sub, linalg::Field);
+impl_ops_by_ref_variants!(Polynomial<F>, Mul, mul, linalg::Field);
+impl_ops_by_ref_variants!(Polynomial<F>, Div, div, linalg::Field);
