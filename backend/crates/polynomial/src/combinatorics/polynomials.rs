@@ -40,10 +40,10 @@ pub fn shift_poly_x_plus_h(p: &Polynomial<Complex<f64>>, h: f64) -> Polynomial<C
         if ak == Complex::new(0.0, 0.0) {
             continue;
         }
-        for j in 0..=k {
+        for (j, coeff) in out.iter_mut().enumerate().take(k + 1) {
             // 係数 C(k,j) h^{k-j}
             let c = binom_usize(k, j) * h.powi((k - j) as i32);
-            out[j] += ak * Complex::new(c, 0.0);
+            *coeff += ak * Complex::new(c, 0.0);
         }
     }
     Polynomial::new(out)

@@ -45,11 +45,11 @@ fn geometric_weighted_linear_inhomogeneous() {
     let cf = rr.solve();
 
     // check first few terms from direct recurrence
-    let mut a = vec![0.0f64; 12];
+    let mut a = [0.0f64; 12];
     for n in 1..12 {
         a[n] = 2.0 * a[n - 1] + (n as f64);
     }
-    for n in 0..12 {
-        assert!((eval(&cf, n).re - a[n]).abs() < 1e-7);
+    for (n, &val) in a.iter().enumerate() {
+        assert!((eval(&cf, n).re - val).abs() < 1e-7);
     }
 }

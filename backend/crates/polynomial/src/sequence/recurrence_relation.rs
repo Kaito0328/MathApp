@@ -157,9 +157,9 @@ impl RecurrenceRelation {
     /// prefix(x) = Σ_{n=0}^{k-1} f(n) x^n
     fn prefix_polynomial(term: &GeneralTerm, k: usize) -> Polynomial<f64> {
         let mut coeffs = vec![0.0f64; k.max(1)];
-        for n in 0..k {
+        for (n, c) in coeffs.iter_mut().enumerate() {
             let v = term.polynomial.eval(Complex::new(n as f64, 0.0)) * term.base.powu(n as u32);
-            coeffs[n] = v.re; // 実数のみ使用
+            *c = v.re; // 実数のみ使用
         }
         Polynomial::new(coeffs)
     }
