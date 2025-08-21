@@ -2,6 +2,9 @@
 
 // --- モジュール宣言 ---
 // これらの宣言は、各ファイル/ディレクトリをモジュールとして認識させるために必要です。
+#[macro_use]
+extern crate utils;
+
 pub mod error;
 pub mod matrix;
 pub mod traits;

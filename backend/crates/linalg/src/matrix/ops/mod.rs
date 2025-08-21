@@ -1,3 +1,4 @@
+use super::Matrix;
 use crate::{Ring, Vector};
 use std::ops::{Add, Index, IndexMut, Mul, Neg, Sub};
 
@@ -76,7 +77,7 @@ impl<'b, T: Ring> Mul<&'b Vector<T>> for &super::Matrix<T> {
     }
 }
 
-// 行列とスカラーの演算
+// 行列とスカラーの演算（&Matrix op &T のみ明示実装し、残りはマクロで派生）
 impl<'b, T: Ring> Mul<&'b T> for &super::Matrix<T> {
     type Output = super::Matrix<T>;
     fn mul(self, rhs: &'b T) -> Self::Output {
@@ -101,154 +102,14 @@ impl<'b, T: Ring> Sub<&'b T> for &super::Matrix<T> {
     }
 }
 
-// 所有権を取る演算子のオーバーロード
-impl<T: Ring> Add<super::Matrix<T>> for &super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn add(self, rhs: super::Matrix<T>) -> Self::Output {
-        self + &rhs
-    }
-}
-
-impl<T: Ring> Sub<super::Matrix<T>> for &super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn sub(self, rhs: super::Matrix<T>) -> Self::Output {
-        self - &rhs
-    }
-}
-
-impl<T: Ring> Mul<super::Matrix<T>> for &super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn mul(self, rhs: super::Matrix<T>) -> Self::Output {
-        self * &rhs
-    }
-}
-
-impl<T: Ring> Mul<Vector<T>> for &super::Matrix<T> {
-    type Output = Vector<T>;
-    fn mul(self, rhs: Vector<T>) -> Self::Output {
-        self * &rhs
-    }
-}
-
-impl<T: Ring> Mul<T> for &super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn mul(self, rhs: T) -> Self::Output {
-        self * &rhs
-    }
-}
-
-impl<T: Ring> Add<T> for &super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn add(self, rhs: T) -> Self::Output {
-        self + &rhs
-    }
-}
-
-impl<T: Ring> Sub<T> for &super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn sub(self, rhs: T) -> Self::Output {
-        self - &rhs
-    }
-}
-
-// 値型に対する演算子
-impl<'b, T: Ring> Add<&'b super::Matrix<T>> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn add(self, rhs: &'b super::Matrix<T>) -> Self::Output {
-        &self + rhs
-    }
-}
-
-impl<'b, T: Ring> Sub<&'b super::Matrix<T>> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn sub(self, rhs: &'b super::Matrix<T>) -> Self::Output {
-        &self - rhs
-    }
-}
-
-impl<'b, T: Ring> Mul<&'b super::Matrix<T>> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn mul(self, rhs: &'b super::Matrix<T>) -> Self::Output {
-        &self * rhs
-    }
-}
-
-impl<'b, T: Ring> Mul<&'b Vector<T>> for super::Matrix<T> {
-    type Output = Vector<T>;
-    fn mul(self, rhs: &'b Vector<T>) -> Self::Output {
-        &self * rhs
-    }
-}
-
-impl<'b, T: Ring> Mul<&'b T> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn mul(self, rhs: &'b T) -> Self::Output {
-        &self * rhs
-    }
-}
-
-impl<'b, T: Ring> Add<&'b T> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn add(self, rhs: &'b T) -> Self::Output {
-        &self + rhs
-    }
-}
-
-impl<'b, T: Ring> Sub<&'b T> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn sub(self, rhs: &'b T) -> Self::Output {
-        &self - rhs
-    }
-}
-
-impl<T: Ring> Add<super::Matrix<T>> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn add(self, rhs: super::Matrix<T>) -> Self::Output {
-        &self + &rhs
-    }
-}
-
-impl<T: Ring> Sub<super::Matrix<T>> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn sub(self, rhs: super::Matrix<T>) -> Self::Output {
-        &self - &rhs
-    }
-}
-
-impl<T: Ring> Mul<super::Matrix<T>> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn mul(self, rhs: super::Matrix<T>) -> Self::Output {
-        &self * &rhs
-    }
-}
-
-impl<T: Ring> Mul<Vector<T>> for super::Matrix<T> {
-    type Output = Vector<T>;
-    fn mul(self, rhs: Vector<T>) -> Self::Output {
-        &self * &rhs
-    }
-}
-
-impl<T: Ring> Mul<T> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn mul(self, rhs: T) -> Self::Output {
-        &self * &rhs
-    }
-}
-
-impl<T: Ring> Add<T> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn add(self, rhs: T) -> Self::Output {
-        &self + &rhs
-    }
-}
-
-impl<T: Ring> Sub<T> for super::Matrix<T> {
-    type Output = super::Matrix<T>;
-    fn sub(self, rhs: T) -> Self::Output {
-        &self - &rhs
-    }
-}
+// 所有/参照の派生をマクロで生成
+impl_ops_by_ref_variants!(Matrix<T>, Add, add, crate::Ring);
+impl_ops_by_ref_variants!(Matrix<T>, Sub, sub, crate::Ring);
+impl_ops_by_ref_variants!(Matrix<T>, Mul, mul, crate::Ring);
+impl_mixed_ops_by_ref_variants!(Matrix<T>, Vector<T>, Vector<T>, Mul, mul, crate::Ring); // 行列×ベクトル
+impl_scalar_rhs_by_ref_variants!(Matrix<T>, Add, add, crate::Ring);
+impl_scalar_rhs_by_ref_variants!(Matrix<T>, Sub, sub, crate::Ring);
+impl_scalar_rhs_by_ref_variants!(Matrix<T>, Mul, mul, crate::Ring);
 
 // Display トレイト実装
 use core::fmt;

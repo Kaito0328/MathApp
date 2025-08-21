@@ -50,6 +50,7 @@ version = "0.1.0"
 dependencies = [
  "linalg",
  "num-traits",
+ "poly",
  "pretty_assertions",
  "serde",
 ]
@@ -185,6 +186,7 @@ version = "0.1.0"
 dependencies = [
  "num-complex",
  "num-traits",
+ "utils",
 ]
 
 [[package]]
@@ -238,6 +240,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "poly"
+version = "0.1.0"
+dependencies = [
+ "linalg",
+ "num-complex",
+ "num-traits",
+ "serde",
+ "utils",
 ]
 
 [[package]]

@@ -5,6 +5,7 @@
 members = [
     "crates/linalg",
     "crates/coding",
+    "crates/polynomial",
     "crates/utils",
     "crates/signal_processing",
 ]

@@ -1,0 +1,246 @@
+use num_complex::Complex;
+use std::ops::{Add, Div, Mul, Neg, Sub};
+
+use crate::polynomial::Polynomial;
+
+/// 一般項の一つの項 P(n) * r^n を表現する。
+#[derive(Clone, Debug, PartialEq)]
+pub struct GeneralTerm {
+    pub polynomial: Polynomial<Complex<f64>>,
+    pub base: Complex<f64>, // r
+}
+
+/// 漸化式の閉じた式（一般項）全体を表現する。(\sum f_k * r^k)
+#[derive(Clone, Debug, PartialEq, Default)]
+pub struct ClosedForm {
+    pub terms: Vec<GeneralTerm>,
+}
+
+impl ClosedForm {
+    pub fn new(terms: Vec<GeneralTerm>) -> Self {
+        let mut cf = ClosedForm { terms };
+        cf.simplify();
+        cf
+    }
+
+    pub fn term(&self, n: u32) -> Complex<f64> {
+        let n_complex = Complex::new(n as f64, 0.0);
+        const EPSILON: f64 = 1e-15;
+        self.terms
+            .iter()
+            .map(|term| {
+                let poly_val = term.polynomial.eval(n_complex);
+                if (term.base - 1.0).norm() < EPSILON {
+                    // baseが1の場合、rⁿ = 1 なので、多項式の値そのもの
+                    poly_val
+                } else {
+                    // baseが1でない場合は、通常通りべき乗を計算
+                    poly_val * term.base.powu(n)
+                }
+            })
+            .sum()
+    }
+
+    pub fn zero() -> Self {
+        ClosedForm { terms: Vec::new() }
+    }
+
+    pub fn single(polynomial: Polynomial<Complex<f64>>, base: Complex<f64>) -> Self {
+        ClosedForm::new(vec![GeneralTerm { polynomial, base }])
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.terms.is_empty() || self.terms.iter().all(|t| t.polynomial.is_zero())
+    }
+
+    /// 近接した同一底(base)をまとめ、零項を除去する
+    pub fn simplify(&mut self) {
+        const EPS: f64 = 1e-12;
+        let mut acc: Vec<GeneralTerm> = Vec::new();
+        for t in self.terms.drain(..) {
+            if t.polynomial.is_zero() {
+                continue;
+            }
+            // 既存ベースと近いものに加算
+            if let Some(existing) = acc.iter_mut().find(|u| (u.base - t.base).norm() < EPS) {
+                existing.polynomial = &existing.polynomial + &t.polynomial;
+            } else {
+                acc.push(t);
+            }
+        }
+        // もう一度ゼロ多項式を除去
+        acc.retain(|t| !t.polynomial.is_zero());
+        self.terms = acc;
+    }
+
+    pub fn simplified(mut self) -> Self {
+        self.simplify();
+        self
+    }
+}
+
+// -----------------
+// 演算子
+// -----------------
+
+// 非ジェネリック型向け：&T op &T を前提に T op &T, &T op T, T op T を自動実装
+macro_rules! impl_ops_ref_variants_for_nongen {
+    ($Type:ty, $Trait:ident, $method:ident) => {
+        #[allow(clippy::suspicious_arithmetic_impl)]
+        impl ::std::ops::$Trait<&$Type> for $Type {
+            type Output = $Type;
+            #[inline]
+            fn $method(self, rhs: &$Type) -> Self::Output {
+                (&self).$method(rhs)
+            }
+        }
+        #[allow(clippy::suspicious_arithmetic_impl)]
+        impl ::std::ops::$Trait<$Type> for &$Type {
+            type Output = $Type;
+            #[inline]
+            fn $method(self, rhs: $Type) -> Self::Output {
+                self.$method(&rhs)
+            }
+        }
+        #[allow(clippy::suspicious_arithmetic_impl)]
+        impl ::std::ops::$Trait<$Type> for $Type {
+            type Output = $Type;
+            #[inline]
+            fn $method(self, rhs: $Type) -> Self::Output {
+                (&self).$method(&rhs)
+            }
+        }
+    };
+}
+
+// 非ジェネリック型向け：&T op Scalar を前提に T op &Scalar, T op Scalar を自動実装
+macro_rules! impl_scalar_rhs_ref_variants_for_nongen {
+    ($Type:ty, $Scalar:ty, $Trait:ident, $method:ident) => {
+        impl ::std::ops::$Trait<&$Scalar> for $Type {
+            type Output = $Type;
+            #[inline]
+            fn $method(self, rhs: &$Scalar) -> Self::Output {
+                (&self).$method(*rhs)
+            }
+        }
+        impl ::std::ops::$Trait<$Scalar> for $Type {
+            type Output = $Type;
+            #[inline]
+            fn $method(self, rhs: $Scalar) -> Self::Output {
+                (&self).$method(rhs)
+            }
+        }
+        impl ::std::ops::$Trait<&$Scalar> for &$Type {
+            type Output = $Type;
+            #[inline]
+            fn $method(self, rhs: &$Scalar) -> Self::Output {
+                self.$method(*rhs)
+            }
+        }
+    };
+}
+
+impl Add for &ClosedForm {
+    type Output = ClosedForm;
+    fn add(self, rhs: Self) -> Self::Output {
+        let mut terms = Vec::with_capacity(self.terms.len() + rhs.terms.len());
+        terms.extend(self.terms.iter().cloned());
+        terms.extend(rhs.terms.iter().cloned());
+        ClosedForm::new(terms)
+    }
+}
+
+#[allow(clippy::suspicious_arithmetic_impl)]
+impl Sub for &ClosedForm {
+    type Output = ClosedForm;
+    fn sub(self, rhs: Self) -> Self::Output {
+        // a - b = a + (-b)
+        self + &(-rhs)
+    }
+}
+
+impl Mul for &ClosedForm {
+    type Output = ClosedForm;
+    fn mul(self, rhs: Self) -> Self::Output {
+        // (Σ P_i(n) r_i^n) (Σ Q_j(n) s_j^n) = Σ P_i(n)Q_j(n) (r_is_j)^n
+        let mut terms: Vec<GeneralTerm> = Vec::with_capacity(self.terms.len() * rhs.terms.len());
+        for lt in &self.terms {
+            for rt in &rhs.terms {
+                terms.push(GeneralTerm {
+                    polynomial: &lt.polynomial * &rt.polynomial,
+                    base: lt.base * rt.base,
+                });
+            }
+        }
+        ClosedForm::new(terms)
+    }
+}
+
+impl Neg for &ClosedForm {
+    type Output = ClosedForm;
+    fn neg(self) -> Self::Output {
+        let m1 = Complex::new(-1.0, 0.0);
+        ClosedForm::new(
+            self.terms
+                .iter()
+                .cloned()
+                .map(|mut t| {
+                    t.polynomial = &t.polynomial * m1;
+                    t
+                })
+                .collect(),
+        )
+    }
+}
+
+impl Mul<Complex<f64>> for &ClosedForm {
+    type Output = ClosedForm;
+    fn mul(self, scalar: Complex<f64>) -> Self::Output {
+        ClosedForm::new(
+            self.terms
+                .iter()
+                .cloned()
+                .map(|mut t| {
+                    t.polynomial = &t.polynomial * scalar;
+                    t
+                })
+                .collect(),
+        )
+    }
+}
+
+impl Div<Complex<f64>> for &ClosedForm {
+    type Output = ClosedForm;
+    fn div(self, scalar: Complex<f64>) -> Self::Output {
+        if scalar == Complex::new(0.0, 0.0) {
+            panic!("Division by zero scalar in ClosedForm");
+        }
+        ClosedForm::new(
+            self.terms
+                .iter()
+                .cloned()
+                .map(|mut t| {
+                    t.polynomial = &t.polynomial / scalar;
+                    t
+                })
+                .collect(),
+        )
+    }
+}
+
+impl Neg for ClosedForm {
+    type Output = ClosedForm;
+    #[inline]
+    fn neg(self) -> Self::Output {
+        (&self).neg()
+    }
+}
+
+// 所有/参照の派生をマクロで生成
+impl_ops_ref_variants_for_nongen!(ClosedForm, Add, add);
+impl_ops_ref_variants_for_nongen!(ClosedForm, Sub, sub);
+impl_ops_ref_variants_for_nongen!(ClosedForm, Mul, mul);
+
+// スカラー右辺の派生（&ClosedForm op Complex<f64> をベースに）
+impl_scalar_rhs_ref_variants_for_nongen!(ClosedForm, Complex<f64>, Mul, mul);
+impl_scalar_rhs_ref_variants_for_nongen!(ClosedForm, Complex<f64>, Div, div);
