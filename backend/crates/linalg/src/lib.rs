@@ -3,7 +3,7 @@
 // --- モジュール宣言 ---
 // これらの宣言は、各ファイル/ディレクトリをモジュールとして認識させるために必要です。
 #[macro_use]
-extern crate utils;
+mod macros;
 
 pub mod error;
 pub mod matrix;

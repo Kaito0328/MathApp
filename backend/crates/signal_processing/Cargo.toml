@@ -13,7 +13,7 @@ num-complex = "0.4"
 linalg = { path = "../linalg" }
 image = { version = "0.24", default-features = false, features = ["png", "jpeg"] }
 hound = "3"
+poly = { path = "../polynomial" }
 
 [dev-dependencies]
 textplots = "0.8"
-plotters = { version = "0.3", default-features = false, features = ["svg_backend"] }

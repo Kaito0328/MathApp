@@ -1,4 +1,6 @@
+use crate::signal::Signal;
 use linalg::Vector;
+use poly::Polynomial;
 
 use crate::dft::conv_with_dft_for_f64;
 use std::cmp::max;
@@ -41,6 +43,43 @@ pub fn iir_filter(signal: &[f64], b_coeffs: &[f64], a_coeffs: &[f64]) -> Vector<
     }
 
     Vector::new(y)
+}
+
+/// IIR フィルタ型（分子 b と分母 a の多項式）。係数は低次→高次。
+#[derive(Clone, Debug, PartialEq)]
+pub struct IIRFilter {
+    pub b: Polynomial<f64>,
+    pub a: Polynomial<f64>,
+}
+
+impl IIRFilter {
+    /// a[0] を 1 に正規化して保持（a[0] == 0 はパニック）。
+    pub fn new(mut b: Polynomial<f64>, mut a: Polynomial<f64>) -> Self {
+        let a0 = a.coeffs.first().copied().unwrap_or(1.0);
+        assert!(a0 != 0.0, "a[0] must not be zero");
+        if (a0 - 1.0).abs() > 0.0 {
+            for c in b.coeffs.iter_mut() {
+                *c /= a0;
+            }
+            for c in a.coeffs.iter_mut() {
+                *c /= a0;
+            }
+        }
+        Self { b, a }
+    }
+
+    /// 直接型Iで適用した結果を返す（内部は既存差分方程式）。
+    pub fn apply(&self, x: &Signal) -> Signal {
+        let y_vec = iir_filter(x.data(), &self.b.coeffs, &self.a.coeffs);
+        Signal::new(y_vec.data, x.sample_rate())
+    }
+}
+
+impl Signal {
+    /// IIR フィルタを適用。
+    pub fn apply_iir(&self, filt: &IIRFilter) -> Signal {
+        filt.apply(self)
+    }
 }
 
 /// 双一次変換を用いてアナログフィルタ係数をデジタルフィルタ係数に変換する。

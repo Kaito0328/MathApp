@@ -1,10 +1,10 @@
 use linalg::Vector;
 use num_complex::Complex;
-use plotters::prelude::*;
 use signal_processing::dft::dft;
 use signal_processing::fir::{
     design_fir_bandpass, design_fir_bandstop, design_fir_highpass, design_fir_lowpass,
 };
+use signal_processing::signal::Spectrum;
 use signal_processing::window::WindowType;
 use std::fs;
 
@@ -50,43 +50,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let h_zp = zero_pad_complex(&h_c, n_fft);
         let h_freq = dft(&h_zp);
 
-        // 0..Nyquist までの振幅スペクトル
-        let half = n_fft / 2;
-        let mut mags: Vec<f64> = Vec::with_capacity(half);
-        for k in 0..half {
-            mags.push(h_freq.iter().nth(k).unwrap().norm());
-        }
-        let max_mag = mags.iter().cloned().fold(0.0f64, f64::max);
-        let y_top = if max_mag <= 0.0 { 1.0 } else { max_mag * 1.05 };
-
-        // SVGへ描画
         let svg_path = format!("{out_dir}/fir_{name}_magnitude.svg");
-        let root = SVGBackend::new(&svg_path, (900, 420)).into_drawing_area();
-        root.fill(&WHITE)?;
-        let mut chart = ChartBuilder::on(&root)
-            .margin(20)
-            .caption(
-                format!("FIR {name} magnitude (0..Nyquist)"),
-                ("sans-serif", 20),
-            )
-            .set_label_area_size(LabelAreaPosition::Left, 50)
-            .set_label_area_size(LabelAreaPosition::Bottom, 50)
-            .build_cartesian_2d(0..half as i32, 0.0..y_top)?;
-        chart
-            .configure_mesh()
-            .x_desc("bin")
-            .y_desc("|H[k]|")
-            .draw()?;
-
-        // 折れ線で描画（LineSeriesが無効でもPathElementで代替）
-        let points: Vec<(i32, f64)> = (0..half).map(|k| (k as i32, mags[k])).collect();
-        chart.draw_series(points.windows(2).map(|w| {
-            let p0 = w[0];
-            let p1 = w[1];
-            PathElement::new(vec![p0, p1], BLUE)
-        }))?;
-
-        root.present()?;
+        // スペクトルとして包んで dB 表示の SVG を出力
+        let sp = Spectrum::new(h_freq.iter().cloned().collect(), 1.0);
+        sp.save_svg_magnitude_db_with_axes(&svg_path, 900, 420, &format!("FIR {name}"))?;
         println!("Wrote {svg_path}");
     }
 

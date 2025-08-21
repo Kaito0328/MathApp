@@ -3,7 +3,82 @@
 //! - `factor(n)` は u64 向けの高速な分解（試し割り + Pollard Rho + Miller-Rabin）
 //! - 大きな整数向けの雛形（Quadratic Sieve）は `#[cfg(feature = "quadratic-sieve")]` で提供
 
-use coding::GFp;
+// 循環依存を避けるため、GF(2) の最小実装をこのモジュール内に用意する。
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+struct GF2(u8); // 値は 0 or 1
+
+impl GF2 {
+    #[inline]
+    fn new(v: i64) -> Self {
+        GF2((v & 1) as u8)
+    }
+}
+
+impl std::fmt::Display for GF2 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl num_traits::Zero for GF2 {
+    fn zero() -> Self {
+        GF2(0)
+    }
+    fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
+}
+impl num_traits::One for GF2 {
+    fn one() -> Self {
+        GF2(1)
+    }
+}
+
+impl std::ops::Add for GF2 {
+    type Output = GF2;
+    fn add(self, rhs: Self) -> Self::Output {
+        GF2(self.0 ^ rhs.0)
+    }
+}
+impl std::ops::Sub for GF2 {
+    type Output = GF2;
+    fn sub(self, rhs: Self) -> Self::Output {
+        GF2(self.0 ^ rhs.0)
+    }
+}
+impl std::ops::Mul for GF2 {
+    type Output = GF2;
+    fn mul(self, rhs: Self) -> Self::Output {
+        GF2(self.0 & rhs.0)
+    }
+}
+impl std::ops::Div for GF2 {
+    type Output = GF2;
+    fn div(self, rhs: Self) -> Self::Output {
+        assert!(rhs.0 == 1, "GF2: division by zero");
+        self
+    }
+}
+impl std::ops::Neg for GF2 {
+    type Output = GF2;
+    fn neg(self) -> Self::Output {
+        self // -x == x in GF(2)
+    }
+}
+impl std::iter::Sum for GF2 {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::zero(), |a, x| a + x)
+    }
+}
+
+impl linalg::matrix::DisplayElement for GF2 {
+    fn to_formatted_string(&self) -> String {
+        self.to_string()
+    }
+}
+impl linalg::Scalar for GF2 {}
+impl linalg::Ring for GF2 {}
+impl linalg::Field for GF2 {}
 use linalg::Matrix;
 use num_bigint::{BigInt, ToBigInt};
 use num_integer::Integer;
@@ -340,7 +415,7 @@ struct Relation {
 // 行列の線形従属な関係を見つける
 fn solve_linear_algebra(relations: &[Relation], num_primes: usize) -> Vec<Vec<usize>> {
     // 行: num_primes, 列: relations.len()
-    type F = GFp<2>;
+    type F = GF2;
     let rows = num_primes;
     let cols = relations.len();
     if cols == 0 {
@@ -375,8 +450,8 @@ fn solve_linear_algebra(relations: &[Relation], num_primes: usize) -> Vec<Vec<us
         if pivot_col[j] {
             continue;
         }
-        let mut select = vec![GFp::<2>::new(0); cols];
-        select[j] = F::new(1);
+        let mut select = vec![GF2::new(0); cols];
+        select[j] = GF2::new(1);
         let mut row = 0usize;
         for c in 0..cols {
             if row >= rows {

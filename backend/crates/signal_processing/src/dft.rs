@@ -1,3 +1,4 @@
+use crate::signal::{Signal, Spectrum};
 use linalg::Vector;
 use num_complex::Complex;
 use std::f64::consts::PI;
@@ -50,6 +51,23 @@ pub fn ift(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
     Vector::new(dft_result)
 }
 
+// ===== Signal/Spectrum フレンドリーAPI（内部アルゴリズムは既存関数を使用） =====
+
+/// 実信号から複素スペクトルを得る（DFT/FFT 自動選択）。
+pub fn dft_signal(x: &Signal) -> Spectrum {
+    let v = Vector::new(x.to_complex_vec());
+    let y = dft(&v);
+    Spectrum::new(y.data, x.sample_rate())
+}
+
+/// 複素スペクトルから実信号へ（逆変換）。
+pub fn ift_spectrum(x: &Spectrum) -> Signal {
+    let v = Vector::new(x.clone().into());
+    let y = ift(&v);
+    let data: Vec<f64> = y.data.into_iter().map(|c| c.re).collect();
+    Signal::new(data, x.sample_rate())
+}
+
 pub fn conv_with_dft(x: &Vector<Complex<f64>>, h: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
     let n = x.dim() + h.dim() - 1;
     let mut x_padded = x.data.clone();
@@ -70,6 +88,36 @@ pub fn conv_with_dft_for_f64(x: &Vector<f64>, h: &Vector<f64>) -> Vector<f64> {
     let complex_h: Vec<Complex<f64>> = h.iter().map(|&v| Complex::new(v, 0.0)).collect();
     let result = conv_with_dft(&Vector::new(complex_x), &Vector::new(complex_h));
     Vector::new(result.data.iter().map(|c| c.re).collect())
+}
+
+/// Signal 同士の線形畳み込み（DFT ベース）。
+pub fn conv_signal_with_dft(x: &Signal, h: &Signal) -> Signal {
+    let vx = Vector::new(x.to_complex_vec());
+    let vh = Vector::new(h.to_complex_vec());
+    let y = conv_with_dft(&vx, &vh);
+    let data: Vec<f64> = y.data.into_iter().map(|c| c.re).collect();
+    // 出力のサンプルレートは入力と同じ（整合性チェックは任意）
+    Signal::new(data, x.sample_rate())
+}
+
+// ---- 型メソッド拡張 ----
+impl Signal {
+    /// この信号の DFT/FFT を計算して Spectrum を返す。
+    pub fn dft(&self) -> Spectrum {
+        dft_signal(self)
+    }
+
+    /// この信号と h の線形畳み込み（DFTベース）。
+    pub fn convolve(&self, h: &Signal) -> Signal {
+        conv_signal_with_dft(self, h)
+    }
+}
+
+impl Spectrum {
+    /// 逆変換で時間信号へ戻す。
+    pub fn ift(&self) -> Signal {
+        ift_spectrum(self)
+    }
 }
 
 fn dft_cooley_tukey(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {

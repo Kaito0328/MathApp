@@ -1,6 +1,8 @@
 use linalg::Vector;
 
-use crate::{dft::conv_with_dft_for_f64, fir::design_fir_lowpass, window::WindowType};
+use crate::{
+    dft::conv_with_dft_for_f64, fir::design_fir_lowpass, signal::Signal, window::WindowType,
+};
 
 /// 信号を整数倍でダウンサンプリングする。
 ///
@@ -99,4 +101,68 @@ pub fn expand(signal: &Vector<f64>, factor: usize) -> Vector<f64> {
         output[i * factor] = sample;
     }
     Vector::new(output)
+}
+
+// ===== Signal フレンドリー API（impl メソッド） =====
+impl Signal {
+    /// ダウンサンプリング（内部でアンチエイリアスのローパス適用）。
+    pub fn downsample(&self, factor: usize, filter_taps: usize, window_type: WindowType) -> Signal {
+        let v = Vector::new(self.data().to_vec());
+        let y = down_sample(&v, factor, filter_taps, window_type);
+        // サンプルレートは 1/factor
+        let sr = if factor > 0 {
+            self.sample_rate() / factor as f64
+        } else {
+            self.sample_rate()
+        };
+        Signal::new(y.data, sr)
+    }
+
+    /// アップサンプリング（ゼロ挿入 + ローパス補間）。
+    pub fn upsample(&self, factor: usize, filter_taps: usize, window_type: WindowType) -> Signal {
+        let v = Vector::new(self.data().to_vec());
+        let y = upsample(&v, factor, filter_taps, window_type);
+        let sr = self.sample_rate() * factor as f64;
+        Signal::new(y.data, sr)
+    }
+
+    /// 有理リサンプリング（L/M）。
+    pub fn resample(
+        &self,
+        upsample_factor: usize,
+        downsample_factor: usize,
+        filter_taps: usize,
+        window_type: WindowType,
+    ) -> Signal {
+        let v = Vector::new(self.data().to_vec());
+        let y = resample(
+            &v,
+            upsample_factor,
+            downsample_factor,
+            filter_taps,
+            window_type,
+        );
+        let sr = self.sample_rate() * upsample_factor as f64 / downsample_factor as f64;
+        Signal::new(y.data, sr)
+    }
+
+    /// デシメーション（フィルタなし）。
+    pub fn decimate(&self, factor: usize) -> Signal {
+        let v = Vector::new(self.data().to_vec());
+        let y = decimate(&v, factor);
+        let sr = if factor > 0 {
+            self.sample_rate() / factor as f64
+        } else {
+            self.sample_rate()
+        };
+        Signal::new(y.data, sr)
+    }
+
+    /// エキスパンド（ゼロ挿入のみ）。
+    pub fn expand(&self, factor: usize) -> Signal {
+        let v = Vector::new(self.data().to_vec());
+        let y = expand(&v, factor);
+        let sr = self.sample_rate() * factor as f64;
+        Signal::new(y.data, sr)
+    }
 }

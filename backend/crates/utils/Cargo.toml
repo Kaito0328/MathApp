@@ -13,7 +13,6 @@ num-integer = "0.1"
 num-traits = "0.2"
 rand = { version = "0.8", features = ["std"] }
 linalg = { path = "../linalg" }
-coding = { path = "../coding" }
 
 [features]
 # オプション: 未完成の二次篩(Quadratic Sieve)実装の雛形を無効化/有効化

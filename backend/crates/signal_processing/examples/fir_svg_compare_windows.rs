@@ -1,8 +1,8 @@
 use linalg::Vector;
 use num_complex::Complex;
-use plotters::prelude::*;
 use signal_processing::dft::dft;
 use signal_processing::fir::{design_fir_bandpass, design_fir_highpass, design_fir_lowpass};
+use signal_processing::signal::{Signal, Spectrum};
 use signal_processing::window::{calc_beta, WindowType};
 use std::fs;
 
@@ -58,16 +58,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 比較する窓（Kaiserは60dB相当）
     let windows = [
-        ("Rectangular", WindowType::Rectangular, RED),
-        ("Hann", WindowType::Hann, BLUE),
-        ("Hamming", WindowType::Hamming, GREEN),
-        ("Blackman", WindowType::Blackman, MAGENTA),
+        ("Rectangular", WindowType::Rectangular),
+        ("Hann", WindowType::Hann),
+        ("Hamming", WindowType::Hamming),
+        ("Blackman", WindowType::Blackman),
         (
             "Kaiser(60dB)",
             WindowType::Kaiser {
                 beta: calc_beta(60.0),
             },
-            CYAN,
         ),
     ];
 
@@ -75,39 +74,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let fc = 0.15;
         let svg_path = format!("{out_dir}/compare_windows_lowpass.svg");
-        let root = SVGBackend::new(&svg_path, (900, 420)).into_drawing_area();
-        root.fill(&WHITE)?;
-        let mut chart = ChartBuilder::on(&root)
-            .margin(20)
-            .caption("Lowpass magnitude (0..Nyquist)", ("sans-serif", 20))
-            .set_label_area_size(LabelAreaPosition::Left, 50)
-            .set_label_area_size(LabelAreaPosition::Bottom, 50)
-            .build_cartesian_2d(0..(n_fft / 2) as i32, 0.0..1.2)?;
-        chart
-            .configure_mesh()
-            .x_desc("bin")
-            .y_desc("|H[k]|")
-            .draw()?;
-
-        for &(name, w, color) in windows.iter() {
+        // 各窓の周波数応答を Spectrum にしてまとめて描画（dB）。
+        let mut specs: Vec<(Spectrum, &str)> = Vec::new();
+        for &(name, w) in windows.iter() {
             let h = design_fir_lowpass(num_taps, fc, w);
             let h_freq = dft(&zero_pad_complex(&to_complex(&h), n_fft));
-            let half = n_fft / 2;
-            let pts: Vec<(i32, f64)> = (0..half)
-                .map(|k| (k as i32, h_freq.iter().nth(k).unwrap().norm()))
-                .collect();
-            chart
-                .draw_series(std::iter::once(PathElement::new(pts, color)))?
-                .label(name)
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color));
+            let sp = Spectrum::new(h_freq.iter().cloned().collect(), 1.0);
+            specs.push((sp, name));
         }
-        chart
-            .configure_series_labels()
-            .position(SeriesLabelPosition::UpperRight)
-            .border_style(BLACK)
-            .background_style(WHITE.mix(0.8))
-            .draw()?;
-        root.present()?;
+        // 参照の配列を作って API に渡す
+        let refs: Vec<(&Spectrum, &str)> = specs.iter().map(|(s, name)| (s, *name)).collect();
+        Spectrum::save_svg_magnitude_db_multi(&svg_path, 900, 420, &refs)?;
         println!("Wrote {svg_path}");
     }
 
@@ -115,39 +92,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let fc = 0.25;
         let svg_path = format!("{out_dir}/compare_windows_highpass.svg");
-        let root = SVGBackend::new(&svg_path, (900, 420)).into_drawing_area();
-        root.fill(&WHITE)?;
-        let mut chart = ChartBuilder::on(&root)
-            .margin(20)
-            .caption("Highpass magnitude (0..Nyquist)", ("sans-serif", 20))
-            .set_label_area_size(LabelAreaPosition::Left, 50)
-            .set_label_area_size(LabelAreaPosition::Bottom, 50)
-            .build_cartesian_2d(0..(n_fft / 2) as i32, 0.0..1.2)?;
-        chart
-            .configure_mesh()
-            .x_desc("bin")
-            .y_desc("|H[k]|")
-            .draw()?;
-
-        for &(name, w, color) in windows.iter() {
+        let mut specs: Vec<(Spectrum, &str)> = Vec::new();
+        for &(name, w) in windows.iter() {
             let h = design_fir_highpass(num_taps, fc, w);
             let h_freq = dft(&zero_pad_complex(&to_complex(&h), n_fft));
-            let half = n_fft / 2;
-            let pts: Vec<(i32, f64)> = (0..half)
-                .map(|k| (k as i32, h_freq.iter().nth(k).unwrap().norm()))
-                .collect();
-            chart
-                .draw_series(std::iter::once(PathElement::new(pts, color)))?
-                .label(name)
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color));
+            let sp = Spectrum::new(h_freq.iter().cloned().collect(), 1.0);
+            specs.push((sp, name));
         }
-        chart
-            .configure_series_labels()
-            .position(SeriesLabelPosition::UpperRight)
-            .border_style(BLACK)
-            .background_style(WHITE.mix(0.8))
-            .draw()?;
-        root.present()?;
+        let refs: Vec<(&Spectrum, &str)> = specs.iter().map(|(s, name)| (s, *name)).collect();
+        Spectrum::save_svg_magnitude_db_multi(&svg_path, 900, 420, &refs)?;
         println!("Wrote {svg_path}");
     }
 
@@ -156,39 +109,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let f1 = 0.18;
         let f2 = 0.30;
         let svg_path = format!("{out_dir}/compare_windows_bandpass.svg");
-        let root = SVGBackend::new(&svg_path, (900, 420)).into_drawing_area();
-        root.fill(&WHITE)?;
-        let mut chart = ChartBuilder::on(&root)
-            .margin(20)
-            .caption("Bandpass magnitude (0..Nyquist)", ("sans-serif", 20))
-            .set_label_area_size(LabelAreaPosition::Left, 50)
-            .set_label_area_size(LabelAreaPosition::Bottom, 50)
-            .build_cartesian_2d(0..(n_fft / 2) as i32, 0.0..1.2)?;
-        chart
-            .configure_mesh()
-            .x_desc("bin")
-            .y_desc("|H[k]|")
-            .draw()?;
-
-        for &(name, w, color) in windows.iter() {
+        let mut specs: Vec<(Spectrum, &str)> = Vec::new();
+        for &(name, w) in windows.iter() {
             let h = design_fir_bandpass(num_taps, f1, f2, w);
             let h_freq = dft(&zero_pad_complex(&to_complex(&h), n_fft));
-            let half = n_fft / 2;
-            let pts: Vec<(i32, f64)> = (0..half)
-                .map(|k| (k as i32, h_freq.iter().nth(k).unwrap().norm()))
-                .collect();
-            chart
-                .draw_series(std::iter::once(PathElement::new(pts, color)))?
-                .label(name)
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color));
+            let sp = Spectrum::new(h_freq.iter().cloned().collect(), 1.0);
+            specs.push((sp, name));
         }
-        chart
-            .configure_series_labels()
-            .position(SeriesLabelPosition::UpperRight)
-            .border_style(BLACK)
-            .background_style(WHITE.mix(0.8))
-            .draw()?;
-        root.present()?;
+        let refs: Vec<(&Spectrum, &str)> = specs.iter().map(|(s, name)| (s, *name)).collect();
+        Spectrum::save_svg_magnitude_db_multi(&svg_path, 900, 420, &refs)?;
         println!("Wrote {svg_path}");
     }
 
@@ -198,65 +127,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let n = 512usize;
         let x = make_signal(n, 10.0, 40.0, fs); // 10Hz + 40Hz/2
         let svg_path = format!("{out_dir}/compare_windows_lowpass_timesignal.svg");
-        let root = SVGBackend::new(&svg_path, (900, 420)).into_drawing_area();
-        root.fill(&WHITE)?;
-        let min_y = x.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_y = x.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        let mut chart = ChartBuilder::on(&root)
-            .margin(20)
-            .caption("Time signal (lowpass outputs)", ("sans-serif", 20))
-            .set_label_area_size(LabelAreaPosition::Left, 50)
-            .set_label_area_size(LabelAreaPosition::Bottom, 50)
-            .build_cartesian_2d(0..n as i32, (min_y - 0.2)..(max_y + 0.2))?;
-        chart
-            .configure_mesh()
-            .x_desc("sample")
-            .y_desc("amplitude")
-            .draw()?;
-
-        // 入力信号（グレー）
-        let input_pts: Vec<(i32, f64)> = (0..n)
-            .map(|i| (i as i32, *x.iter().nth(i).unwrap()))
-            .collect();
-        chart
-            .draw_series(std::iter::once(PathElement::new(
-                input_pts,
-                RGBColor(160, 160, 160),
-            )))?
-            .label("Input")
-            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RGBColor(160, 160, 160)));
+        let input_sig = Signal::new(x.iter().cloned().collect(), fs);
 
         // いくつかの窓の出力を重ね描き
         let fc = 0.15;
         let choose = vec![
-            ("Hamming", WindowType::Hamming, BLUE),
-            ("Blackman", WindowType::Blackman, RED),
+            ("Hamming", WindowType::Hamming),
+            ("Blackman", WindowType::Blackman),
             (
                 "Kaiser(60dB)",
                 WindowType::Kaiser {
                     beta: calc_beta(60.0),
                 },
-                GREEN,
             ),
         ];
-        for (name, w, color) in choose.into_iter() {
+
+        let mut labeled: Vec<(Signal, &str)> = Vec::new();
+        // 先頭に入力信号
+        labeled.push((input_sig.clone(), "Input"));
+        for (name, w) in choose.into_iter() {
             let h = design_fir_lowpass(num_taps, fc, w);
             let y = apply_fir(&h, &x);
-            let pts: Vec<(i32, f64)> = (0..n)
-                .map(|i| (i as i32, *y.iter().nth(i).unwrap()))
-                .collect();
-            chart
-                .draw_series(std::iter::once(PathElement::new(pts, color)))?
-                .label(name)
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color));
+            let y_sig = Signal::new(y.iter().cloned().collect(), fs);
+            labeled.push((y_sig, name));
         }
-        chart
-            .configure_series_labels()
-            .position(SeriesLabelPosition::UpperRight)
-            .border_style(BLACK)
-            .background_style(WHITE.mix(0.8))
-            .draw()?;
-        root.present()?;
+        let refs: Vec<(&Signal, &str)> = labeled.iter().map(|(s, name)| (s, *name)).collect();
+        // 先頭を基準にマルチ描画
+        labeled[0].0.save_svg_multi(&svg_path, 900, 420, &refs)?;
         println!("Wrote {svg_path}");
     }
 

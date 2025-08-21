@@ -1,6 +1,4 @@
-use linalg::Vector;
-use num_complex::Complex;
-use signal_processing::dft::dft;
+use signal_processing::signal::Signal;
 use textplots::{Chart, Plot, Shape};
 
 fn main() {
@@ -8,26 +6,24 @@ fn main() {
     let n = 128usize;
     let fs = 128.0f64;
     let f1 = 10.0f64;
-    let x = Vector::new(
+    let x = Signal::new(
         (0..n)
             .map(|i| {
                 let t = i as f64 / fs;
-                let s = (2.0 * std::f64::consts::PI * f1 * t).sin();
-                Complex::new(s, 0.0)
+                (2.0 * std::f64::consts::PI * f1 * t).sin()
             })
             .collect(),
+        fs,
     );
 
     // Compute magnitude spectrum
-    let x_freq = dft(&x);
-    let mag: Vec<f64> = x_freq.iter().map(|c| c.norm()).collect();
+    let x_freq = x.dft();
+    let mag: Vec<f64> = x_freq.magnitudes();
     let nh = n / 2;
 
     // ASCII plot of time signal
     println!("Time signal (first 128 samples)");
-    let time_points: Vec<(f32, f32)> = (0..n)
-        .map(|i| (i as f32, x.iter().nth(i).unwrap().re as f32))
-        .collect();
+    let time_points: Vec<(f32, f32)> = (0..n).map(|i| (i as f32, x.data()[i] as f32)).collect();
     Chart::new(120, 20, 0.0, n as f32)
         .lineplot(&Shape::Lines(&time_points[..]))
         .display();
