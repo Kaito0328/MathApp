@@ -1,10 +1,10 @@
 [package]
-name = "poly"
+name = "concrete-math"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "poly"
+name = "concrete_math"
 path = "src/lib.rs"
 
 [dependencies]
@@ -13,5 +13,4 @@ num-complex = "0.4"
 serde = { version = "1", features = ["derive"] }
 linalg = { path = "../linalg" }
 utils = { path = "../utils" }
-
-[dev-dependencies]
+poly = { path = "../polynomial" }

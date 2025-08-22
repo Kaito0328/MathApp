@@ -213,7 +213,7 @@ impl<F: Field> Div for &Polynomial<F> {
 }
 
 // 所有/参照の3パターン (Poly op &Poly, &Poly op Poly, Poly op Poly) を自動実装
-impl_ops_by_ref_variants!(Polynomial<F>, Add, add, linalg::Field);
-impl_ops_by_ref_variants!(Polynomial<F>, Sub, sub, linalg::Field);
-impl_ops_by_ref_variants!(Polynomial<F>, Mul, mul, linalg::Field);
-impl_ops_by_ref_variants!(Polynomial<F>, Div, div, linalg::Field);
+utils::impl_ops_by_ref_variants!(Polynomial<F>, Add, add, linalg::Field);
+utils::impl_ops_by_ref_variants!(Polynomial<F>, Sub, sub, linalg::Field);
+utils::impl_ops_by_ref_variants!(Polynomial<F>, Mul, mul, linalg::Field);
+utils::impl_ops_by_ref_variants!(Polynomial<F>, Div, div, linalg::Field);

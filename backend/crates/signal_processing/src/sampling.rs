@@ -1,4 +1,4 @@
-use linalg::Vector;
+// no linalg::Vector in Vec-based DSP APIs
 
 use crate::{
     dft::conv_with_dft_for_f64, fir::design_fir_lowpass, signal::Signal, window::WindowType,
@@ -16,13 +16,13 @@ use crate::{
 /// # 戻り値
 /// * ダウンサンプリングされた信号。長さは元信号の約 1/factor になる。
 pub fn down_sample(
-    signal: &Vector<f64>,
+    signal: &[f64],
     factor: usize,
     filter_taps: usize,
     window_type: WindowType,
-) -> Vector<f64> {
+) -> Vec<f64> {
     if factor == 0 {
-        return Vector::new(vec![]);
+        return vec![];
     }
 
     let normalized_cutoff = 0.5 / factor as f64; // 正規化されたカットオフ周波数
@@ -44,27 +44,30 @@ pub fn down_sample(
 /// # 戻り値
 /// * アップサンプリングされた信号。長さは元信号の factor 倍になる。
 pub fn upsample(
-    signal: &Vector<f64>,
+    signal: &[f64],
     factor: usize,
     filter_taps: usize,
     window_type: WindowType,
-) -> Vector<f64> {
+) -> Vec<f64> {
     let zero_inserted_signal = expand(signal, factor);
 
     let normalized_cutoff = 0.5 / factor as f64; // 正規化されたカットオフ周波数
-    let interpolation_filter =
-        design_fir_lowpass(filter_taps, normalized_cutoff, window_type) * factor as f64;
+    let mut interpolation_filter = design_fir_lowpass(filter_taps, normalized_cutoff, window_type);
+    let scale = factor as f64;
+    for c in &mut interpolation_filter {
+        *c *= scale;
+    }
 
     conv_with_dft_for_f64(&zero_inserted_signal, &interpolation_filter)
 }
 
 pub fn resample(
-    signal: &Vector<f64>,
+    signal: &[f64],
     upsample_factor: usize,
     downsample_factor: usize,
     filter_taps: usize,
     window_type: WindowType,
-) -> Vector<f64> {
+) -> Vec<f64> {
     let upsampled = upsample(signal, upsample_factor, filter_taps, window_type);
     down_sample(&upsampled, downsample_factor, filter_taps, window_type)
 }
@@ -72,11 +75,11 @@ pub fn resample(
 /// 信号を整数倍で間引く（デシメーション）。
 /// 注意：この関数はアンチエイリアシングフィルタを適用しないため、
 /// 事前に手動でローパスフィルタをかける必要がある。
-pub fn decimate(signal: &Vector<f64>, factor: usize) -> Vector<f64> {
+pub fn decimate(signal: &[f64], factor: usize) -> Vec<f64> {
     if factor == 0 {
-        return Vector::new(vec![]);
+        return vec![];
     }
-    Vector::new(signal.iter().step_by(factor).cloned().collect())
+    signal.iter().step_by(factor).cloned().collect()
 }
 
 /// 信号の各サンプルの間にゼロを挿入する（エキスパンド）。
@@ -90,40 +93,38 @@ pub fn decimate(signal: &Vector<f64>, factor: usize) -> Vector<f64> {
 ///
 /// # 戻り値
 /// * ゼロが挿入された信号。長さは元信号の factor 倍に近くなる。
-pub fn expand(signal: &Vector<f64>, factor: usize) -> Vector<f64> {
+pub fn expand(signal: &[f64], factor: usize) -> Vec<f64> {
     if factor <= 1 {
-        return signal.clone();
+        return signal.to_vec();
     }
 
-    let mut output = vec![0.0; signal.dim() * factor];
+    let mut output = vec![0.0; signal.len() * factor];
     for (i, &sample) in signal.iter().enumerate() {
         // 元のサンプルを追加
         output[i * factor] = sample;
     }
-    Vector::new(output)
+    output
 }
 
 // ===== Signal フレンドリー API（impl メソッド） =====
 impl Signal {
     /// ダウンサンプリング（内部でアンチエイリアスのローパス適用）。
     pub fn downsample(&self, factor: usize, filter_taps: usize, window_type: WindowType) -> Signal {
-        let v = Vector::new(self.data().to_vec());
-        let y = down_sample(&v, factor, filter_taps, window_type);
+        let y = down_sample(self.data(), factor, filter_taps, window_type);
         // サンプルレートは 1/factor
         let sr = if factor > 0 {
             self.sample_rate() / factor as f64
         } else {
             self.sample_rate()
         };
-        Signal::new(y.data, sr)
+        Signal::new(y, sr)
     }
 
     /// アップサンプリング（ゼロ挿入 + ローパス補間）。
     pub fn upsample(&self, factor: usize, filter_taps: usize, window_type: WindowType) -> Signal {
-        let v = Vector::new(self.data().to_vec());
-        let y = upsample(&v, factor, filter_taps, window_type);
+        let y = upsample(self.data(), factor, filter_taps, window_type);
         let sr = self.sample_rate() * factor as f64;
-        Signal::new(y.data, sr)
+        Signal::new(y, sr)
     }
 
     /// 有理リサンプリング（L/M）。
@@ -134,35 +135,32 @@ impl Signal {
         filter_taps: usize,
         window_type: WindowType,
     ) -> Signal {
-        let v = Vector::new(self.data().to_vec());
         let y = resample(
-            &v,
+            self.data(),
             upsample_factor,
             downsample_factor,
             filter_taps,
             window_type,
         );
         let sr = self.sample_rate() * upsample_factor as f64 / downsample_factor as f64;
-        Signal::new(y.data, sr)
+        Signal::new(y, sr)
     }
 
     /// デシメーション（フィルタなし）。
     pub fn decimate(&self, factor: usize) -> Signal {
-        let v = Vector::new(self.data().to_vec());
-        let y = decimate(&v, factor);
+        let y = decimate(self.data(), factor);
         let sr = if factor > 0 {
             self.sample_rate() / factor as f64
         } else {
             self.sample_rate()
         };
-        Signal::new(y.data, sr)
+        Signal::new(y, sr)
     }
 
     /// エキスパンド（ゼロ挿入のみ）。
     pub fn expand(&self, factor: usize) -> Signal {
-        let v = Vector::new(self.data().to_vec());
-        let y = expand(&v, factor);
+        let y = expand(self.data(), factor);
         let sr = self.sample_rate() * factor as f64;
-        Signal::new(y.data, sr)
+        Signal::new(y, sr)
     }
 }

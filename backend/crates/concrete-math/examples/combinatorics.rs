@@ -1,9 +1,9 @@
-use num_complex::Complex;
-use poly::combinatorics::numbers::{binom, stirling2};
-use poly::combinatorics::polynomials::{
+use concrete_math::combinatorics::numbers::{binom, stirling2};
+use concrete_math::combinatorics::polynomials::{
     binom_x_plus_k_choose_k_poly, falling_factorial_poly, rising_factorial_poly,
     shift_poly_x_plus_h,
 };
+use num_complex::Complex;
 
 fn main() {
     println!("binom(10,3) = {}", binom(10, 3));

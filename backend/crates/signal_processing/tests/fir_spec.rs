@@ -1,4 +1,3 @@
-use linalg::Vector;
 use num_complex::Complex;
 use signal_processing::dft::dft;
 use signal_processing::fir::{
@@ -6,44 +5,40 @@ use signal_processing::fir::{
 };
 use signal_processing::window::WindowType;
 
-fn apply_fir(h: &Vector<f64>, x: &Vector<f64>) -> Vector<f64> {
-    let m = h.dim();
-    let n = x.dim();
-    let hh: Vec<f64> = h.iter().cloned().collect();
-    let xx: Vec<f64> = x.iter().cloned().collect();
+fn apply_fir(h: &[f64], x: &[f64]) -> Vec<f64> {
+    let m = h.len();
+    let n = x.len();
     let mut y = vec![0.0; n];
     for i in 0..n {
         let mut acc = 0.0;
         let kmax = m.min(i + 1);
         for k in 0..kmax {
-            acc += hh[k] * xx[i - k];
+            acc += h[k] * x[i - k];
         }
         y[i] = acc;
     }
-    Vector::new(y)
+    y
 }
 
-fn to_complex(v: &Vector<f64>) -> Vector<Complex<f64>> {
-    Vector::new(v.iter().map(|&r| Complex::new(r, 0.0)).collect())
+fn to_complex(v: &[f64]) -> Vec<Complex<f64>> {
+    v.iter().map(|&r| Complex::new(r, 0.0)).collect()
 }
 
-fn mag_at_bin(v: &Vector<Complex<f64>>, k: usize) -> f64 {
-    v.iter().nth(k).unwrap().norm()
+fn mag_at_bin(v: &[Complex<f64>], k: usize) -> f64 {
+    v[k].norm()
 }
 
 #[test]
 fn lowpass_attenuates_high_tone() {
     let n = 256usize; // power of two for FFT
                       // Build signal: low tone (k=5), high tone (k=60)
-    let x = Vector::new(
-        (0..n)
-            .map(|i| {
-                let t = i as f64;
-                (2.0 * std::f64::consts::PI * (5.0 * t / n as f64)).sin()
-                    + (2.0 * std::f64::consts::PI * (60.0 * t / n as f64)).sin()
-            })
-            .collect(),
-    );
+    let x: Vec<f64> = (0..n)
+        .map(|i| {
+            let t = i as f64;
+            (2.0 * std::f64::consts::PI * (5.0 * t / n as f64)).sin()
+                + (2.0 * std::f64::consts::PI * (60.0 * t / n as f64)).sin()
+        })
+        .collect();
     let h = design_fir_lowpass(101, 0.05, WindowType::Hamming);
     let y = apply_fir(&h, &x);
     let y_c = to_complex(&y);
@@ -59,15 +54,13 @@ fn lowpass_attenuates_high_tone() {
 #[test]
 fn highpass_attenuates_low_tone() {
     let n = 256usize;
-    let x = Vector::new(
-        (0..n)
-            .map(|i| {
-                let t = i as f64;
-                (2.0 * std::f64::consts::PI * (5.0 * t / n as f64)).sin()
-                    + (2.0 * std::f64::consts::PI * (60.0 * t / n as f64)).sin()
-            })
-            .collect(),
-    );
+    let x: Vec<f64> = (0..n)
+        .map(|i| {
+            let t = i as f64;
+            (2.0 * std::f64::consts::PI * (5.0 * t / n as f64)).sin()
+                + (2.0 * std::f64::consts::PI * (60.0 * t / n as f64)).sin()
+        })
+        .collect();
     let h = design_fir_highpass(101, 0.2, WindowType::Hamming);
     let y = apply_fir(&h, &x);
     let y_dft = dft(&to_complex(&y));
@@ -83,15 +76,13 @@ fn highpass_attenuates_low_tone() {
 fn bandpass_passes_mid_band() {
     let n = 256usize;
     // in-band tone k=50 (~0.195), out-band low k=5
-    let x = Vector::new(
-        (0..n)
-            .map(|i| {
-                let t = i as f64;
-                (2.0 * std::f64::consts::PI * (5.0 * t / n as f64)).sin()
-                    + (2.0 * std::f64::consts::PI * (50.0 * t / n as f64)).sin()
-            })
-            .collect(),
-    );
+    let x: Vec<f64> = (0..n)
+        .map(|i| {
+            let t = i as f64;
+            (2.0 * std::f64::consts::PI * (5.0 * t / n as f64)).sin()
+                + (2.0 * std::f64::consts::PI * (50.0 * t / n as f64)).sin()
+        })
+        .collect();
     let h = design_fir_bandpass(101, 0.18, 0.3, WindowType::Hamming);
     let y = apply_fir(&h, &x);
     let y_dft = dft(&to_complex(&y));
@@ -107,15 +98,13 @@ fn bandpass_passes_mid_band() {
 fn bandstop_rejects_mid_band() {
     let n = 256usize;
     // mid-band tone k=50 in stopband, low tone k=5 should pass
-    let x = Vector::new(
-        (0..n)
-            .map(|i| {
-                let t = i as f64;
-                (2.0 * std::f64::consts::PI * (5.0 * t / n as f64)).sin()
-                    + (2.0 * std::f64::consts::PI * (50.0 * t / n as f64)).sin()
-            })
-            .collect(),
-    );
+    let x: Vec<f64> = (0..n)
+        .map(|i| {
+            let t = i as f64;
+            (2.0 * std::f64::consts::PI * (5.0 * t / n as f64)).sin()
+                + (2.0 * std::f64::consts::PI * (50.0 * t / n as f64)).sin()
+        })
+        .collect();
     let h = design_fir_bandstop(101, 0.18, 0.3, WindowType::Hamming);
     let y = apply_fir(&h, &x);
     let y_dft = dft(&to_complex(&y));

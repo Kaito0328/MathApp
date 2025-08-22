@@ -52,8 +52,7 @@ fn gen_audio(path: &str, sr: u32, seconds: f64) -> Result<(), Box<dyn std::error
             + 0.3 * (2.0 * std::f64::consts::PI * 880.0 * t).sin();
         v.push((s * 0.5).clamp(-1.0, 1.0));
     }
-    let vec = linalg::Vector::new(v);
-    audio_io::save_wav_mono_from_vec(path, &vec, sr)?;
+    audio_io::save_wav_mono_from_vec(path, &v, sr)?;
     Ok(())
 }
 

@@ -181,7 +181,7 @@ impl<F: Field> Div<F> for &RationalFunction<F> {
 }
 
 // 所有/参照の3パターン (RF op &RF, &RF op RF, RF op RF) を自動実装
-impl_ops_by_ref_variants!(RationalFunction<F>, Add, add, linalg::Field);
-impl_ops_by_ref_variants!(RationalFunction<F>, Sub, sub, linalg::Field);
-impl_ops_by_ref_variants!(RationalFunction<F>, Mul, mul, linalg::Field);
-impl_ops_by_ref_variants!(RationalFunction<F>, Div, div, linalg::Field);
+utils::impl_ops_by_ref_variants!(RationalFunction<F>, Add, add, linalg::Field);
+utils::impl_ops_by_ref_variants!(RationalFunction<F>, Sub, sub, linalg::Field);
+utils::impl_ops_by_ref_variants!(RationalFunction<F>, Mul, mul, linalg::Field);
+utils::impl_ops_by_ref_variants!(RationalFunction<F>, Div, div, linalg::Field);

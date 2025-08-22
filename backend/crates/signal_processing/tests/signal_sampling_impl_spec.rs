@@ -25,12 +25,14 @@ fn upsample_impl_matches_reference() {
     let y = x.upsample(l, taps, win);
 
     // Reference using sampling::expand + LPF
-    let v = linalg::Vector::new(x.data().to_vec());
-    let xp = sampling::expand(&v, l);
-    let h = fir::design_fir_lowpass(taps, 0.5 / l as f64, win) * l as f64;
+    let xp = sampling::expand(x.data(), l);
+    let mut h = fir::design_fir_lowpass(taps, 0.5 / l as f64, win);
+    for c in &mut h {
+        *c *= l as f64;
+    }
     let y_ref = conv_with_dft_for_f64(&xp, &h);
 
-    vec_close(y.data(), &y_ref.data, 1e-9);
+    vec_close(y.data(), &y_ref, 1e-9);
     assert!((y.sample_rate() - x.sample_rate() * l as f64).abs() < 1e-12);
 }
 
@@ -44,12 +46,11 @@ fn downsample_impl_matches_reference() {
     let y = x.downsample(m, taps, win);
 
     // Reference: LPF then decimate
-    let v = linalg::Vector::new(x.data().to_vec());
     let h = fir::design_fir_lowpass(taps, 0.5 / m as f64, win);
-    let xf = conv_with_dft_for_f64(&v, &h);
+    let xf = conv_with_dft_for_f64(x.data(), &h);
     let y_ref = sampling::decimate(&xf, m);
 
-    vec_close(y.data(), &y_ref.data, 1e-9);
+    vec_close(y.data(), &y_ref, 1e-9);
     assert!((y.sample_rate() - x.sample_rate() / m as f64).abs() < 1e-12);
 }
 
@@ -67,10 +68,9 @@ fn resample_impl_matches_reference() {
     let win = WindowType::Hamming;
     let y = x.resample(l, m, taps, win);
 
-    let v = linalg::Vector::new(x.data().to_vec());
-    let up = sampling::upsample(&v, l, taps, win);
+    let up = sampling::upsample(x.data(), l, taps, win);
     let y_ref = sampling::down_sample(&up, m, taps, win);
 
-    vec_close(y.data(), &y_ref.data, 1e-9);
+    vec_close(y.data(), &y_ref, 1e-9);
     assert!((y.sample_rate() - x.sample_rate() * l as f64 / m as f64).abs() < 1e-12);
 }

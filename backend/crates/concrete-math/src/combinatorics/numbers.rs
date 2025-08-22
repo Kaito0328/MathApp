@@ -28,7 +28,6 @@ pub fn stirling2(n: usize, k: usize) -> f64 {
     if n == 0 || k == 0 {
         return 0.0;
     }
-    // DP: S(n, k) = k S(n-1, k) + S(n-1, k-1)
     let mut dp = vec![vec![0.0f64; k + 1]; n + 1];
     dp[0][0] = 1.0;
     for i in 1..=n {

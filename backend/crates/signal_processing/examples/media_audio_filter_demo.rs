@@ -4,14 +4,13 @@ use signal_processing::media::audio_io;
 use signal_processing::window::WindowType;
 use std::fs;
 
-fn conv_same_1d(x: &linalg::Vector<f64>, h: &linalg::Vector<f64>) -> linalg::Vector<f64> {
+fn conv_same_1d(x: &[f64], h: &[f64]) -> Vec<f64> {
     let y = conv_with_dft_for_f64(x, h);
-    let n = x.dim();
-    let m = h.dim();
+    let n = x.len();
+    let m = h.len();
     let delay = (m - 1) / 2;
     let start = delay;
-    let slice: Vec<f64> = y.iter().skip(start).take(n).cloned().collect();
-    linalg::Vector::new(slice)
+    y.into_iter().skip(start).take(n).collect()
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let (audio, info) = audio_io::load_wav_mono_to_vec(&wav_in)?;
+    let (audio_v, info) = audio_io::load_wav_mono_to_vec(&wav_in)?;
 
     // FIR設計パラメータ
     let taps = 101usize; // 奇数
@@ -37,8 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let h_lp = design_fir_lowpass(taps, lp_cut, win);
     let h_hp = design_fir_highpass(taps, hp_cut, win);
 
-    let y_lp = conv_same_1d(&audio, &h_lp);
-    let y_hp = conv_same_1d(&audio, &h_hp);
+    let y_lp = conv_same_1d(&audio_v, &h_lp);
+    let y_hp = conv_same_1d(&audio_v, &h_hp);
 
     let out_lp = format!("{audio_dir}/output_lowpass.wav");
     audio_io::save_wav_mono_from_vec(&out_lp, &y_lp, info.sample_rate)?;

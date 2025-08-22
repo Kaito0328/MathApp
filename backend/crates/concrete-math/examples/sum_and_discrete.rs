@@ -1,8 +1,8 @@
+use concrete_math::sequence::core::ClosedForm;
+use concrete_math::sum::discrete::{discrete_diff, discrete_sum};
+use concrete_math::sum::partial_sum::partial_sum;
 use num_complex::Complex;
 use poly::polynomial::Polynomial;
-use poly::sequence::core::ClosedForm;
-use poly::sum::discrete::{discrete_diff, discrete_sum};
-use poly::sum::partial_sum::partial_sum;
 
 fn main() {
     // 部分和の例: a_n = 2^n

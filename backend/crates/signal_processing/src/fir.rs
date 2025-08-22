@@ -1,40 +1,112 @@
 use std::f64::consts::PI;
 
 use crate::signal::Signal;
-use linalg::Vector;
-use poly::Polynomial;
+use lti_systems::{DiscreteTransferFunction, Polynomial};
 
 use crate::window::{generate_window, WindowType};
 
 /// FIR フィルタ型（タップ係数を多項式で保持、低次→高次）。
 #[derive(Clone, Debug, PartialEq)]
 pub struct FIRFilter {
-    pub taps: Polynomial<f64>,
+    tf: DiscreteTransferFunction,
 }
 
 impl FIRFilter {
     pub fn new_from_coeffs(coeffs: Vec<f64>) -> Self {
+        let b = Polynomial::new(coeffs);
+        let a = Polynomial::new(vec![1.0]);
         Self {
-            taps: Polynomial::new(coeffs),
+            tf: DiscreteTransferFunction::new(b, a),
+        }
+    }
+    /// サンプリング周波数を保持するバージョン
+    pub fn new_from_coeffs_with_fs(coeffs: Vec<f64>, fs: f64) -> Self {
+        let b = Polynomial::new(coeffs);
+        let a = Polynomial::new(vec![1.0]);
+        Self {
+            tf: DiscreteTransferFunction::new_with_fs(b, a, fs),
         }
     }
     pub fn new_from_poly(p: Polynomial<f64>) -> Self {
-        Self { taps: p }
+        let a = Polynomial::new(vec![1.0]);
+        Self {
+            tf: DiscreteTransferFunction::new(p, a),
+        }
+    }
+    /// サンプリング周波数を保持するバージョン
+    pub fn new_from_poly_with_fs(p: Polynomial<f64>, fs: f64) -> Self {
+        let a = Polynomial::new(vec![1.0]);
+        Self {
+            tf: DiscreteTransferFunction::new_with_fs(p, a, fs),
+        }
     }
     pub fn len(&self) -> usize {
-        self.taps.coeffs.len()
+        self.tf.b_coeffs().len()
     }
     pub fn is_empty(&self) -> bool {
-        self.taps.coeffs.is_empty()
+        self.tf.b_coeffs().is_empty()
     }
     pub fn coeffs(&self) -> &[f64] {
-        &self.taps.coeffs
+        self.tf.b_coeffs()
     }
     /// 直接法で適用
     pub fn apply(&self, x: &Signal) -> Signal {
-        apply_fir_signal(&self.taps, x)
+        let y = self.tf.apply(x.data());
+        Signal::new(y, x.sample_rate())
+    }
+
+    // --- static design methods (wrapping existing poly-based designers) ---
+    pub fn design_lowpass(
+        num_taps: usize,
+        normalized_cutoff: f64,
+        window_type: WindowType,
+    ) -> Self {
+        Self::new_from_poly(design_fir_lowpass_poly(
+            num_taps,
+            normalized_cutoff,
+            window_type,
+        ))
+    }
+    pub fn design_highpass(
+        num_taps: usize,
+        normalized_cutoff: f64,
+        window_type: WindowType,
+    ) -> Self {
+        Self::new_from_poly(design_fir_highpass_poly(
+            num_taps,
+            normalized_cutoff,
+            window_type,
+        ))
+    }
+    pub fn design_bandpass(
+        num_taps: usize,
+        normalized_f1: f64,
+        normalized_f2: f64,
+        window_type: WindowType,
+    ) -> Self {
+        Self::new_from_poly(design_fir_bandpass_poly(
+            num_taps,
+            normalized_f1,
+            normalized_f2,
+            window_type,
+        ))
+    }
+    pub fn design_bandstop(
+        num_taps: usize,
+        normalized_f1: f64,
+        normalized_f2: f64,
+        window_type: WindowType,
+    ) -> Self {
+        Self::new_from_poly(design_fir_bandstop_poly(
+            num_taps,
+            normalized_f1,
+            normalized_f2,
+            window_type,
+        ))
     }
 }
+
+// Signal側の apply_fir_filter は signal.rs に実装済み
 
 /// 窓関数法を用いてFIRローパスフィルタの係数を設計する。
 ///
@@ -46,7 +118,7 @@ pub fn design_fir_lowpass(
     num_taps: usize,
     normalized_cutoff: f64,
     window_type: WindowType,
-) -> Vector<f64> {
+) -> Vec<f64> {
     // 前提条件のチェック
     assert!(num_taps > 0, "Number of taps must be positive.");
     assert!(
@@ -60,7 +132,7 @@ pub fn design_fir_lowpass(
 
     // 係数をPolynomialで生成し、最終的にVectorへ変換
     let p = design_fir_lowpass_poly(num_taps, normalized_cutoff, window_type);
-    Vector::new(p.coeffs)
+    p.coeffs
 }
 
 /// 窓関数法を用いてFIRハイパスフィルタの係数を設計する。
@@ -73,7 +145,7 @@ pub fn design_fir_highpass(
     num_taps: usize,
     normalized_cutoff: f64,
     window_type: WindowType,
-) -> Vector<f64> {
+) -> Vec<f64> {
     assert!(num_taps > 0, "Number of taps must be positive.");
     assert!(
         normalized_cutoff > 0.0 && normalized_cutoff < 0.5,
@@ -84,21 +156,8 @@ pub fn design_fir_highpass(
         "Number of taps should be odd for a Type I filter."
     );
 
-    // 理想ハイパス: スペクトル反転（δ[n−M] − ローパス理想応答）
-    let mut ideal_response = Vec::with_capacity(num_taps);
-    let center = (num_taps - 1) as f64 / 2.0;
-    for i in 0..num_taps {
-        let t = i as f64 - center;
-        if t == 0.0 {
-            ideal_response.push(1.0 - 2.0 * normalized_cutoff);
-        } else {
-            let pi_t = PI * t;
-            ideal_response.push(-((2.0 * normalized_cutoff * pi_t).sin() / pi_t));
-        }
-    }
-
     let p = design_fir_highpass_poly(num_taps, normalized_cutoff, window_type);
-    Vector::new(p.coeffs)
+    p.coeffs
 }
 
 /// 窓関数法を用いてFIRバンドパスフィルタの係数を設計する。
@@ -113,7 +172,7 @@ pub fn design_fir_bandpass(
     normalized_f1: f64,
     normalized_f2: f64,
     window_type: WindowType,
-) -> Vector<f64> {
+) -> Vec<f64> {
     assert!(num_taps > 0, "Number of taps must be positive.");
     assert!(
         normalized_f1 > 0.0 && normalized_f1 < 0.5,
@@ -132,22 +191,8 @@ pub fn design_fir_bandpass(
         "Number of taps should be odd for a Type I filter."
     );
 
-    // 理想バンドパス: h_bp = h_lp(f2) - h_lp(f1)
-    let mut ideal_response = Vec::with_capacity(num_taps);
-    let center = (num_taps - 1) as f64 / 2.0;
-    for i in 0..num_taps {
-        let t = i as f64 - center;
-        if t == 0.0 {
-            ideal_response.push(2.0 * (normalized_f2 - normalized_f1));
-        } else {
-            let pi_t = PI * t;
-            let num = (2.0 * normalized_f2 * pi_t).sin() - (2.0 * normalized_f1 * pi_t).sin();
-            ideal_response.push(num / pi_t);
-        }
-    }
-
     let p = design_fir_bandpass_poly(num_taps, normalized_f1, normalized_f2, window_type);
-    Vector::new(p.coeffs)
+    p.coeffs
 }
 
 /// 窓関数法を用いてFIRバンドストップ（帯域阻止）フィルタの係数を設計する。
@@ -162,7 +207,7 @@ pub fn design_fir_bandstop(
     normalized_f1: f64,
     normalized_f2: f64,
     window_type: WindowType,
-) -> Vector<f64> {
+) -> Vec<f64> {
     assert!(num_taps > 0, "Number of taps must be positive.");
     assert!(
         normalized_f1 > 0.0 && normalized_f1 < 0.5,
@@ -181,39 +226,19 @@ pub fn design_fir_bandstop(
         "Number of taps should be odd for a Type I filter."
     );
 
-    // 理想バンドストップ: h_bs = δ + h_lp(f1) - h_lp(f2)
-    let mut ideal_response = Vec::with_capacity(num_taps);
-    let center = (num_taps - 1) as f64 / 2.0;
-    for i in 0..num_taps {
-        let t = i as f64 - center;
-        if t == 0.0 {
-            ideal_response.push(1.0 - 2.0 * (normalized_f2 - normalized_f1));
-        } else {
-            let pi_t = PI * t;
-            let num = (2.0 * normalized_f1 * pi_t).sin() - (2.0 * normalized_f2 * pi_t).sin();
-            ideal_response.push(num / pi_t);
-        }
-    }
-
     let p = design_fir_bandstop_poly(num_taps, normalized_f1, normalized_f2, window_type);
-    Vector::new(p.coeffs)
+    p.coeffs
 }
 
 /// FIR フィルタを時間信号に適用（直接法）。既存の apply と同等の動作。
 pub fn apply_fir_signal(taps: &Polynomial<f64>, x: &Signal) -> Signal {
-    let h = &taps.coeffs; // 低次→高次 = h[0..]
-    let n = x.len();
-    let m = h.len();
-    let xx = x.as_ref();
-    let mut y = vec![0.0; n];
-    for i in 0..n {
-        let kmax = m.min(i + 1);
-        let mut acc = 0.0;
-        for k in 0..kmax {
-            acc += h[k] * xx[i - k];
-        }
-        y[i] = acc;
-    }
+    // DiscreteTransferFunction に委譲（a = [1]）。入力信号のFsを保持。
+    let tf = DiscreteTransferFunction::new_with_fs(
+        taps.clone(),
+        Polynomial::new(vec![1.0]),
+        x.sample_rate(),
+    );
+    let y = tf.apply(x.data());
     Signal::new(y, x.sample_rate())
 }
 
@@ -389,11 +414,7 @@ pub fn design_fir_lowpass_filter(
     normalized_cutoff: f64,
     window_type: WindowType,
 ) -> FIRFilter {
-    FIRFilter::new_from_poly(design_fir_lowpass_poly(
-        num_taps,
-        normalized_cutoff,
-        window_type,
-    ))
+    FIRFilter::design_lowpass(num_taps, normalized_cutoff, window_type)
 }
 
 pub fn design_fir_highpass_filter(
@@ -401,11 +422,7 @@ pub fn design_fir_highpass_filter(
     normalized_cutoff: f64,
     window_type: WindowType,
 ) -> FIRFilter {
-    FIRFilter::new_from_poly(design_fir_highpass_poly(
-        num_taps,
-        normalized_cutoff,
-        window_type,
-    ))
+    FIRFilter::design_highpass(num_taps, normalized_cutoff, window_type)
 }
 
 pub fn design_fir_bandpass_filter(
@@ -414,12 +431,7 @@ pub fn design_fir_bandpass_filter(
     normalized_f2: f64,
     window_type: WindowType,
 ) -> FIRFilter {
-    FIRFilter::new_from_poly(design_fir_bandpass_poly(
-        num_taps,
-        normalized_f1,
-        normalized_f2,
-        window_type,
-    ))
+    FIRFilter::design_bandpass(num_taps, normalized_f1, normalized_f2, window_type)
 }
 
 pub fn design_fir_bandstop_filter(
@@ -428,10 +440,5 @@ pub fn design_fir_bandstop_filter(
     normalized_f2: f64,
     window_type: WindowType,
 ) -> FIRFilter {
-    FIRFilter::new_from_poly(design_fir_bandstop_poly(
-        num_taps,
-        normalized_f1,
-        normalized_f2,
-        window_type,
-    ))
+    FIRFilter::design_bandstop(num_taps, normalized_f1, normalized_f2, window_type)
 }

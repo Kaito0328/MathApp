@@ -1,4 +1,3 @@
-use linalg::Vector;
 use num_complex::Complex;
 use signal_processing::dft::dft;
 use signal_processing::fir::{
@@ -7,8 +6,8 @@ use signal_processing::fir::{
 use signal_processing::window::WindowType;
 use textplots::{Chart, Plot, Shape};
 
-fn to_complex(v: &Vector<f64>) -> Vector<Complex<f64>> {
-    Vector::new(v.iter().map(|&r| Complex::new(r, 0.0)).collect())
+fn to_complex(v: &[f64]) -> Vec<Complex<f64>> {
+    v.iter().map(|&r| Complex::new(r, 0.0)).collect()
 }
 
 fn main() {
@@ -35,8 +34,8 @@ fn main() {
 
     for (name, h) in filters {
         let h_freq = dft(&to_complex(&h));
-        let mags: Vec<f32> = (0..(n_fft.min(h_freq.dim())))
-            .map(|k| h_freq.iter().nth(k).unwrap().norm() as f32)
+        let mags: Vec<f32> = (0..(n_fft.min(h_freq.len())))
+            .map(|k| h_freq[k].norm() as f32)
             .collect();
         println!("FIR {name} magnitude (first half)");
         let half = mags.len() / 2;

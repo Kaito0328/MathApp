@@ -1,4 +1,3 @@
-use linalg::Vector;
 use num_complex::Complex;
 use signal_processing::dft::dft;
 use signal_processing::fir::{
@@ -8,14 +7,14 @@ use signal_processing::signal::Spectrum;
 use signal_processing::window::WindowType;
 use std::fs;
 
-fn to_complex(v: &Vector<f64>) -> Vector<Complex<f64>> {
-    Vector::new(v.iter().map(|&r| Complex::new(r, 0.0)).collect())
+fn to_complex(v: &[f64]) -> Vec<Complex<f64>> {
+    v.iter().map(|&r| Complex::new(r, 0.0)).collect()
 }
 
-fn zero_pad_complex(v: &Vector<Complex<f64>>, n: usize) -> Vector<Complex<f64>> {
-    let mut data: Vec<Complex<f64>> = v.iter().cloned().collect();
+fn zero_pad_complex(v: &[Complex<f64>], n: usize) -> Vec<Complex<f64>> {
+    let mut data: Vec<Complex<f64>> = v.to_vec();
     data.resize(n, Complex::new(0.0, 0.0));
-    Vector::new(data)
+    data
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -52,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let svg_path = format!("{out_dir}/fir_{name}_magnitude.svg");
         // スペクトルとして包んで dB 表示の SVG を出力
-        let sp = Spectrum::new(h_freq.iter().cloned().collect(), 1.0);
+        let sp = Spectrum::new(h_freq, 1.0);
         sp.save_svg_magnitude_db_with_axes(&svg_path, 900, 420, &format!("FIR {name}"))?;
         println!("Wrote {svg_path}");
     }

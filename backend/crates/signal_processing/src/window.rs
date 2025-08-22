@@ -1,4 +1,3 @@
-use linalg::Vector;
 use std::f64::consts::PI;
 
 /// 使用する窓関数の種類を定義する列挙型。
@@ -19,13 +18,13 @@ pub enum WindowType {
 /// # 引数
 /// * `size` - 生成する窓の長さ（サンプル数）。
 /// * `window_type` - `WindowType` enum で指定する窓の種類。
-pub fn generate_window(size: usize, window_type: WindowType) -> Vector<f64> {
+pub fn generate_window(size: usize, window_type: WindowType) -> Vec<f64> {
     // エッジケース: 長さが0または1の場合
     if size == 0 {
-        return Vector::new(vec![]);
+        return vec![];
     }
     if size == 1 {
-        return Vector::new(vec![1.0]);
+        return vec![1.0];
     }
 
     let mut window = Vec::with_capacity(size);
@@ -56,7 +55,7 @@ pub fn generate_window(size: usize, window_type: WindowType) -> Vector<f64> {
         window.push(value);
     }
 
-    Vector::new(window)
+    window
 }
 
 /// 阻止域減衰量からカイザー窓に必要なbetaパラメータを計算する。

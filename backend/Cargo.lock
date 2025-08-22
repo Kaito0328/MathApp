@@ -66,6 +66,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "concrete-math"
+version = "0.1.0"
+dependencies = [
+ "linalg",
+ "num-complex",
+ "num-traits",
+ "poly",
+ "serde",
+ "utils",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -170,6 +182,15 @@ version = "0.1.0"
 dependencies = [
  "num-complex",
  "num-traits",
+]
+
+[[package]]
+name = "lti-systems"
+version = "0.1.0"
+dependencies = [
+ "linalg",
+ "num-complex",
+ "poly",
 ]
 
 [[package]]
@@ -346,9 +367,9 @@ dependencies = [
  "hound",
  "image",
  "linalg",
+ "lti-systems",
  "num-complex",
  "num-traits",
- "poly",
  "textplots",
 ]
 

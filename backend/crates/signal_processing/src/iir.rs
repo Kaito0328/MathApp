@@ -1,9 +1,73 @@
 use crate::signal::Signal;
-use linalg::Vector;
-use poly::Polynomial;
+use lti_systems::{DiscreteTransferFunction, Polynomial};
 
 use crate::dft::conv_with_dft_for_f64;
 use std::cmp::max;
+
+/// IIR フィルタ型（分子 b と分母 a の多項式）。係数は低次→高次。
+#[derive(Clone, Debug, PartialEq)]
+pub struct IIRFilter {
+    tf: DiscreteTransferFunction,
+}
+
+impl IIRFilter {
+    /// a[0] を 1 に正規化して保持（a[0] == 0 はパニック）。
+    pub fn new(mut b: Polynomial<f64>, mut a: Polynomial<f64>) -> Self {
+        let a0 = a.coeffs.first().copied().unwrap_or(1.0);
+        assert!(a0 != 0.0, "a[0] must not be zero");
+        if (a0 - 1.0).abs() > 0.0 {
+            for c in b.coeffs.iter_mut() {
+                *c /= a0;
+            }
+            for c in a.coeffs.iter_mut() {
+                *c /= a0;
+            }
+        }
+        Self {
+            tf: DiscreteTransferFunction::new(b, a),
+        }
+    }
+
+    /// サンプリング周波数を指定して生成
+    pub fn new_with_fs(mut b: Polynomial<f64>, mut a: Polynomial<f64>, fs: f64) -> Self {
+        let a0 = a.coeffs.first().copied().unwrap_or(1.0);
+        assert!(a0 != 0.0, "a[0] must not be zero");
+        if (a0 - 1.0).abs() > 0.0 {
+            for c in b.coeffs.iter_mut() {
+                *c /= a0;
+            }
+            for c in a.coeffs.iter_mut() {
+                *c /= a0;
+            }
+        }
+        Self {
+            tf: DiscreteTransferFunction::new_with_fs(b, a, fs),
+        }
+    }
+
+    /// 伝達関数から IIRFilter を生成
+    pub fn from_transfer(tf: &DiscreteTransferFunction) -> Self {
+        Self { tf: tf.clone() }
+    }
+
+    /// 自身を伝達関数として取得
+    pub fn as_transfer(&self) -> DiscreteTransferFunction {
+        self.tf.clone()
+    }
+
+    /// 直接型Iで適用した結果を返す（内部は既存差分方程式）。
+    pub fn apply(&self, x: &Signal) -> Signal {
+        let y_vec = self.tf.apply(x.data());
+        Signal::new(y_vec, x.sample_rate())
+    }
+}
+
+impl Signal {
+    /// IIR フィルタを適用。
+    pub fn apply_iir(&self, filt: &IIRFilter) -> Signal {
+        filt.apply(self)
+    }
+}
 
 /// IIRフィルタ（直接型I種）を信号に適用する。
 ///
@@ -14,7 +78,7 @@ use std::cmp::max;
 ///
 /// # 戻り値
 /// * フィルタリングされた後の信号。
-pub fn iir_filter(signal: &[f64], b_coeffs: &[f64], a_coeffs: &[f64]) -> Vector<f64> {
+pub fn iir_filter(signal: &[f64], b_coeffs: &[f64], a_coeffs: &[f64]) -> Vec<f64> {
     // 内部で、過去の入力(x)と出力(y)の値を保持するバッファを管理しながら
     // 上記の差分方程式をサンプルごとに計算していく。
     let mut y = vec![0.0; signal.len()];
@@ -42,44 +106,7 @@ pub fn iir_filter(signal: &[f64], b_coeffs: &[f64], a_coeffs: &[f64]) -> Vector<
         y[n] = (b_sum - a_sum) / a_0;
     }
 
-    Vector::new(y)
-}
-
-/// IIR フィルタ型（分子 b と分母 a の多項式）。係数は低次→高次。
-#[derive(Clone, Debug, PartialEq)]
-pub struct IIRFilter {
-    pub b: Polynomial<f64>,
-    pub a: Polynomial<f64>,
-}
-
-impl IIRFilter {
-    /// a[0] を 1 に正規化して保持（a[0] == 0 はパニック）。
-    pub fn new(mut b: Polynomial<f64>, mut a: Polynomial<f64>) -> Self {
-        let a0 = a.coeffs.first().copied().unwrap_or(1.0);
-        assert!(a0 != 0.0, "a[0] must not be zero");
-        if (a0 - 1.0).abs() > 0.0 {
-            for c in b.coeffs.iter_mut() {
-                *c /= a0;
-            }
-            for c in a.coeffs.iter_mut() {
-                *c /= a0;
-            }
-        }
-        Self { b, a }
-    }
-
-    /// 直接型Iで適用した結果を返す（内部は既存差分方程式）。
-    pub fn apply(&self, x: &Signal) -> Signal {
-        let y_vec = iir_filter(x.data(), &self.b.coeffs, &self.a.coeffs);
-        Signal::new(y_vec.data, x.sample_rate())
-    }
-}
-
-impl Signal {
-    /// IIR フィルタを適用。
-    pub fn apply_iir(&self, filt: &IIRFilter) -> Signal {
-        filt.apply(self)
-    }
+    y
 }
 
 /// 双一次変換を用いてアナログフィルタ係数をデジタルフィルタ係数に変換する。
@@ -91,18 +118,14 @@ impl Signal {
 ///
 /// # 戻り値
 /// * (digital_b, digital_a) - デジタルIIRフィルタの係数のペア。
-pub fn bilinear_transform(
-    analog_b: &Vector<f64>,
-    analog_a: &Vector<f64>,
-    fs: f64,
-) -> (Vector<f64>, Vector<f64>) {
+pub fn bilinear_transform(analog_b: &[f64], analog_a: &[f64], fs: f64) -> (Vec<f64>, Vec<f64>) {
     let mut cache = BinomialCoeffsCache::new();
-    let b_len = analog_b.dim();
-    let a_len = analog_a.dim();
+    let b_len = analog_b.len();
+    let a_len = analog_a.len();
     let n = max(b_len, a_len);
 
-    let mut digital_b = Vector::new(vec![0.0; n]);
-    let mut digital_a = Vector::new(vec![0.0; n]);
+    let mut digital_b = vec![0.0; n];
+    let mut digital_a = vec![0.0; n];
 
     let double_fs = 2.0 * fs;
     let mut power_fs = 1.0;
@@ -114,17 +137,23 @@ pub fn bilinear_transform(
         // Use (1 - x)^i instead of (x - 1)^i: multiply by (-1)^i
         let sign = if i % 2 == 0 { 1.0 } else { -1.0 };
         if sign < 0.0 {
-            for k in 0..coeffs.dim() {
+            for k in 0..coeffs.len() {
                 coeffs[k] = -coeffs[k];
             }
         }
 
         if i < b_len {
-            digital_b = digital_b + &coeffs * analog_b[i] * power_fs;
+            let scale = analog_b[i] * power_fs;
+            for k in 0..n {
+                digital_b[k] += coeffs[k] * scale;
+            }
         }
 
         if i < a_len {
-            digital_a = digital_a + &coeffs * analog_a[i] * power_fs;
+            let scale = analog_a[i] * power_fs;
+            for k in 0..n {
+                digital_a[k] += coeffs[k] * scale;
+            }
         }
 
         power_fs *= double_fs;
@@ -141,10 +170,10 @@ pub fn bilinear_transform(
 /// * `n` - 求めたい係数の次数
 /// # 戻り値
 /// * x^n の係数
-pub fn find_polynomial_coefficient(roots: &[f64]) -> Vector<f64> {
+pub fn find_polynomial_coefficient(roots: &[f64]) -> Vec<f64> {
     let num_roots = roots.len();
     if num_roots == 0 {
-        return Vector::new(vec![1.0]);
+        return vec![1.0];
     }
 
     // `coeffs[i]` が x^i の係数を保持する
@@ -168,27 +197,27 @@ pub fn find_polynomial_coefficient(roots: &[f64]) -> Vector<f64> {
         coeffs[k + 1] = 1.0;
     }
 
-    Vector::new(coeffs)
+    coeffs
 }
 
-pub fn find_polynomial_coefficient_fast(roots: &[f64]) -> Vector<f64> {
+pub fn find_polynomial_coefficient_fast(roots: &[f64]) -> Vec<f64> {
     let num_roots = roots.len();
     if num_roots == 0 {
-        return Vector::new(vec![1.0]);
+        return vec![1.0];
     }
     if num_roots == 1 {
         // P(x) = x - a₀
-        return Vector::new(vec![-roots[0], 1.0]);
+        return vec![-roots[0], 1.0];
     }
 
     let mid = num_roots / 2;
     let roots_left = &roots[..mid];
     let roots_right = &roots[mid..];
 
-    let left_coeff = &find_polynomial_coefficient_fast(roots_left);
-    let right_coeff = &find_polynomial_coefficient_fast(roots_right);
+    let left_coeff = find_polynomial_coefficient_fast(roots_left);
+    let right_coeff = find_polynomial_coefficient_fast(roots_right);
 
-    conv_with_dft_for_f64(left_coeff, right_coeff)
+    conv_with_dft_for_f64(&left_coeff, &right_coeff)
 }
 
 use std::collections::HashMap;
@@ -217,11 +246,11 @@ impl BinomialCoeffsCache {
     }
 
     /// (x+1)^k の係数を取得する（メモ化対応）
-    pub fn get_x_plus_1(&mut self, k: usize) -> Vector<f64> {
+    pub fn get_x_plus_1(&mut self, k: usize) -> Vec<f64> {
         // 1. まずキャッシュに結果があるか確認する
         if let Some(cached_coeffs) = self.plus_one_cache.get(&k) {
             // あれば、そのクローンを返して終了
-            return Vector::new(cached_coeffs.clone());
+            return cached_coeffs.clone();
         }
 
         // 2. キャッシュになければ、実際に計算する
@@ -240,14 +269,14 @@ impl BinomialCoeffsCache {
 
         // 3. 計算結果をキャッシュに保存してから返す
         self.plus_one_cache.insert(k, coeffs.clone());
-        Vector::new(coeffs)
+        coeffs
     }
 
     /// (x-1)^k の係数を取得する（メモ化対応）
-    pub fn get_x_minus_1(&mut self, k: usize) -> Vector<f64> {
+    pub fn get_x_minus_1(&mut self, k: usize) -> Vec<f64> {
         // (x-1)^k は (x+1)^k の結果を流用できるので、そちらを先にチェック
         if let Some(cached_coeffs) = self.minus_one_cache.get(&k) {
-            return Vector::new(cached_coeffs.clone());
+            return cached_coeffs.clone();
         }
 
         // (x+1)^k の係数を取得（こちらもメモ化されている）
@@ -261,7 +290,7 @@ impl BinomialCoeffsCache {
         }
 
         // 計算結果をキャッシュに保存してから返す
-        self.minus_one_cache.insert(k, coeffs.data.clone());
+        self.minus_one_cache.insert(k, coeffs.clone());
         coeffs
     }
 }

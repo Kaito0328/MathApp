@@ -1,104 +1,6 @@
 use crate::signal::{Signal, Spectrum};
-use linalg::Vector;
 use num_complex::Complex;
 use std::f64::consts::PI;
-
-pub fn dft_simple(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
-    let n = x.dim();
-    let mut dft_result = Vec::with_capacity(n);
-    for i in 0..n {
-        let mut sum = Complex::new(0.0, 0.0);
-        for j in 0..n {
-            let angle = -2.0 * std::f64::consts::PI * (i as f64 * j as f64) / (n as f64);
-            let w = Complex::new(angle.cos(), angle.sin());
-            sum += x.iter().nth(j).unwrap() * w;
-        }
-        dft_result.push(sum);
-    }
-    Vector::new(dft_result)
-}
-
-fn base_ift(dft_result: &mut [Complex<f64>], n: usize) {
-    if dft_result.len() > 1 {
-        dft_result[1..].reverse();
-    }
-
-    let n_float = n as f64;
-    for i in dft_result.iter_mut() {
-        *i /= n_float;
-    }
-}
-
-pub fn ift_simple(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
-    let mut dft_result = dft_simple(x).data;
-    base_ift(&mut dft_result, x.dim());
-    Vector::new(dft_result)
-}
-
-// 公開API: 入力長が2のべき乗ならCooley–Tukey, それ以外は混合基数FFT
-pub fn dft(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
-    let n = x.dim();
-    if is_power_of_two(n) {
-        dft_cooley_tukey(x)
-    } else {
-        mixed_radix_fft(x)
-    }
-}
-
-pub fn ift(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
-    let mut dft_result = dft(x).data;
-    base_ift(&mut dft_result, x.dim());
-    Vector::new(dft_result)
-}
-
-// ===== Signal/Spectrum フレンドリーAPI（内部アルゴリズムは既存関数を使用） =====
-
-/// 実信号から複素スペクトルを得る（DFT/FFT 自動選択）。
-pub fn dft_signal(x: &Signal) -> Spectrum {
-    let v = Vector::new(x.to_complex_vec());
-    let y = dft(&v);
-    Spectrum::new(y.data, x.sample_rate())
-}
-
-/// 複素スペクトルから実信号へ（逆変換）。
-pub fn ift_spectrum(x: &Spectrum) -> Signal {
-    let v = Vector::new(x.clone().into());
-    let y = ift(&v);
-    let data: Vec<f64> = y.data.into_iter().map(|c| c.re).collect();
-    Signal::new(data, x.sample_rate())
-}
-
-pub fn conv_with_dft(x: &Vector<Complex<f64>>, h: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
-    let n = x.dim() + h.dim() - 1;
-    let mut x_padded = x.data.clone();
-    x_padded.resize(n, Complex::new(0.0, 0.0));
-    let mut h_padded = h.data.clone();
-    h_padded.resize(n, Complex::new(0.0, 0.0));
-
-    let dft_x = dft(&Vector::new(x_padded));
-    let dft_h = dft(&Vector::new(h_padded));
-
-    let dft_result = dft_x * dft_h;
-
-    ift(&dft_result)
-}
-
-pub fn conv_with_dft_for_f64(x: &Vector<f64>, h: &Vector<f64>) -> Vector<f64> {
-    let complex_x: Vec<Complex<f64>> = x.iter().map(|&v| Complex::new(v, 0.0)).collect();
-    let complex_h: Vec<Complex<f64>> = h.iter().map(|&v| Complex::new(v, 0.0)).collect();
-    let result = conv_with_dft(&Vector::new(complex_x), &Vector::new(complex_h));
-    Vector::new(result.data.iter().map(|c| c.re).collect())
-}
-
-/// Signal 同士の線形畳み込み（DFT ベース）。
-pub fn conv_signal_with_dft(x: &Signal, h: &Signal) -> Signal {
-    let vx = Vector::new(x.to_complex_vec());
-    let vh = Vector::new(h.to_complex_vec());
-    let y = conv_with_dft(&vx, &vh);
-    let data: Vec<f64> = y.data.into_iter().map(|c| c.re).collect();
-    // 出力のサンプルレートは入力と同じ（整合性チェックは任意）
-    Signal::new(data, x.sample_rate())
-}
 
 // ---- 型メソッド拡張 ----
 impl Signal {
@@ -120,16 +22,112 @@ impl Spectrum {
     }
 }
 
-fn dft_cooley_tukey(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
-    let n = x.dim();
+pub fn dft_simple(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    let n = x.len();
+    let mut dft_result: Vec<Complex<f64>> = Vec::with_capacity(n);
+    for i in 0..n {
+        let mut sum = Complex::new(0.0, 0.0);
+        for (j, &x_j) in x.iter().enumerate() {
+            let angle = -2.0 * std::f64::consts::PI * (i as f64 * j as f64) / (n as f64);
+            let w = Complex::new(angle.cos(), angle.sin());
+            sum += x_j * w;
+        }
+        dft_result.push(sum);
+    }
+    dft_result
+}
+
+fn base_ift(dft_result: &mut [Complex<f64>], n: usize) {
+    if dft_result.len() > 1 {
+        dft_result[1..].reverse();
+    }
+
+    let n_float = n as f64;
+    for i in dft_result.iter_mut() {
+        *i /= n_float;
+    }
+}
+
+pub fn ift_simple(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    let mut dft_result = dft_simple(x);
+    base_ift(&mut dft_result, x.len());
+    dft_result
+}
+
+// 公開API: 入力長が2のべき乗ならCooley–Tukey, それ以外は混合基数FFT
+pub fn dft(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    let n = x.len();
+    if is_power_of_two(n) {
+        dft_cooley_tukey(x)
+    } else {
+        mixed_radix_fft(x)
+    }
+}
+
+pub fn ift(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    let mut dft_result = dft(x);
+    base_ift(&mut dft_result, x.len());
+    dft_result
+}
+
+// ===== Signal/Spectrum フレンドリーAPI（内部アルゴリズムは既存関数を使用） =====
+
+/// 実信号から複素スペクトルを得る（DFT/FFT 自動選択）。
+pub fn dft_signal(x: &Signal) -> Spectrum {
+    let y = dft(&x.to_complex_vec());
+    Spectrum::new(y, x.sample_rate())
+}
+
+/// 複素スペクトルから実信号へ（逆変換）。
+pub fn ift_spectrum(x: &Spectrum) -> Signal {
+    let v: Vec<Complex<f64>> = x.clone().into();
+    let y = ift(&v);
+    let data: Vec<f64> = y.into_iter().map(|c| c.re).collect();
+    Signal::new(data, x.sample_rate())
+}
+
+pub fn conv_with_dft(x: &[Complex<f64>], h: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    let n = x.len() + h.len() - 1;
+    let mut x_padded = x.to_vec();
+    x_padded.resize(n, Complex::new(0.0, 0.0));
+    let mut h_padded = h.to_vec();
+    h_padded.resize(n, Complex::new(0.0, 0.0));
+
+    let dft_x = dft(&x_padded);
+    let dft_h = dft(&h_padded);
+
+    let dft_result: Vec<Complex<f64>> = dft_x.into_iter().zip(dft_h).map(|(a, b)| a * b).collect();
+
+    ift(&dft_result)
+}
+
+pub fn conv_with_dft_for_f64(x: &[f64], h: &[f64]) -> Vec<f64> {
+    let complex_x: Vec<Complex<f64>> = x.iter().map(|&v| Complex::new(v, 0.0)).collect();
+    let complex_h: Vec<Complex<f64>> = h.iter().map(|&v| Complex::new(v, 0.0)).collect();
+    let result = conv_with_dft(&complex_x, &complex_h);
+    result.into_iter().map(|c| c.re).collect()
+}
+
+/// Signal 同士の線形畳み込み（DFT ベース）。
+pub fn conv_signal_with_dft(x: &Signal, h: &Signal) -> Signal {
+    let vx = x.to_complex_vec();
+    let vh = h.to_complex_vec();
+    let y = conv_with_dft(&vx, &vh);
+    let data: Vec<f64> = y.into_iter().map(|c| c.re).collect();
+    // 出力のサンプルレートは入力と同じ（整合性チェックは任意）
+    Signal::new(data, x.sample_rate())
+}
+
+fn dft_cooley_tukey(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    let n = x.len();
     if n == 0 {
-        return Vector::new(vec![]);
+        return vec![];
     }
     if n == 1 {
-        return x.clone();
+        return vec![x[0]];
     }
     // 反復型ラディックス2 FFT（n は 2 のべき乗を仮定）
-    let mut a: Vec<Complex<f64>> = x.iter().cloned().collect();
+    let mut a: Vec<Complex<f64>> = x.to_vec();
     // ビット反転置換
     let mut j = 0usize;
     for i in 1..(n - 1) {
@@ -160,14 +158,11 @@ fn dft_cooley_tukey(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
         }
         m <<= 1;
     }
-    Vector::new(a)
+    a
 }
 
-fn mixed_radix_fft(x: &Vector<Complex<f64>>) -> Vector<Complex<f64>> {
-    // Convert Vector -> Vec for internal recursion
-    let data: Vec<Complex<f64>> = x.iter().cloned().collect();
-    let y = fft_mixed_radix_recursive(&data);
-    Vector::new(y)
+fn mixed_radix_fft(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    fft_mixed_radix_recursive(x)
 }
 
 fn fft_mixed_radix_recursive(x: &[Complex<f64>]) -> Vec<Complex<f64>> {

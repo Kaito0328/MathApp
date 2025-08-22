@@ -1,7 +1,5 @@
 use crate::fir::{self, FIRFilter};
-use crate::media::{audio_io, image_io};
 use crate::plot::{self, Series};
-use linalg::Vector;
 use num_complex::Complex;
 
 /// 時間領域の実数信号。サンプル列とサンプルレート(Hz)を保持。
@@ -112,54 +110,8 @@ impl Signal {
         plot::save_svg_time_series(path, width, height, &series, Some(sr))
     }
 
-    /// 画像のグレースケールをベクトル化して 1D 信号に詰める（行優先）。値は[0,1]。
-    pub fn from_image_grayscale(path: &str, sample_rate: f64) -> Result<Signal, image::ImageError> {
-        let (v, _w, _h) = image_io::load_grayscale_to_vec(path)?;
-        Ok(Signal::new(v.data, sample_rate))
-    }
-
-    /// 画像のRGB(インターリーブ)を 1D 信号に詰める。値は[0,1]、長さは w*h*3。
-    pub fn from_image_rgb(path: &str, sample_rate: f64) -> Result<Signal, image::ImageError> {
-        let (v, _w, _h) = image_io::load_rgb_to_vec(path)?;
-        Ok(Signal::new(v.data, sample_rate))
-    }
-
-    /// WAV(モノラル)から読み込み。
-    pub fn from_wav_mono(path: &str) -> Result<Signal, hound::Error> {
-        let (v, info) = audio_io::load_wav_mono_to_vec(path)?;
-        Ok(Signal::new(v.data, info.sample_rate as f64))
-    }
-
-    /// WAV(モノラル)として保存。内部値[-1,1]を 16bit PCM に量子化。
-    pub fn save_wav_mono(&self, path: &str) -> Result<(), hound::Error> {
-        let v = Vector::new(self.data.clone());
-        audio_io::save_wav_mono_from_vec(path, &v, self.sample_rate as u32)
-    }
-
-    /// グレースケール画像として保存。自己データ長は width*height を想定（[0,1] 範囲）。
-    pub fn save_image_grayscale(
-        &self,
-        path: &str,
-        width: u32,
-        height: u32,
-    ) -> Result<(), image::ImageError> {
-        let v = Vector::new(self.data.clone());
-        image_io::save_vec_to_grayscale(path, &v, width, height)
-    }
-
-    /// RGB画像として保存。自己データ長は width*height*3 を想定（[0,1] 範囲、R,G,B の順）。
-    pub fn save_image_rgb(
-        &self,
-        path: &str,
-        width: u32,
-        height: u32,
-    ) -> Result<(), image::ImageError> {
-        let v = Vector::new(self.data.clone());
-        image_io::save_vec_to_rgb(path, &v, width, height)
-    }
-
     /// FIR 係数（Polynomial の係数を低次→高次でタップとみなす）で自己に畳み込み適用。
-    pub fn apply_fir(&self, taps: &poly::Polynomial<f64>) -> Signal {
+    pub fn apply_fir(&self, taps: &lti_systems::Polynomial<f64>) -> Signal {
         fir::apply_fir_signal(taps, self)
     }
 

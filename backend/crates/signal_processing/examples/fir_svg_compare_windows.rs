@@ -1,4 +1,3 @@
-use linalg::Vector;
 use num_complex::Complex;
 use signal_processing::dft::dft;
 use signal_processing::fir::{design_fir_bandpass, design_fir_highpass, design_fir_lowpass};
@@ -6,43 +5,39 @@ use signal_processing::signal::{Signal, Spectrum};
 use signal_processing::window::{calc_beta, WindowType};
 use std::fs;
 
-fn to_complex(v: &Vector<f64>) -> Vector<Complex<f64>> {
-    Vector::new(v.iter().map(|&r| Complex::new(r, 0.0)).collect())
+fn to_complex(v: &[f64]) -> Vec<Complex<f64>> {
+    v.iter().map(|&r| Complex::new(r, 0.0)).collect()
 }
 
-fn zero_pad_complex(v: &Vector<Complex<f64>>, n: usize) -> Vector<Complex<f64>> {
-    let mut data: Vec<Complex<f64>> = v.iter().cloned().collect();
+fn zero_pad_complex(v: &[Complex<f64>], n: usize) -> Vec<Complex<f64>> {
+    let mut data: Vec<Complex<f64>> = v.to_vec();
     data.resize(n, Complex::new(0.0, 0.0));
-    Vector::new(data)
+    data
 }
 
-fn apply_fir(h: &Vector<f64>, x: &Vector<f64>) -> Vector<f64> {
-    let m = h.dim();
-    let n = x.dim();
-    let hh: Vec<f64> = h.iter().cloned().collect();
-    let xx: Vec<f64> = x.iter().cloned().collect();
+fn apply_fir(h: &[f64], x: &[f64]) -> Vec<f64> {
+    let m = h.len();
+    let n = x.len();
     let mut y = vec![0.0; n];
     for i in 0..n {
         let mut acc = 0.0;
         let kmax = m.min(i + 1);
         for k in 0..kmax {
-            acc += hh[k] * xx[i - k];
+            acc += h[k] * x[i - k];
         }
         y[i] = acc;
     }
-    Vector::new(y)
+    y
 }
 
-fn make_signal(n: usize, f1: f64, f2: f64, fs: f64) -> Vector<f64> {
-    Vector::new(
-        (0..n)
-            .map(|i| {
-                let t = i as f64 / fs;
-                (2.0 * std::f64::consts::PI * f1 * t).sin()
-                    + 0.5 * (2.0 * std::f64::consts::PI * f2 * t).sin()
-            })
-            .collect(),
-    )
+fn make_signal(n: usize, f1: f64, f2: f64, fs: f64) -> Vec<f64> {
+    (0..n)
+        .map(|i| {
+            let t = i as f64 / fs;
+            (2.0 * std::f64::consts::PI * f1 * t).sin()
+                + 0.5 * (2.0 * std::f64::consts::PI * f2 * t).sin()
+        })
+        .collect()
 }
 
 // note: we inline simple path drawing to avoid type gymnastics
@@ -79,7 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for &(name, w) in windows.iter() {
             let h = design_fir_lowpass(num_taps, fc, w);
             let h_freq = dft(&zero_pad_complex(&to_complex(&h), n_fft));
-            let sp = Spectrum::new(h_freq.iter().cloned().collect(), 1.0);
+            let sp = Spectrum::new(h_freq, 1.0);
             specs.push((sp, name));
         }
         // 参照の配列を作って API に渡す
@@ -96,7 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for &(name, w) in windows.iter() {
             let h = design_fir_highpass(num_taps, fc, w);
             let h_freq = dft(&zero_pad_complex(&to_complex(&h), n_fft));
-            let sp = Spectrum::new(h_freq.iter().cloned().collect(), 1.0);
+            let sp = Spectrum::new(h_freq, 1.0);
             specs.push((sp, name));
         }
         let refs: Vec<(&Spectrum, &str)> = specs.iter().map(|(s, name)| (s, *name)).collect();
@@ -113,7 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for &(name, w) in windows.iter() {
             let h = design_fir_bandpass(num_taps, f1, f2, w);
             let h_freq = dft(&zero_pad_complex(&to_complex(&h), n_fft));
-            let sp = Spectrum::new(h_freq.iter().cloned().collect(), 1.0);
+            let sp = Spectrum::new(h_freq, 1.0);
             specs.push((sp, name));
         }
         let refs: Vec<(&Spectrum, &str)> = specs.iter().map(|(s, name)| (s, *name)).collect();
@@ -127,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let n = 512usize;
         let x = make_signal(n, 10.0, 40.0, fs); // 10Hz + 40Hz/2
         let svg_path = format!("{out_dir}/compare_windows_lowpass_timesignal.svg");
-        let input_sig = Signal::new(x.iter().cloned().collect(), fs);
+        let input_sig = Signal::new(x.clone(), fs);
 
         // いくつかの窓の出力を重ね描き
         let fc = 0.15;
@@ -148,7 +143,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for (name, w) in choose.into_iter() {
             let h = design_fir_lowpass(num_taps, fc, w);
             let y = apply_fir(&h, &x);
-            let y_sig = Signal::new(y.iter().cloned().collect(), fs);
+            let y_sig = Signal::new(y, fs);
             labeled.push((y_sig, name));
         }
         let refs: Vec<(&Signal, &str)> = labeled.iter().map(|(s, name)| (s, *name)).collect();

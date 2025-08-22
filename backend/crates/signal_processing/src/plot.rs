@@ -83,7 +83,7 @@ pub fn save_svg_time_series(
     }
 
     // 軸線
-    writeln!(f, "<rect x='{:.1}' y='{:.1}' width='{:.1}' height='{:.1}' fill='none' stroke='{axis_color}' stroke-width='1.5' />", margin_l, margin_t, plot_w, plot_h)?;
+    writeln!(f, "<rect x='{margin_l:.1}' y='{margin_t:.1}' width='{plot_w:.1}' height='{plot_h:.1}' fill='none' stroke='{axis_color}' stroke-width='1.5' />")?;
     writeln!(f, "<text x='{:.1}' y='{:.1}' font-size='11' fill='{text_color}' text-anchor='middle'>{}</text>", margin_l + plot_w / 2.0, h - 6.0, x_label)?;
 
     // 色サイクル

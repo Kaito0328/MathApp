@@ -1,4 +1,5 @@
 pub mod eigen;
+pub mod exp;
 pub mod lu;
 pub mod qr;
 pub mod svd;

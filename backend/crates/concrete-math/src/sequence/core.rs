@@ -1,16 +1,14 @@
 use num_complex::Complex;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use crate::polynomial::Polynomial;
+use poly::polynomial::Polynomial;
 
-/// 一般項の一つの項 P(n) * r^n を表現する。
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeneralTerm {
     pub polynomial: Polynomial<Complex<f64>>,
-    pub base: Complex<f64>, // r
+    pub base: Complex<f64>,
 }
 
-/// 漸化式の閉じた式（一般項）全体を表現する。(\sum f_k * r^k)
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct ClosedForm {
     pub terms: Vec<GeneralTerm>,
@@ -31,10 +29,8 @@ impl ClosedForm {
             .map(|term| {
                 let poly_val = term.polynomial.eval(n_complex);
                 if (term.base - 1.0).norm() < EPSILON {
-                    // baseが1の場合、rⁿ = 1 なので、多項式の値そのもの
                     poly_val
                 } else {
-                    // baseが1でない場合は、通常通りべき乗を計算
                     poly_val * term.base.powu(n)
                 }
             })
@@ -53,7 +49,6 @@ impl ClosedForm {
         self.terms.is_empty() || self.terms.iter().all(|t| t.polynomial.is_zero())
     }
 
-    /// 近接した同一底(base)をまとめ、零項を除去する
     pub fn simplify(&mut self) {
         const EPS: f64 = 1e-12;
         let mut acc: Vec<GeneralTerm> = Vec::new();
@@ -61,14 +56,12 @@ impl ClosedForm {
             if t.polynomial.is_zero() {
                 continue;
             }
-            // 既存ベースと近いものに加算
             if let Some(existing) = acc.iter_mut().find(|u| (u.base - t.base).norm() < EPS) {
                 existing.polynomial = &existing.polynomial + &t.polynomial;
             } else {
                 acc.push(t);
             }
         }
-        // もう一度ゼロ多項式を除去
         acc.retain(|t| !t.polynomial.is_zero());
         self.terms = acc;
     }
@@ -79,11 +72,6 @@ impl ClosedForm {
     }
 }
 
-// -----------------
-// 演算子
-// -----------------
-
-// 非ジェネリック型向け：&T op &T を前提に T op &T, &T op T, T op T を自動実装
 macro_rules! impl_ops_ref_variants_for_nongen {
     ($Type:ty, $Trait:ident, $method:ident) => {
         #[allow(clippy::suspicious_arithmetic_impl)]
@@ -113,7 +101,6 @@ macro_rules! impl_ops_ref_variants_for_nongen {
     };
 }
 
-// 非ジェネリック型向け：&T op Scalar を前提に T op &Scalar, T op Scalar を自動実装
 macro_rules! impl_scalar_rhs_ref_variants_for_nongen {
     ($Type:ty, $Scalar:ty, $Trait:ident, $method:ident) => {
         impl ::std::ops::$Trait<&$Scalar> for $Type {
@@ -154,7 +141,6 @@ impl Add for &ClosedForm {
 impl Sub for &ClosedForm {
     type Output = ClosedForm;
     fn sub(self, rhs: Self) -> Self::Output {
-        // a - b = a + (-b)
         self + &(-rhs)
     }
 }
@@ -162,7 +148,6 @@ impl Sub for &ClosedForm {
 impl Mul for &ClosedForm {
     type Output = ClosedForm;
     fn mul(self, rhs: Self) -> Self::Output {
-        // (Σ P_i(n) r_i^n) (Σ Q_j(n) s_j^n) = Σ P_i(n)Q_j(n) (r_is_j)^n
         let mut terms: Vec<GeneralTerm> = Vec::with_capacity(self.terms.len() * rhs.terms.len());
         for lt in &self.terms {
             for rt in &rhs.terms {
@@ -236,11 +221,9 @@ impl Neg for ClosedForm {
     }
 }
 
-// 所有/参照の派生をマクロで生成
 impl_ops_ref_variants_for_nongen!(ClosedForm, Add, add);
 impl_ops_ref_variants_for_nongen!(ClosedForm, Sub, sub);
 impl_ops_ref_variants_for_nongen!(ClosedForm, Mul, mul);
 
-// スカラー右辺の派生（&ClosedForm op Complex<f64> をベースに）
 impl_scalar_rhs_ref_variants_for_nongen!(ClosedForm, Complex<f64>, Mul, mul);
 impl_scalar_rhs_ref_variants_for_nongen!(ClosedForm, Complex<f64>, Div, div);

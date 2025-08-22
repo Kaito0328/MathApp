@@ -1,10 +1,9 @@
-use linalg::Vector;
 use signal_processing::sampling::{decimate, down_sample, expand, resample, upsample};
 use signal_processing::window::WindowType;
 
-fn vec_close(a: &Vector<f64>, b: &Vector<f64>, eps: f64) {
-    assert_eq!(a.dim(), b.dim());
-    for i in 0..a.dim() {
+fn vec_close(a: &[f64], b: &[f64], eps: f64) {
+    assert_eq!(a.len(), b.len());
+    for i in 0..a.len() {
         assert!(
             (a[i] - b[i]).abs() <= eps,
             "idx {}: {} vs {}",
@@ -17,28 +16,28 @@ fn vec_close(a: &Vector<f64>, b: &Vector<f64>, eps: f64) {
 
 #[test]
 fn expand_inserts_zeros() {
-    let x = Vector::new(vec![1.0, -2.0, 3.0]);
+    let x = vec![1.0, -2.0, 3.0];
     let y = expand(&x, 3);
-    assert_eq!(y.data, vec![1.0, 0.0, 0.0, -2.0, 0.0, 0.0, 3.0, 0.0, 0.0]);
+    assert_eq!(y, vec![1.0, 0.0, 0.0, -2.0, 0.0, 0.0, 3.0, 0.0, 0.0]);
 
     // factor<=1 はそのまま返す
-    assert_eq!(expand(&x, 1).data, x.data);
+    assert_eq!(expand(&x, 1), x);
 }
 
 #[test]
 fn decimate_keeps_every_mth() {
-    let x = Vector::new((0..10).map(|v| v as f64).collect());
+    let x: Vec<f64> = (0..10).map(|v| v as f64).collect();
     let y = decimate(&x, 3);
-    assert_eq!(y.data, vec![0.0, 3.0, 6.0, 9.0]);
+    assert_eq!(y, vec![0.0, 3.0, 6.0, 9.0]);
 
     // factor==0 -> 空
-    assert_eq!(decimate(&x, 0).data, Vec::<f64>::new());
+    assert_eq!(decimate(&x, 0), Vec::<f64>::new());
 }
 
 #[test]
 fn upsample_equals_filter_of_expand() {
     // ランダムでなく決定的な小信号
-    let x = Vector::new(vec![1.0, 0.5, -1.0, 0.25]);
+    let x = vec![1.0, 0.5, -1.0, 0.25];
     let l = 2usize;
     let taps = 41usize;
     let win = WindowType::Hamming;
@@ -49,7 +48,10 @@ fn upsample_equals_filter_of_expand() {
     use signal_processing::dft::conv_with_dft_for_f64;
     use signal_processing::fir::design_fir_lowpass;
     let xp = expand(&x, l);
-    let h = design_fir_lowpass(taps, 0.5 / l as f64, win) * l as f64;
+    let mut h = design_fir_lowpass(taps, 0.5 / l as f64, win);
+    for c in &mut h {
+        *c *= l as f64;
+    }
     let y2 = conv_with_dft_for_f64(&xp, &h);
 
     vec_close(&y1, &y2, 1e-9);
@@ -57,7 +59,7 @@ fn upsample_equals_filter_of_expand() {
 
 #[test]
 fn downsample_equals_filter_then_pick() {
-    let x = Vector::new(vec![1.0, -1.0, 0.5, -0.5, 2.0, -2.0, 1.5, -1.5]);
+    let x = vec![1.0, -1.0, 0.5, -0.5, 2.0, -2.0, 1.5, -1.5];
     let m = 2usize;
     let taps = 31usize;
     let win = WindowType::Hamming;
@@ -75,11 +77,9 @@ fn downsample_equals_filter_then_pick() {
 
 #[test]
 fn resample_composes_up_and_down() {
-    let x = Vector::new(
-        (0..16)
-            .map(|i| (2.0 * std::f64::consts::PI * (i as f64) / 8.0).sin())
-            .collect(),
-    );
+    let x: Vec<f64> = (0..16)
+        .map(|i| (2.0 * std::f64::consts::PI * (i as f64) / 8.0).sin())
+        .collect();
     let l = 3usize;
     let m = 2usize;
     let taps = 41usize;
