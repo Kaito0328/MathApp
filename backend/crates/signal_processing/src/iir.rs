@@ -1,8 +1,10 @@
 use crate::signal::Signal;
-use lti_systems::{DiscreteTransferFunction, Polynomial};
-
-use crate::dft::conv_with_dft_for_f64;
-use std::cmp::max;
+use lti_systems::continuous::TransferFunction as ContinuousTransferFunction;
+use lti_systems::discrete::TransferFunction as DiscreteTransferFunction;
+use lti_systems::zpk;
+use num_complex::Complex;
+use polynomial::Polynomial;
+use std::f64::consts::PI;
 
 /// IIR フィルタ型（分子 b と分母 a の多項式）。係数は低次→高次。
 #[derive(Clone, Debug, PartialEq)]
@@ -60,6 +62,128 @@ impl IIRFilter {
         let y_vec = self.tf.apply(x.data());
         Signal::new(y_vec, x.sample_rate())
     }
+
+    /// デジタル Butterworth IIR を設計（プリワープ双一次）。
+    /// - fs: サンプリング周波数 [Hz]
+    /// - spec: 目標特性（Hz 指定）
+    pub fn design_digital_butterworth(order: usize, fs: f64, spec: DigitalFilterSpec) -> Self {
+        assert!(order >= 1);
+        assert!(fs > 0.0);
+        use DigitalFilterSpec as D;
+        // 1) アナログ正規化LPをZPKで作成（wc=1）
+        let zpk_lp = design_analog_butterworth_lp(order, 1.0);
+        // 2) 仕様に応じてアナログZPKへ変換（必要な場合は周波数プリワープ）
+        let ctf = match spec {
+            D::Lowpass { fc_hz } => {
+                let wc = 2.0 * std::f64::consts::PI * fc_hz;
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Lowpass { wc });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear_prewarp(fs, fc_hz)
+            }
+            D::Highpass { fc_hz } => {
+                let wc = 2.0 * std::f64::consts::PI * fc_hz;
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Highpass { wc });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear_prewarp(fs, fc_hz)
+            }
+            D::Bandpass { f1_hz, f2_hz } => {
+                assert!(f2_hz > f1_hz && f1_hz > 0.0);
+                // エッジ周波数をプリワープしてアナログBPに変換 → 通常双一次
+                let w1 = prewarp_rad_per_s(fs, f1_hz);
+                let w2 = prewarp_rad_per_s(fs, f2_hz);
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Bandpass { w1, w2 });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear(fs)
+            }
+            D::Bandstop { f1_hz, f2_hz } => {
+                assert!(f2_hz > f1_hz && f1_hz > 0.0);
+                let w1 = prewarp_rad_per_s(fs, f1_hz);
+                let w2 = prewarp_rad_per_s(fs, f2_hz);
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Bandstop { w1, w2 });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear(fs)
+            }
+        };
+        IIRFilter::from_transfer(&ctf)
+    }
+
+    /// デジタル Chebyshev I IIR を設計（プリワープ双一次）。
+    pub fn design_digital_chebyshev1(
+        order: usize,
+        ripple_db: f64,
+        fs: f64,
+        spec: DigitalFilterSpec,
+    ) -> Self {
+        assert!(order >= 1);
+        assert!(ripple_db >= 0.0);
+        assert!(fs > 0.0);
+        use DigitalFilterSpec as D;
+        let zpk_lp = design_analog_chebyshev1_lp(order, ripple_db, 1.0);
+        let dtf = match spec {
+            D::Lowpass { fc_hz } => {
+                let wc = 2.0 * std::f64::consts::PI * fc_hz;
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Lowpass { wc });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear_prewarp(fs, fc_hz)
+            }
+            D::Highpass { fc_hz } => {
+                let wc = 2.0 * std::f64::consts::PI * fc_hz;
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Highpass { wc });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear_prewarp(fs, fc_hz)
+            }
+            D::Bandpass { f1_hz, f2_hz } => {
+                assert!(f2_hz > f1_hz && f1_hz > 0.0);
+                let w1 = prewarp_rad_per_s(fs, f1_hz);
+                let w2 = prewarp_rad_per_s(fs, f2_hz);
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Bandpass { w1, w2 });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear(fs)
+            }
+            D::Bandstop { f1_hz, f2_hz } => {
+                assert!(f2_hz > f1_hz && f1_hz > 0.0);
+                let w1 = prewarp_rad_per_s(fs, f1_hz);
+                let w2 = prewarp_rad_per_s(fs, f2_hz);
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Bandstop { w1, w2 });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear(fs)
+            }
+        };
+        IIRFilter::from_transfer(&dtf)
+    }
+
+    /// デジタル Chebyshev II IIR を設計（プリワープ双一次）。
+    pub fn design_digital_chebyshev2(
+        order: usize,
+        stopband_atten_db: f64,
+        fs: f64,
+        spec: DigitalFilterSpec,
+    ) -> Self {
+        assert!(order >= 1);
+        assert!(stopband_atten_db > 0.0);
+        assert!(fs > 0.0);
+        use DigitalFilterSpec as D;
+        let zpk_lp = design_analog_chebyshev2_lp(order, stopband_atten_db, 1.0);
+        let dtf = match spec {
+            D::Lowpass { fc_hz } => {
+                let wc = 2.0 * std::f64::consts::PI * fc_hz;
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Lowpass { wc });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear_prewarp(fs, fc_hz)
+            }
+            D::Highpass { fc_hz } => {
+                let wc = 2.0 * std::f64::consts::PI * fc_hz;
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Highpass { wc });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear_prewarp(fs, fc_hz)
+            }
+            D::Bandpass { f1_hz, f2_hz } => {
+                assert!(f2_hz > f1_hz && f1_hz > 0.0);
+                let w1 = prewarp_rad_per_s(fs, f1_hz);
+                let w2 = prewarp_rad_per_s(fs, f2_hz);
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Bandpass { w1, w2 });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear(fs)
+            }
+            D::Bandstop { f1_hz, f2_hz } => {
+                assert!(f2_hz > f1_hz && f1_hz > 0.0);
+                let w1 = prewarp_rad_per_s(fs, f1_hz);
+                let w2 = prewarp_rad_per_s(fs, f2_hz);
+                let zpk = lp_zpk_to(&zpk_lp, AnalogFilterSpec::Bandstop { w1, w2 });
+                ContinuousTransferFunction::from_zpk(&zpk).to_discrete_bilinear(fs)
+            }
+        };
+        IIRFilter::from_transfer(&dtf)
+    }
 }
 
 impl Signal {
@@ -69,228 +193,299 @@ impl Signal {
     }
 }
 
-/// IIRフィルタ（直接型I種）を信号に適用する。
-///
-/// # 引数
-/// * `signal` - 入力信号。
-/// * `b_coeffs` - FIR部の係数（分子係数）。
-/// * `a_coeffs` - IIR部の係数（分母係数）。a₀は通常1。
-///
-/// # 戻り値
-/// * フィルタリングされた後の信号。
-pub fn iir_filter(signal: &[f64], b_coeffs: &[f64], a_coeffs: &[f64]) -> Vec<f64> {
-    // 内部で、過去の入力(x)と出力(y)の値を保持するバッファを管理しながら
-    // 上記の差分方程式をサンプルごとに計算していく。
-    let mut y = vec![0.0; signal.len()];
-    let a_0 = a_coeffs[0]; // a₀は通常1なので、除算を避けるために保持
+// ===== ローパス → 他特性 変換 (連続系, ZPKベース) =====
 
-    for n in 0..signal.len() {
-        // 分子部分の計算
-        let mut b_sum = 0.0;
-        for (i, &b) in b_coeffs.iter().enumerate() {
-            if n >= i {
-                b_sum += b * signal[n - i];
-            }
-        }
-
-        // 分母部分の計算
-        let mut a_sum = 0.0;
-        for (j, &a) in a_coeffs.iter().enumerate().skip(1) {
-            if n >= j {
-                // a₀は除外
-                a_sum += a * y[n - j];
-            }
-        }
-
-        // 出力の計算
-        y[n] = (b_sum - a_sum) / a_0;
-    }
-
-    y
+/// ターゲット特性の指定
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AnalogFilterSpec {
+    Lowpass { wc: f64 },
+    Highpass { wc: f64 },
+    Bandpass { w1: f64, w2: f64 },
+    Bandstop { w1: f64, w2: f64 },
 }
 
-/// 双一次変換を用いてアナログフィルタ係数をデジタルフィルタ係数に変換する。
-///
-/// # 引数
-/// * `analog_b` - アナログ伝達関数の分子(B(s))の係数。
-/// * `analog_a` - アナログ伝達関数の分母(A(s))の係数。
-/// * `fs` - サンプリング周波数。周波数ワーピングの補正に必要。
-///
-/// # 戻り値
-/// * (digital_b, digital_a) - デジタルIIRフィルタの係数のペア。
-pub fn bilinear_transform(analog_b: &[f64], analog_a: &[f64], fs: f64) -> (Vec<f64>, Vec<f64>) {
-    let mut cache = BinomialCoeffsCache::new();
-    let b_len = analog_b.len();
-    let a_len = analog_a.len();
-    let n = max(b_len, a_len);
-
-    let mut digital_b = vec![0.0; n];
-    let mut digital_a = vec![0.0; n];
-
-    let double_fs = 2.0 * fs;
-    let mut power_fs = 1.0;
-
-    for i in 0..n {
-        let coeffs_plus = cache.get_x_plus_1(n - 1 - i);
-        let coeffs_minus = cache.get_x_minus_1(i);
-        let mut coeffs = conv_with_dft_for_f64(&coeffs_plus, &coeffs_minus);
-        // Use (1 - x)^i instead of (x - 1)^i: multiply by (-1)^i
-        let sign = if i % 2 == 0 { 1.0 } else { -1.0 };
-        if sign < 0.0 {
-            for k in 0..coeffs.len() {
-                coeffs[k] = -coeffs[k];
-            }
-        }
-
-        if i < b_len {
-            let scale = analog_b[i] * power_fs;
-            for k in 0..n {
-                digital_b[k] += coeffs[k] * scale;
-            }
-        }
-
-        if i < a_len {
-            let scale = analog_a[i] * power_fs;
-            for k in 0..n {
-                digital_a[k] += coeffs[k] * scale;
-            }
-        }
-
-        power_fs *= double_fs;
-    }
-
-    (digital_b, digital_a)
+/// デジタルIIR設計用の仕様（Hz 単位）。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DigitalFilterSpec {
+    Lowpass { fc_hz: f64 },
+    Highpass { fc_hz: f64 },
+    Bandpass { f1_hz: f64, f2_hz: f64 },
+    Bandstop { f1_hz: f64, f2_hz: f64 },
 }
 
-/// Roots a_k から多項式 P(x) = Π(x - a_k) を展開し、
-/// x^n の係数を返す。
-///
-/// # 引数
-/// * `roots` - 根のリスト [a_0, a_1, ..., a_{N-1}]
-/// * `n` - 求めたい係数の次数
-/// # 戻り値
-/// * x^n の係数
-pub fn find_polynomial_coefficient(roots: &[f64]) -> Vec<f64> {
-    let num_roots = roots.len();
-    if num_roots == 0 {
-        return vec![1.0];
+fn prewarp_rad_per_s(fs: f64, f_hz: f64) -> f64 {
+    // ωa = 2 fs tan(π f/fs)
+    assert!(fs > 0.0);
+    if f_hz <= 0.0 {
+        return 0.0;
     }
-
-    // `coeffs[i]` が x^i の係数を保持する
-    // P₀(x) = (x - a₀) の係数で初期化 -> [ -roots[0], 1.0 ]
-    let mut coeffs = vec![-roots[0], 1.0];
-
-    // P₁(x) から P_{N-1}(x) まで順番に係数を更新していく
-    for (k, &a_k) in roots.iter().enumerate().skip(1) {
-        // 次数が1つ増えるので、最高次の係数のために要素を一つ追加
-        coeffs.push(0.0);
-
-        // 係数を更新：高次の項から計算しないと、更新前の値が上書きされてしまう
-        for i in (1..=k).rev() {
-            // new_coeffs[i] = coeffs[i-1] - a_k * coeffs[i]
-            coeffs[i] = coeffs[i - 1] - a_k * coeffs[i];
-        }
-        // 定数項 (x^0) を更新
-        coeffs[0] *= -a_k;
-
-        // 最高次の係数 (x^{k+1}) は常に 1
-        coeffs[k + 1] = 1.0;
-    }
-
-    coeffs
+    let x = std::f64::consts::PI * f_hz / fs;
+    2.0 * fs * x.tan()
 }
 
-pub fn find_polynomial_coefficient_fast(roots: &[f64]) -> Vec<f64> {
-    let num_roots = roots.len();
-    if num_roots == 0 {
-        return vec![1.0];
-    }
-    if num_roots == 1 {
-        // P(x) = x - a₀
-        return vec![-roots[0], 1.0];
-    }
-
-    let mid = num_roots / 2;
-    let roots_left = &roots[..mid];
-    let roots_right = &roots[mid..];
-
-    let left_coeff = find_polynomial_coefficient_fast(roots_left);
-    let right_coeff = find_polynomial_coefficient_fast(roots_right);
-
-    conv_with_dft_for_f64(&left_coeff, &right_coeff)
+fn zpk_lp_scale(zpk_lp: &zpk::ContinuousZpk, wc: f64) -> zpk::ContinuousZpk {
+    let zeros: Vec<_> = zpk_lp.zeros.iter().map(|&r| r * wc).collect();
+    let poles: Vec<_> = zpk_lp.poles.iter().map(|&r| r * wc).collect();
+    let gain = zpk_lp.gain * wc.powi((zeros.len() as i32) - (poles.len() as i32));
+    zpk::ContinuousZpk::new(zeros, poles, gain)
 }
 
-use std::collections::HashMap;
-
-/// 二項係数の計算結果をキャッシュするための構造体
-pub struct BinomialCoeffsCache {
-    // (x+1)^k の結果を保存するキャッシュ
-    plus_one_cache: HashMap<usize, Vec<f64>>,
-    // (x-1)^k の結果を保存するキャッシュ
-    minus_one_cache: HashMap<usize, Vec<f64>>,
+fn zpk_lp_to_hp(zpk_lp: &zpk::ContinuousZpk, wc: f64) -> zpk::ContinuousZpk {
+    let z = &zpk_lp.zeros;
+    let p = &zpk_lp.poles;
+    let n = zpk_lp.poles.len();
+    let mut zeros: Vec<Complex<f64>> = Vec::new();
+    // map finite zeros
+    for &zr in z {
+        if zr == Complex::new(0.0, 0.0) {
+            // LP 零点が原点なら HP では無限遠 → 無視（次数調整は原点零点で）
+            continue;
+        }
+        zeros.push(wc / zr);
+    }
+    // add zeros at origin to match order
+    while zeros.len() < n {
+        zeros.push(Complex::new(0.0, 0.0));
+    }
+    let poles: Vec<_> = p.iter().map(|&pr| wc / pr).collect();
+    // HP の高域利得を 1 に（k = 1）
+    zpk::ContinuousZpk::new(zeros, poles, 1.0)
 }
 
-impl Default for BinomialCoeffsCache {
-    fn default() -> Self {
-        Self::new()
+fn map_root_lp_to_bp(r: Complex<f64>, w0: f64, bw: f64) -> [Complex<f64>; 2] {
+    // s^2 - (r*bw) s + w0^2 = 0
+    let rbw = r * Complex::new(bw, 0.0);
+    let disc = rbw * rbw - Complex::new(4.0 * w0 * w0, 0.0);
+    let sqrt_disc = disc.sqrt();
+    let s1 = (rbw + sqrt_disc) * Complex::new(0.5, 0.0);
+    let s2 = (rbw - sqrt_disc) * Complex::new(0.5, 0.0);
+    [s1, s2]
+}
+
+fn zpk_lp_to_bp(zpk_lp: &zpk::ContinuousZpk, w1: f64, w2: f64) -> zpk::ContinuousZpk {
+    let z = &zpk_lp.zeros;
+    let p = &zpk_lp.poles;
+    assert!(w1 > 0.0 && w2 > 0.0 && w2 > w1);
+    let w0 = (w1 * w2).sqrt();
+    let bw = w2 - w1;
+
+    let mut zeros: Vec<Complex<f64>> = Vec::new();
+    for &zr in z {
+        let pair = map_root_lp_to_bp(zr, w0, bw);
+        zeros.push(pair[0]);
+        zeros.push(pair[1]);
+    }
+    // all-pole LP → N 個の原点零点追加（BPでは N 個の s=0 零点と ∞ 零点が生じる）
+    let n = p.len();
+    for _ in 0..n {
+        zeros.push(Complex::new(0.0, 0.0));
+    }
+
+    let mut poles: Vec<Complex<f64>> = Vec::with_capacity(2 * n);
+    for &pr in p {
+        let pair = map_root_lp_to_bp(pr, w0, bw);
+        poles.push(pair[0]);
+        poles.push(pair[1]);
+    }
+
+    // ゲインは |H(j w0)| = 1 に正規化
+    let mut zpk_tmp = zpk::ContinuousZpk::new(zeros, poles, 1.0);
+    let val = zpk_tmp.eval_s(Complex::new(0.0, w0));
+    let k = 1.0 / val.norm();
+    zpk_tmp.gain = k;
+    zpk_tmp
+}
+
+fn map_root_lp_to_bs(r: Complex<f64>, w0: f64, bw: f64) -> [Complex<f64>; 2] {
+    // r s^2 - bw s + r w0^2 = 0 → s = [bw ± sqrt(bw^2 - 4 r^2 w0^2)] / (2 r)
+    let r2 = r * r;
+    let disc = Complex::new(bw * bw, 0.0) - Complex::new(4.0 * w0 * w0, 0.0) * r2;
+    let sqrt_disc = disc.sqrt();
+    let num1 = Complex::new(bw, 0.0) + sqrt_disc;
+    let num2 = Complex::new(bw, 0.0) - sqrt_disc;
+    let denom = Complex::new(2.0, 0.0) * r;
+    [num1 / denom, num2 / denom]
+}
+
+fn zpk_lp_to_bs(zpk_lp: &zpk::ContinuousZpk, w1: f64, w2: f64) -> zpk::ContinuousZpk {
+    let z = &zpk_lp.zeros;
+    let p = &zpk_lp.poles;
+    let _k = zpk_lp.gain;
+    assert!(w1 > 0.0 && w2 > 0.0 && w2 > w1);
+    let w0 = (w1 * w2).sqrt();
+    let bw = w2 - w1;
+
+    let mut zeros: Vec<Complex<f64>> = Vec::new();
+    for &zr in z {
+        let pair = map_root_lp_to_bs(zr, w0, bw);
+        zeros.push(pair[0]);
+        zeros.push(pair[1]);
+    }
+    // all-pole LP → 零点を ±j w0 に N 個ずつ追加
+    let n = p.len();
+    for _ in 0..n {
+        zeros.push(Complex::new(0.0, w0));
+        zeros.push(Complex::new(0.0, -w0));
+    }
+
+    let mut poles: Vec<Complex<f64>> = Vec::with_capacity(2 * n);
+    for &pr in p {
+        let pair = map_root_lp_to_bs(pr, w0, bw);
+        poles.push(pair[0]);
+        poles.push(pair[1]);
+    }
+
+    // ゲイン: H(0)=1 に正規化
+    let zpk_tmp = zpk::ContinuousZpk::new(zeros, poles, 1.0);
+    let mut num_prod = Complex::new(1.0, 0.0);
+    for z in &zpk_tmp.zeros {
+        num_prod *= -z;
+    }
+    let mut den_prod = Complex::new(1.0, 0.0);
+    for p in &zpk_tmp.poles {
+        den_prod *= -p;
+    }
+    let k = if num_prod == Complex::new(0.0, 0.0) {
+        1.0
+    } else {
+        (den_prod / num_prod).re
+    };
+    zpk::ContinuousZpk::new(zpk_tmp.zeros, zpk_tmp.poles, k)
+}
+
+/// ZPKのLPプロトタイプから指定特性へ（ZPKのまま）
+pub fn lp_zpk_to(zpk_lp: &zpk::ContinuousZpk, spec: AnalogFilterSpec) -> zpk::ContinuousZpk {
+    match spec {
+        AnalogFilterSpec::Lowpass { wc } => zpk_lp_scale(zpk_lp, wc),
+        AnalogFilterSpec::Highpass { wc } => zpk_lp_to_hp(zpk_lp, wc),
+        AnalogFilterSpec::Bandpass { w1, w2 } => zpk_lp_to_bp(zpk_lp, w1, w2),
+        AnalogFilterSpec::Bandstop { w1, w2 } => zpk_lp_to_bs(zpk_lp, w1, w2),
     }
 }
 
-impl BinomialCoeffsCache {
-    /// 新しい空のキャッシュを作成する
-    pub fn new() -> Self {
-        BinomialCoeffsCache {
-            plus_one_cache: HashMap::new(),
-            minus_one_cache: HashMap::new(),
-        }
+// ===== 統一 API: Butterworth / Chebyshev I / Chebyshev II =====
+
+pub fn design_analog_butterworth(
+    order: usize,
+    spec: AnalogFilterSpec,
+) -> ContinuousTransferFunction {
+    // 正規化LP(ZPK) → 変換(ZPK) → 最後に1回だけTF化
+    let zpk_lp = design_analog_butterworth_lp(order, 1.0);
+    let zpk_out = lp_zpk_to(&zpk_lp, spec);
+    ContinuousTransferFunction::from_zpk(&zpk_out)
+}
+
+pub fn design_analog_chebyshev1(
+    order: usize,
+    ripple_db: f64,
+    spec: AnalogFilterSpec,
+) -> ContinuousTransferFunction {
+    let zpk_lp = design_analog_chebyshev1_lp(order, ripple_db, 1.0);
+    let zpk_out = lp_zpk_to(&zpk_lp, spec);
+    ContinuousTransferFunction::from_zpk(&zpk_out)
+}
+
+pub fn design_analog_chebyshev2(
+    order: usize,
+    stopband_atten_db: f64,
+    spec: AnalogFilterSpec,
+) -> ContinuousTransferFunction {
+    let zpk_lp = design_analog_chebyshev2_lp(order, stopband_atten_db, 1.0);
+    let zpk_out = lp_zpk_to(&zpk_lp, spec);
+    ContinuousTransferFunction::from_zpk(&zpk_out)
+}
+
+// ===== ZPK プロトタイプ（LP）作成 =====
+
+/// Butterworth LP (ZPK)
+pub fn design_analog_butterworth_lp(order: usize, cutoff_freq: f64) -> zpk::ContinuousZpk {
+    assert!(cutoff_freq > 0.0);
+    assert!(order >= 1);
+    let mut poles: Vec<Complex<f64>> = Vec::with_capacity(order);
+    for k in 0..order {
+        let theta = PI * (2 * (k as i32) + 1) as f64 / (2.0 * order as f64);
+        poles.push(Complex::new(
+            -cutoff_freq * theta.sin(),
+            cutoff_freq * theta.cos(),
+        ));
+    }
+    let mut prod = Complex::new(1.0, 0.0);
+    for p in &poles {
+        prod *= -p;
+    }
+    let gain = prod.re;
+    zpk::ContinuousZpk::new(Vec::new(), poles, gain)
+}
+
+/// Chebyshev Type I LP (ZPK)
+pub fn design_analog_chebyshev1_lp(
+    order: usize,
+    ripple_db: f64,
+    cutoff_freq: f64,
+) -> zpk::ContinuousZpk {
+    assert!(order >= 1);
+    assert!(cutoff_freq > 0.0);
+    assert!(ripple_db >= 0.0);
+    let epsilon = (10.0_f64.powf(ripple_db / 10.0) - 1.0).sqrt();
+    let u = (1.0 / epsilon).asinh() / (order as f64);
+    let mut poles: Vec<Complex<f64>> = Vec::with_capacity(order);
+    for m in 1..=order {
+        let theta = PI * (2 * m - 1) as f64 / (2.0 * order as f64);
+        poles.push(Complex::new(
+            -cutoff_freq * u.sinh() * theta.sin(),
+            cutoff_freq * u.cosh() * theta.cos(),
+        ));
+    }
+    let mut prod = Complex::new(1.0, 0.0);
+    for p in &poles {
+        prod *= -p;
+    }
+    let gain = prod.re;
+    zpk::ContinuousZpk::new(Vec::new(), poles, gain)
+}
+
+/// Chebyshev Type II (Inverse) LP (ZPK)
+pub fn design_analog_chebyshev2_lp(
+    order: usize,
+    stopband_atten_db: f64,
+    cutoff_freq: f64,
+) -> zpk::ContinuousZpk {
+    assert!(order >= 1);
+    assert!(cutoff_freq > 0.0);
+    assert!(stopband_atten_db > 0.0);
+    let eps = 1.0 / (10.0_f64.powf(stopband_atten_db / 10.0) - 1.0).sqrt();
+    let u = (1.0 / eps).asinh() / (order as f64);
+
+    let mut zeros: Vec<Complex<f64>> = Vec::with_capacity(order);
+    for m in 1..=order / 2 {
+        let theta = PI * (2 * m - 1) as f64 / (2.0 * order as f64);
+        let w = cutoff_freq / theta.cos();
+        zeros.push(Complex::new(0.0, w));
+        zeros.push(Complex::new(0.0, -w));
     }
 
-    /// (x+1)^k の係数を取得する（メモ化対応）
-    pub fn get_x_plus_1(&mut self, k: usize) -> Vec<f64> {
-        // 1. まずキャッシュに結果があるか確認する
-        if let Some(cached_coeffs) = self.plus_one_cache.get(&k) {
-            // あれば、そのクローンを返して終了
-            return cached_coeffs.clone();
-        }
-
-        // 2. キャッシュになければ、実際に計算する
-        let coeffs = if k == 0 {
-            vec![1.0]
-        } else {
-            let mut coeffs = vec![0.0; k + 1];
-            coeffs[0] = 1.0;
-            for i in 1..=k {
-                for j in (1..=i).rev() {
-                    coeffs[j] += coeffs[j - 1];
-                }
-            }
-            coeffs
-        };
-
-        // 3. 計算結果をキャッシュに保存してから返す
-        self.plus_one_cache.insert(k, coeffs.clone());
-        coeffs
+    let mut poles: Vec<Complex<f64>> = Vec::with_capacity(order);
+    for m in 1..=order {
+        let theta = PI * (2 * m - 1) as f64 / (2.0 * order as f64);
+        let a = u.sinh() * theta.sin();
+        let b = u.cosh() * theta.cos();
+        let q = Complex::new(-a, b);
+        let sp = cutoff_freq * q.conj() / (q.norm_sqr());
+        poles.push(sp);
     }
 
-    /// (x-1)^k の係数を取得する（メモ化対応）
-    pub fn get_x_minus_1(&mut self, k: usize) -> Vec<f64> {
-        // (x-1)^k は (x+1)^k の結果を流用できるので、そちらを先にチェック
-        if let Some(cached_coeffs) = self.minus_one_cache.get(&k) {
-            return cached_coeffs.clone();
-        }
-
-        // (x+1)^k の係数を取得（こちらもメモ化されている）
-        let mut coeffs = self.get_x_plus_1(k);
-
-        // 符号を入れ替える
-        for i in 0..=k {
-            if (k - i) % 2 != 0 {
-                coeffs[i] *= -1.0;
-            }
-        }
-
-        // 計算結果をキャッシュに保存してから返す
-        self.minus_one_cache.insert(k, coeffs.clone());
-        coeffs
+    let mut num_prod = Complex::new(1.0, 0.0);
+    for z in &zeros {
+        num_prod *= -z;
     }
+    let mut den_prod = Complex::new(1.0, 0.0);
+    for p in &poles {
+        den_prod *= -p;
+    }
+    let k = if num_prod == Complex::new(0.0, 0.0) {
+        1.0
+    } else {
+        (den_prod / num_prod).re
+    };
+    zpk::ContinuousZpk::new(zeros, poles, k)
 }

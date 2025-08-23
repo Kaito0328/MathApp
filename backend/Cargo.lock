@@ -370,6 +370,7 @@ dependencies = [
  "lti-systems",
  "num-complex",
  "num-traits",
+ "poly",
  "textplots",
 ]
 

@@ -16,8 +16,8 @@ fn dft_of_impulse_is_constant() {
     ];
     let y = dft_simple(&x);
     assert_eq!(y.len(), 4);
-    for k in 0..4 {
-        assert!(approx_eq(y[k], Complex::new(1.0, 0.0), 1e-12));
+    for yk in y.iter() {
+        assert!(approx_eq(*yk, Complex::new(1.0, 0.0), 1e-12));
     }
 }
 
@@ -35,12 +35,12 @@ fn dft_of_single_tone_matches_analytical() {
     assert_eq!(y.len(), n);
     // Expected: bin 1 is N, others ~0 (depending on scaling convention)
     // Our dft_simple uses non-normalized forward DFT
-    for k in 0..n {
+    for (k, yk) in y.iter().enumerate() {
         let expected = if k == 1 {
             Complex::new(n as f64, 0.0)
         } else {
             Complex::new(0.0, 0.0)
         };
-        assert!(approx_eq(y[k], expected, 1e-9));
+        assert!(approx_eq(*yk, expected, 1e-9));
     }
 }
