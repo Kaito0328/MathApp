@@ -1,6 +1,6 @@
 use signal_processing::signal::Signal;
 use signal_processing::window::WindowType;
-use signal_processing::{dft::conv_with_dft_for_f64, fir, sampling};
+use signal_processing::{dft::conv_auto_f64, fir, sampling};
 
 fn vec_close(a: &[f64], b: &[f64], eps: f64) {
     assert_eq!(a.len(), b.len());
@@ -30,7 +30,7 @@ fn upsample_impl_matches_reference() {
     for c in &mut h {
         *c *= l as f64;
     }
-    let y_ref = conv_with_dft_for_f64(&xp, &h);
+    let y_ref = conv_auto_f64(&xp, &h);
 
     vec_close(y.data(), &y_ref, 1e-9);
     assert!((y.sample_rate() - x.sample_rate() * l as f64).abs() < 1e-12);
@@ -47,7 +47,7 @@ fn downsample_impl_matches_reference() {
 
     // Reference: LPF then decimate
     let h = fir::design_fir_lowpass(taps, 0.5 / m as f64, win);
-    let xf = conv_with_dft_for_f64(x.data(), &h);
+    let xf = conv_auto_f64(x.data(), &h);
     let y_ref = sampling::decimate(&xf, m);
 
     vec_close(y.data(), &y_ref, 1e-9);

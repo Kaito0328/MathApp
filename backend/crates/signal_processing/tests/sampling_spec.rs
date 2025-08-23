@@ -45,14 +45,14 @@ fn upsample_equals_filter_of_expand() {
     let y1 = upsample(&x, l, taps, win);
 
     // 期待値: expand -> LPF（同じ設計）
-    use signal_processing::dft::conv_with_dft_for_f64;
+    use signal_processing::dft::conv_auto_f64;
     use signal_processing::fir::design_fir_lowpass;
     let xp = expand(&x, l);
     let mut h = design_fir_lowpass(taps, 0.5 / l as f64, win);
     for c in &mut h {
         *c *= l as f64;
     }
-    let y2 = conv_with_dft_for_f64(&xp, &h);
+    let y2 = conv_auto_f64(&xp, &h);
 
     vec_close(&y1, &y2, 1e-9);
 }
@@ -66,10 +66,10 @@ fn downsample_equals_filter_then_pick() {
 
     let y1 = down_sample(&x, m, taps, win);
 
-    use signal_processing::dft::conv_with_dft_for_f64;
+    use signal_processing::dft::conv_auto_f64;
     use signal_processing::fir::design_fir_lowpass;
     let h = design_fir_lowpass(taps, 0.5 / m as f64, win);
-    let xf = conv_with_dft_for_f64(&x, &h);
+    let xf = conv_auto_f64(&x, &h);
     let y2 = decimate(&xf, m);
 
     vec_close(&y1, &y2, 1e-9);

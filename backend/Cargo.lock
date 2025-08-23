@@ -112,6 +112,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fft-core"
+version = "0.1.0"
+dependencies = [
+ "num-complex",
+]
+
+[[package]]
 name = "flate2"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -180,6 +187,7 @@ checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 name = "linalg"
 version = "0.1.0"
 dependencies = [
+ "fft-core",
  "num-complex",
  "num-traits",
 ]
@@ -364,6 +372,7 @@ dependencies = [
 name = "signal_processing"
 version = "0.1.0"
 dependencies = [
+ "fft-core",
  "hound",
  "image",
  "linalg",
@@ -411,8 +420,10 @@ checksum = "5a5f39404a5da50712a4c1eecf25e90dd62b613502b7e925fd4e4d19b5c96512"
 name = "utils"
 version = "0.1.0"
 dependencies = [
+ "fft-core",
  "linalg",
  "num-bigint",
+ "num-complex",
  "num-integer",
  "num-traits",
  "rand",

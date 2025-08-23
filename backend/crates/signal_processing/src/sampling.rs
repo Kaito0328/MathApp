@@ -1,8 +1,6 @@
 // no linalg::Vector in Vec-based DSP APIs
 
-use crate::{
-    dft::conv_with_dft_for_f64, fir::design_fir_lowpass, signal::Signal, window::WindowType,
-};
+use crate::{dft::conv_auto_f64, fir::design_fir_lowpass, signal::Signal, window::WindowType};
 
 /// 信号を整数倍でダウンサンプリングする。
 ///
@@ -28,7 +26,7 @@ pub fn down_sample(
     let normalized_cutoff = 0.5 / factor as f64; // 正規化されたカットオフ周波数
 
     let lowpass_fil = design_fir_lowpass(filter_taps, normalized_cutoff, window_type);
-    let signal_filtered = conv_with_dft_for_f64(signal, &lowpass_fil);
+    let signal_filtered = conv_auto_f64(signal, &lowpass_fil);
     decimate(&signal_filtered, factor)
 }
 
@@ -58,7 +56,7 @@ pub fn upsample(
         *c *= scale;
     }
 
-    conv_with_dft_for_f64(&zero_inserted_signal, &interpolation_filter)
+    conv_auto_f64(&zero_inserted_signal, &interpolation_filter)
 }
 
 pub fn resample(

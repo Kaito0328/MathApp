@@ -1,11 +1,11 @@
-use signal_processing::dft::conv_with_dft_for_f64;
+use signal_processing::dft::conv_auto_f64;
 use signal_processing::fir::{design_fir_highpass, design_fir_lowpass};
 use signal_processing::media::audio_io;
 use signal_processing::window::WindowType;
 use std::fs;
 
 fn conv_same_1d(x: &[f64], h: &[f64]) -> Vec<f64> {
-    let y = conv_with_dft_for_f64(x, h);
+    let y = conv_auto_f64(x, h);
     let n = x.len();
     let m = h.len();
     let delay = (m - 1) / 2;

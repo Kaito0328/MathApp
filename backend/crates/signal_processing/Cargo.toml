@@ -15,6 +15,7 @@ image = { version = "0.24", default-features = false, features = ["png", "jpeg"]
 hound = "3"
 lti_systems = { package = "lti-systems", path = "../lti-systems" }
 polynomial = { package = "poly", path = "../polynomial" }
+fft-core = { path = "../fft-core" }
 
 [dev-dependencies]
 textplots = "0.8"

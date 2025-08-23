@@ -169,6 +169,40 @@ impl<F: Field> Mul for &Polynomial<F> {
     }
 }
 
+// 速度重視の f64 専用: 素朴/FFT/自動
+impl Polynomial<f64> {
+    pub fn mul_simple(&self, other: &Self) -> Self {
+        if self.deg() < 0 || other.deg() < 0 {
+            return Polynomial::zero();
+        }
+        let mut v = vec![0f64; self.coeffs.len() + other.coeffs.len() - 1];
+        for i in 0..self.coeffs.len() {
+            for j in 0..other.coeffs.len() {
+                v[i + j] += self.coeffs[i] * other.coeffs[j];
+            }
+        }
+        Polynomial::new(v)
+    }
+    pub fn mul_fft(&self, other: &Self) -> Self {
+        if self.deg() < 0 || other.deg() < 0 {
+            return Polynomial::zero();
+        }
+        let y = utils::convolution::convolve_fft_f64(&self.coeffs, &other.coeffs);
+        Polynomial::new(y)
+    }
+    pub fn mul_auto(&self, other: &Self) -> Self {
+        if self.deg() < 0 || other.deg() < 0 {
+            return Polynomial::zero();
+        }
+        let work = self.coeffs.len() * other.coeffs.len();
+        if work <= 2048 {
+            self.mul_simple(other)
+        } else {
+            self.mul_fft(other)
+        }
+    }
+}
+
 // スカラー倍や整除係数倍などの用途を想定しておく
 impl<F: Field> Mul<F> for &Polynomial<F> {
     type Output = Polynomial<F>;

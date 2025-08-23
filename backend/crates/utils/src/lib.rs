@@ -3,4 +3,5 @@
 #[macro_use]
 pub mod macros;
 
+pub mod convolution;
 pub mod prime_factorization;

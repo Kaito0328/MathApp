@@ -136,6 +136,7 @@ impl<T: Ring> Vector<T> {
             .sum()
     }
 
+    /// 素朴な 1D 畳み込み（時間領域）。
     pub fn conv(&self, other: &Self) -> Vector<T> {
         let mut result = vec![T::zero(); self.data.len() + other.data.len() - 1];
         for (i, a) in self.data.iter().enumerate() {
@@ -145,6 +146,8 @@ impl<T: Ring> Vector<T> {
         }
         Vector::new(result)
     }
+
+    // f64専用APIは Vector<f64> impl に分離
 
     pub fn cross(&self, other: &Self) -> Result<Vector<T>>
     where
@@ -164,5 +167,46 @@ impl<T: Ring> Vector<T> {
         let f = other.data[2];
         let data = vec![b * f - c * e, c * d - a * f, a * e - b * d];
         Ok(Vector::new(data))
+    }
+}
+
+// f64 専用の畳み込み API
+impl Vector<f64> {
+    /// 素朴な 1D 畳み込み（時間領域）。
+    pub fn conv_simple(&self, other: &Self) -> Vector<f64> {
+        let mut y = vec![0.0f64; self.data.len() + other.data.len() - 1];
+        for (i, &a) in self.data.iter().enumerate() {
+            for (j, &b) in other.data.iter().enumerate() {
+                y[i + j] += a * b;
+            }
+        }
+        Vector::new(y)
+    }
+
+    /// FFT 畳み込み
+    pub fn conv_fft(&self, other: &Self) -> Vector<f64> {
+        use num_complex::Complex;
+        let x = &self.data;
+        let h = &other.data;
+        let n = x.len() + h.len() - 1;
+        let mut x_pad: Vec<Complex<f64>> = x.iter().map(|&v| Complex::new(v, 0.0)).collect();
+        let mut h_pad: Vec<Complex<f64>> = h.iter().map(|&v| Complex::new(v, 0.0)).collect();
+        x_pad.resize(n, Complex::new(0.0, 0.0));
+        h_pad.resize(n, Complex::new(0.0, 0.0));
+        let x_fft = fft_core::dft(&x_pad);
+        let h_fft = fft_core::dft(&h_pad);
+        let y_fft: Vec<Complex<f64>> = x_fft.into_iter().zip(h_fft).map(|(a, b)| a * b).collect();
+        let y = fft_core::ift(&y_fft);
+        Vector::new(y.into_iter().map(|c| c.re).collect())
+    }
+
+    /// サイズにより素朴/FFT を自動切替。
+    pub fn conv_auto(&self, other: &Self) -> Vector<f64> {
+        let work = self.data.len() * other.data.len();
+        if work <= 2048 {
+            self.conv_simple(other)
+        } else {
+            self.conv_fft(other)
+        }
     }
 }
