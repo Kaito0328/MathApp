@@ -62,6 +62,41 @@ impl TransferFunction {
             input,
         )
     }
+
+    /// インパルス応答 h[n]（長さ `len`）を返す。
+    /// 最初のサンプルにのみ 1 を与えた入力に対する出力。
+    pub fn impulse_response(&self, len: usize) -> Vec<f64> {
+        crate::responses::impulse_response_discrete_tf(self, len)
+    }
+
+    /// ステップ応答 s[n]（長さ `len`）を返す。
+    /// 全サンプル 1 の入力（単位ステップ）に対する出力。
+    pub fn step_response(&self, len: usize) -> Vec<f64> {
+        crate::responses::step_response_discrete_tf(self, len)
+    }
+
+    /// 周波数応答 H(e^{jω}) を `n_freqs` 個の等間隔グリッドで返す（0..2π）。
+    /// 返り値の k 番目は ω_k = 2π k / n_freqs における値。
+    pub fn frequency_response(&self, n_freqs: usize) -> Vec<Complex<f64>> {
+        if n_freqs == 0 {
+            return Vec::new();
+        }
+        (0..n_freqs)
+            .map(|k| {
+                let omega = 2.0 * std::f64::consts::PI * (k as f64) / (n_freqs as f64);
+                let z = Complex::from_polar(1.0, omega);
+                self.eval_z(z)
+            })
+            .collect()
+    }
+
+    /// ZPK 変換（離散）
+    pub fn to_zpk(&self) -> crate::zpk::DiscreteZpk {
+        crate::zpk::DiscreteZpk::from_transfer_function(self)
+    }
+    pub fn from_zpk(z: &crate::zpk::DiscreteZpk, sample_rate: f64) -> Self {
+        z.to_transfer_function(sample_rate)
+    }
 }
 
 // --- 共通ロジック: 直接形Iの時間領域適用（離散系で使用） ---

@@ -118,6 +118,34 @@ impl ContinuousStateSpace {
 
         ContinuousStateSpace { a, b, c, d: dmat }
     }
+
+    /// 簡易: 可制御正準形から TF を構成（SISO 前提）
+    pub fn to_tf_siso(&self) -> RationalFunction<f64> {
+        // 期待形（from_tf_sisoが作った形）を前提として逆変換
+        // ここでは簡易に C(zI - A)^{-1}B + D の厳密導出は行わず、
+        // controllable canonical の既知構造から多項式係数を復元する。
+        // 最下行に -a_j が入っている前提
+        let n = self.a.rows;
+        assert!(
+            self.a.rows == self.a.cols
+                && self.b.cols == 1
+                && self.c.rows == 1
+                && self.d.rows == 1
+                && self.d.cols == 1
+        );
+        let mut den = vec![0.0; n + 1];
+        den[n] = 1.0; // monic
+        for (j, v) in den.iter_mut().enumerate().take(n) {
+            *v = -self.a[(n - 1, j)];
+        }
+        // C は b_tilde の係数が入っている前提（次数 n-1 まで）
+        let mut num = vec![0.0; n + 1];
+        for (j, v) in num.iter_mut().enumerate().take(n) {
+            *v = self.c[(0, j)];
+        }
+        num[n] = self.d[(0, 0)];
+        RationalFunction::new(Polynomial::new(num), Polynomial::new(den))
+    }
 }
 
 impl DiscreteStateSpace {

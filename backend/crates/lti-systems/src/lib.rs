@@ -1,8 +1,11 @@
 pub mod continuous;
 pub mod conversions;
 pub mod discrete;
+pub mod plot;
+mod responses;
 pub mod statespace;
 pub mod transfer; // deprecated placeholder
+pub mod zpk;
 
 // 再エクスポートは poly から
 pub use poly::polynomial::Polynomial;
