@@ -1,7 +1,9 @@
 use num_complex::Complex;
 use std::f64::consts::PI;
 pub mod error;
-pub mod prelude { pub use crate::error::{FftError, Result as FftResult}; }
+pub mod prelude {
+    pub use crate::error::{FftError, Result as FftResult};
+}
 
 /// Public API: compute DFT using an automatically chosen algorithm (FFT when possible).
 pub fn dft(x: &[Complex<f64>]) -> crate::error::Result<Vec<Complex<f64>>> {
