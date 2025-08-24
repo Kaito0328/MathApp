@@ -1,4 +1,4 @@
-use coding::GFp;
+use finite_field::gfp::GFp;
 
 fn main() {
     type F = GFp<5>;

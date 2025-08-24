@@ -1,4 +1,4 @@
-use coding::GFp;
+use finite_field::gfp::GFp;
 
 #[test]
 fn gfp_add_sub_mul_div_mod5() {
@@ -17,6 +17,6 @@ fn gfp_inverse_property_small_prime() {
     for x in 1..7u16 {
         let a = F::new(x as i64);
         let one = F::new(1);
-        assert_eq!((a * a.inv()), one);
+    assert_eq!((a * a.inv().expect("inv exists")), one);
     }
 }

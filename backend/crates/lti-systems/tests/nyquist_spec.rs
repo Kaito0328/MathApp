@@ -20,7 +20,7 @@ fn nyquist_discrete_start_end_points() {
     // 簡単なファイル出力のスモーク（生成だけ）
     let path = "plot/test_nyquist_discrete.svg";
     std::fs::create_dir_all("plot").ok();
-    tf.plot_nyquist_svg_simple(path, 400, 300, 64).unwrap();
+    assert!(tf.plot_nyquist_svg_simple(path, 400, 300, 64).is_ok());
     assert!(std::path::Path::new(path).exists());
 }
 
@@ -37,6 +37,6 @@ fn nyquist_continuous_monotonic_freq_sampling() {
     };
     let path = "plot/test_nyquist_continuous.svg";
     std::fs::create_dir_all("plot").ok();
-    tf.plot_nyquist_svg(path, 400, 300, &opts).unwrap();
+    assert!(tf.plot_nyquist_svg(path, 400, 300, &opts).is_ok());
     assert!(std::path::Path::new(path).exists());
 }

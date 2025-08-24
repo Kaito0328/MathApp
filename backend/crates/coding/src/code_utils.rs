@@ -1,4 +1,5 @@
 use finite_field::gfp::GFp;
+use crate::error::{Result as CodingResult, CodingError};
 use crate::types::{Codeword, GeneratorMatrix, ParityCheckMatrix, Syndrome};
 use linalg::{Field, Matrix, Scalar, Vector};
 use num_traits::{One, Zero};
@@ -76,18 +77,18 @@ pub fn generate_vectors_gfp<const P: u16>(k: usize) -> Vec<Vec<GFp<P>>> {
 // 生成行列からコードブック（GF(p) 専用、k が小さい用途向け）
 pub fn generate_codebook_gfp<const P: u16>(
     g: &GeneratorMatrix<GFp<P>>,
-) -> Vec<Codeword<GFp<P>>> {
+) -> CodingResult<Vec<Codeword<GFp<P>>>> {
     let k = g.rows;
     let mut out = Vec::new();
     for u in generate_vectors_gfp::<P>(k).into_iter() {
-        let c = (Vector::new(u) * &g.0).row(0).unwrap();
+        let c = (Vector::new(u) * &g.0).row(0)?;
         out.push(Codeword::from(c));
     }
-    out
+    Ok(out)
 }
 
 // 標準形生成行列 [I_k | P] から H = [P^T | I_{n-k}] を生成
-pub fn formed_g_to_h<F: Field + Clone + PartialEq + Zero + One>(g: &GeneratorMatrix<F>) -> ParityCheckMatrix<F> {
+pub fn formed_g_to_h<F: Field + Clone + PartialEq + Zero + One>(g: &GeneratorMatrix<F>) -> CodingResult<ParityCheckMatrix<F>> {
     let k = g.0.rows;
     let n = g.0.cols;
     let r = n - k;
@@ -95,10 +96,12 @@ pub fn formed_g_to_h<F: Field + Clone + PartialEq + Zero + One>(g: &GeneratorMat
     for i in 0..k {
         for j in 0..k {
             let exp = if i == j { F::one() } else { F::zero() };
-        assert!(g.0[(i, j)] == exp, "G must be in standard form [I|P]");
+            if g.0[(i, j)] != exp {
+                return Err(CodingError::InvalidParameters { text: "G must be in standard form [I|P]".into() });
+            }
         }
     }
-    let mut h = Matrix::new(r, n, vec![F::zero(); r * n]).unwrap();
+    let mut h = Matrix::new(r, n, vec![F::zero(); r * n])?;
     // 左ブロックに P^T を配置（G の右ブロックを転置）
     for i in 0..r {
         for j in 0..k {
@@ -109,7 +112,7 @@ pub fn formed_g_to_h<F: Field + Clone + PartialEq + Zero + One>(g: &GeneratorMat
     for i in 0..r {
         h[(i, k + i)] = F::one();
     }
-    ParityCheckMatrix(h)
+    Ok(ParityCheckMatrix(h))
 }
 
 // 重み分布（0..=n の n+1 ビンを返す）
@@ -134,7 +137,7 @@ pub fn hamming_weight<F: Field + Clone + PartialEq + Zero>(v: &Vector<F>) -> usi
 // 返り値: (G_sys, perm) where perm[j] は G_sys の列 j が元の G のどの列だったか。
 pub fn to_systematic_g<F: Field + Clone + PartialEq + Zero + One>(
     g: &GeneratorMatrix<F>,
-) -> (GeneratorMatrix<F>, Vec<usize>) {
+) -> CodingResult<(GeneratorMatrix<F>, Vec<usize>)> {
     let k = g.0.rows;
     let n = g.0.cols;
     let mut a = g.0.clone();
@@ -162,8 +165,8 @@ pub fn to_systematic_g<F: Field + Clone + PartialEq + Zero + One>(
         if pivot_col.is_none() {
             continue;
         }
-        let pc = pivot_col.unwrap();
-        let pr = pivot_row.unwrap();
+        let pc = match pivot_col { Some(x) => x, None => { return Err(CodingError::RankDeficient); } };
+        let pr = match pivot_row { Some(x) => x, None => { return Err(CodingError::RankDeficient); } };
         // 列入替え pc <-> col
         if pc != col {
             for r in 0..k {
@@ -204,25 +207,25 @@ pub fn to_systematic_g<F: Field + Clone + PartialEq + Zero + One>(
             break;
         }
     }
-    (GeneratorMatrix(a), perm)
+    Ok((GeneratorMatrix(a), perm))
 }
 
 // 一般の生成行列 G からパリティ検査行列 H を構成（列順は元の G に合わせて返す）
 pub fn parity_check_from_generator<F: Field + Clone + PartialEq + Zero + One>(
     g: &GeneratorMatrix<F>,
-) -> ParityCheckMatrix<F> {
-    let (gs, perm) = to_systematic_g(g);
-    let hs_sys = formed_g_to_h(&gs);
+) -> CodingResult<ParityCheckMatrix<F>> {
+    let (gs, perm) = to_systematic_g(g)?;
+    let hs_sys = formed_g_to_h(&gs)?;
     // perm は G_sys の列 -> 元の列の対応。H_sys の列も同じ対応で元の順に戻す。
     let r = hs_sys.0.rows;
     let n = hs_sys.0.cols;
-    let mut h = Matrix::new(r, n, vec![F::zero(); r * n]).unwrap();
+    let mut h = Matrix::new(r, n, vec![F::zero(); r * n])?;
     for (j, &orig) in perm.iter().enumerate().take(n) {
         for i in 0..r {
             h[(i, orig)] = hs_sys.0[(i, j)].clone();
         }
     }
-    ParityCheckMatrix(h)
+    Ok(ParityCheckMatrix(h))
 }
 
 // GF(2) 向けシンドローム復号（有界距離復号: 重み <= t の誤りを補正）。見つからなければ None。
@@ -250,14 +253,14 @@ pub fn syndrome_decode_gf2(
     h: &ParityCheckMatrix<GFp<2>>,
     r: &Codeword<GFp<2>>,
     t: usize,
-) -> Option<Codeword<GFp<2>>> {
+) -> CodingResult<Codeword<GFp<2>>> {
     let n = h.0.cols;
     let v = r.as_ref();
     assert_eq!(v.dim(), n);
     let syn = compute_syndrome_gf2(h, r);
     let zero_syn = syn.0.iter().all(|x| x.0 == 0);
     if zero_syn {
-        return Some(r.clone());
+        return Ok(r.clone());
     }
 
     // 症候表: syndrome -> エラーベクトル（最小重み）
@@ -307,15 +310,15 @@ pub fn syndrome_decode_gf2(
     let key: Vec<u16> = syn.0.iter().map(|x| x.0).collect();
     if let Some(e) = table.get(&key) {
         let corrected = v.clone() + e.clone();
-        return Some(Codeword::from(corrected));
+        return Ok(Codeword::from(corrected));
     }
-    None
+    Err(CodingError::DecodeFailure { text: "No error pattern within t found for given syndrome".into() })
 }
 
 pub fn bounded_distance_decode_gf2(
     h: &ParityCheckMatrix<GFp<2>>,
     r: &Codeword<GFp<2>>,
     t: usize,
-) -> Option<Codeword<GFp<2>>> {
+) -> CodingResult<Codeword<GFp<2>>> {
     syndrome_decode_gf2(h, r, t)
 }

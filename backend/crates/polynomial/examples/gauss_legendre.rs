@@ -16,7 +16,7 @@ where
         .into_iter()
         .map(|z: Complex<f64>| z.re)
         .collect();
-    nodes.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    nodes.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     // 重み: w_i = 2 / ((1 - x_i^2) [P'_n(x_i)]^2)
     let weights: Vec<f64> = nodes

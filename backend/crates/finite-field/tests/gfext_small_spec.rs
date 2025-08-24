@@ -1,4 +1,4 @@
-use coding::{GFExt, GFp};
+use finite_field::{gfext::GFExt, gfp::GFp};
 use std::sync::Arc;
 
 // GF(2)[x]/(x^2 + x + 1)
@@ -23,7 +23,7 @@ fn gfext_basic_add_mul_inv_small() {
     assert_eq!(prod, x_reduced);
 
     // 逆元: a * a^{-1} = 1
-    let inv = c.inv();
+    let inv = c.inv().expect("inv exists");
     let one2 = c * inv;
     assert!(one2.is_one() || one2 == one);
 }

@@ -1,4 +1,5 @@
 use linalg::{Field, Vector};
+use crate::error::{Result as CodingResult, CodingError};
 use crate::types::{Message, Codeword};
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
@@ -16,9 +17,11 @@ impl<F: Field + Clone + PartialEq + Zero + One> CyclicCode<F> {
     }
 
     // 新API: Message -> Codeword
-    pub fn encode(&self, u: &Message<F>) -> Codeword<F> {
+    pub fn encode(&self, u: &Message<F>) -> CodingResult<Codeword<F>> {
         let k = self.k();
-        assert_eq!(u.dim(), k, "message length must be k");
+        if u.dim() != k {
+            return Err(CodingError::InvalidParameters{ text: format!("message length {} must be k {}", u.dim(), k) });
+        }
         // 系統形 [I | parity] を構築する代わりに畳み込みして mod x^n-1
         let mut v = vec![F::zero(); k + self.g.len() - 1];
         for i in 0..k {
@@ -31,7 +34,7 @@ impl<F: Field + Clone + PartialEq + Zero + One> CyclicCode<F> {
         for (i, coef) in v.into_iter().enumerate() {
             c[i % self.n] = c[i % self.n].clone() + coef;
         }
-        Codeword::from(Vector::new(c))
+    Ok(Codeword::from(Vector::new(c)))
     }
 
     pub fn k(&self) -> usize {
@@ -41,6 +44,10 @@ impl<F: Field + Clone + PartialEq + Zero + One> CyclicCode<F> {
     // 旧API互換（将来削除予定）
     pub fn encode_poly(&self, u: &[F]) -> Vec<F> {
         let msg = Message::from(Vector::new(u.to_vec()));
-        self.encode(&msg).0.data
+        // keep legacy API panicking behavior by unwrapping internally
+        match self.encode(&msg) {
+            Ok(c) => c.0.data,
+            Err(e) => panic!("valid message length: {e}"),
+        }
     }
 }

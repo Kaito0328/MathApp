@@ -17,9 +17,9 @@ fn alphas_n(n: usize) -> Vec<GF256> {
 #[test]
 fn encode_length_matches() {
     let k = 4; let n = 7;
-    let rs = ReedSolomon::new(k, alphas_n(n));
+    let rs = ReedSolomon::new(k, alphas_n(n)).expect("ReedSolomon::new");
     let msg = Message::from(Vector::new(vec![b(1), b(2), b(3), b(4)]));
-    let code = rs.encode(&msg);
+    let code = rs.encode(&msg).expect("encode");
     assert_eq!(code.as_ref().dim(), n);
 }
 
@@ -27,10 +27,10 @@ fn encode_length_matches() {
 fn systematic_roundtrip_no_errors_small() {
     // デコードは暫定実装のため、ここでは t=1, n=5, k=3 程度で roundtrip を確認
     let k = 3; let n = 5;
-    let rs = ReedSolomon::new(k, alphas_n(n));
+    let rs = ReedSolomon::new(k, alphas_n(n)).expect("ReedSolomon::new");
     let msg = Message::from(Vector::new(vec![b(7), b(0x20), b(0x55)]));
-    let code = rs.encode(&msg);
-    let out = rs.decode(&code);
+    let code = rs.encode(&msg).expect("encode");
+    let out = rs.decode(&code).expect("decode");
     // 少なくとも先頭 k 係数が元のメッセージと一致することを期待
     for i in 0..k.min(out.decoded.as_ref().dim()) { assert_eq!(out.decoded[i], msg[i]); }
 }

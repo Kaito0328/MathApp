@@ -167,27 +167,46 @@ pub mod audio_io {
         let mut reader = WavReader::open(path)?;
         let spec = reader.spec();
         let samples: Vec<f64> = match (spec.sample_format, spec.bits_per_sample) {
-            (SampleFormat::Int, 16) => reader
-                .samples::<i16>()
-                .map(|s| (s.unwrap() as f64) / i16::MAX as f64)
-                .collect(),
-            (SampleFormat::Int, 24) => reader
-                .samples::<i32>()
-                .map(|s| (s.unwrap() as f64) / (1i64 << 23) as f64)
-                .collect(),
-            (SampleFormat::Int, 32) => reader
-                .samples::<i32>()
-                .map(|s| (s.unwrap() as f64) / i32::MAX as f64)
-                .collect(),
+            (SampleFormat::Int, 16) => {
+                let mut out = Vec::new();
+                for s in reader.samples::<i16>() {
+                    let v = s? as f64 / i16::MAX as f64;
+                    out.push(v);
+                }
+                out
+            }
+            (SampleFormat::Int, 24) => {
+                let mut out = Vec::new();
+                for s in reader.samples::<i32>() {
+                    let v = s? as f64 / (1i64 << 23) as f64;
+                    out.push(v);
+                }
+                out
+            }
+            (SampleFormat::Int, 32) => {
+                let mut out = Vec::new();
+                for s in reader.samples::<i32>() {
+                    let v = s? as f64 / i32::MAX as f64;
+                    out.push(v);
+                }
+                out
+            }
             (SampleFormat::Float, 32) => {
-                reader.samples::<f32>().map(|s| s.unwrap() as f64).collect()
+                let mut out = Vec::new();
+                for s in reader.samples::<f32>() {
+                    let v = s? as f64;
+                    out.push(v);
+                }
+                out
             }
             _ => {
                 // Fallback: read as i16
-                reader
-                    .samples::<i16>()
-                    .map(|s| (s.unwrap() as f64) / i16::MAX as f64)
-                    .collect()
+                let mut out = Vec::new();
+                for s in reader.samples::<i16>() {
+                    let v = s? as f64 / i16::MAX as f64;
+                    out.push(v);
+                }
+                out
             }
         };
         let info = WavInfo {

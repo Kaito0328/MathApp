@@ -238,7 +238,9 @@ pub fn median_filter_f32(src: &Image<f32>, radius: usize, border: Border) -> Ima
                     ));
                 }
             }
-            let (_, m, _) = window.select_nth_unstable_by(mid, |a, b| a.partial_cmp(b).unwrap());
+            let (_, m, _) = window.select_nth_unstable_by(mid, |a, b| {
+                a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
+            });
             out.as_mut_slice()[y * w + x] = *m;
         }
     }

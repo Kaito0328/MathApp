@@ -158,9 +158,11 @@ impl Pixel for [f32; 3] {}
 impl Image<u8> {
     /// グレースケール PNG として保存（8bit）
     pub fn save_png(&self, path: &str) -> ImageResult<()> {
-        image::GrayImage::from_raw(self.width as u32, self.height as u32, self.data.clone())
-            .expect("container size is invalid")
-            .save(path)
+        let img = image::GrayImage::from_raw(self.width as u32, self.height as u32, self.data.clone())
+            .ok_or_else(|| image::ImageError::Parameter(image::error::ParameterError::from_kind(
+                image::error::ParameterErrorKind::DimensionMismatch,
+            )))?;
+        img.save(path)
     }
 
     /// f32 グレー画像から vmin..vmax で正規化して u8 へ（クランプ）
@@ -181,7 +183,7 @@ impl Image<u8> {
     /// GrayImage（imageクレート）への変換（所有を保持）
     pub fn to_gray_image(&self) -> GrayImage {
         GrayImage::from_raw(self.width as u32, self.height as u32, self.data.clone())
-            .expect("container size is invalid")
+            .unwrap_or_else(|| GrayImage::new(self.width as u32, self.height as u32))
     }
 
     /// GrayImage からの変換（所有を消費）
@@ -225,16 +227,18 @@ impl Image<[u8; 3]> {
     // Image<[u8; 3]> の場合 (一度フラットなVec<u8>に変換)
     pub fn save_png(&self, path: &str) -> ImageResult<()> {
         let flat_data: Vec<u8> = self.data.iter().flat_map(|&rgb| rgb).collect();
-        image::RgbImage::from_raw(self.width as u32, self.height as u32, flat_data)
-            .expect("container size is invalid")
-            .save(path)
+        let img = image::RgbImage::from_raw(self.width as u32, self.height as u32, flat_data)
+            .ok_or_else(|| image::ImageError::Parameter(image::error::ParameterError::from_kind(
+                image::error::ParameterErrorKind::DimensionMismatch,
+            )))?;
+        img.save(path)
     }
 
     /// RgbImage（imageクレート）への変換
     pub fn to_rgb_image(&self) -> RgbImage {
         let flat_data: Vec<u8> = self.data.iter().flat_map(|&rgb| rgb).collect();
         RgbImage::from_raw(self.width as u32, self.height as u32, flat_data)
-            .expect("container size is invalid")
+            .unwrap_or_else(|| RgbImage::new(self.width as u32, self.height as u32))
     }
 
     /// RgbImage からの変換（所有を消費）

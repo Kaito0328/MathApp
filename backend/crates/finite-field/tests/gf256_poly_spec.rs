@@ -1,5 +1,5 @@
 use finite_field::gf256::gf256_from_u8;
-use coding::{PolyGF256, GF256};
+use finite_field::gf256::{PolyGF256, GF256};
 
 fn b(x: u8) -> GF256 {
     gf256_from_u8(x)
@@ -26,7 +26,7 @@ fn gf256_add_mul_examples() {
 fn gf256_inverse_property() {
     for x in [1u8, 2, 3, 5, 7, 11, 13, 29, 127, 191, 223, 251] {
         let a = b(x);
-        let inv = a.inv();
+    let inv = a.inv().expect("inv exists");
         assert_eq!((a * inv), b(1));
     }
 }

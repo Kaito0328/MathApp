@@ -165,14 +165,14 @@ fn lu_random_like_matrix_reconstructs() {
 #[test]
 fn lu_non_square_returns_none() {
     let a = Matrix::new(2, 3, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).unwrap();
-    assert!(a.lu_decomposition().is_none(), "non-square should be None");
+    assert!(a.lu_decomposition().is_err(), "non-square should be Err");
 }
 
 #[test]
 fn lu_singular_returns_none() {
     // 全ゼロ -> ピボットが見つからず None
     let a = Matrix::zeros(3, 3);
-    assert!(a.lu_decomposition().is_none(), "singular should be None");
+    assert!(a.lu_decomposition().is_err(), "singular should be Err");
 
     // もう1件: 2行目が1行目のスカラー倍でランク落ち
     let a2 = Matrix::new(
@@ -186,7 +186,7 @@ fn lu_singular_returns_none() {
     .unwrap();
     // 実装は途中でピボットが非常に小さい場合に None を返す
     assert!(
-        a2.lu_decomposition().is_none(),
-        "rank-deficient should be None"
+        a2.lu_decomposition().is_err(),
+        "rank-deficient should be Err"
     );
 }

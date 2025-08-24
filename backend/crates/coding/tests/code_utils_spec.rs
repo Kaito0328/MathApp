@@ -24,8 +24,8 @@ fn generate_codebook_gf2_small() {
             F::new(1),
         ],
     )
-    .unwrap();
-    let codebook = generate_codebook_gfp::<2>(&GeneratorMatrix(g));
+    .expect("Matrix::new");
+    let codebook = generate_codebook_gfp::<2>(&GeneratorMatrix(g)).expect("generate_codebook");
     assert_eq!(codebook.len(), 4);
 }
 
@@ -46,8 +46,8 @@ fn formed_g_to_h_standard_shape() {
             F::new(2),
         ],
     )
-    .unwrap();
-    let h = formed_g_to_h(&GeneratorMatrix(g));
+    .expect("Matrix::new");
+    let h = formed_g_to_h(&GeneratorMatrix(g)).expect("formed_g_to_h");
     assert_eq!(h.0.rows, 2);
     assert_eq!(h.0.cols, 4);
 }

@@ -8,20 +8,20 @@ pub struct QR {
 }
 
 pub trait QrDecomposition {
-    /// LU分解を行う。成功した場合はLU構造体を返す。
-    /// 行列が正方行列でない場合はNoneを返す。
-    fn qr_decomposition(&self) -> Option<QR>;
+    /// QR分解を行う。成功した場合はQR構造体を返す。
+    /// 次元不一致など内部操作の失敗は Err で返す。
+    fn qr_decomposition(&self) -> crate::Result<QR>;
 }
 
 impl QrDecomposition for Matrix<f64> {
-    fn qr_decomposition(&self) -> Option<QR> {
+    fn qr_decomposition(&self) -> crate::Result<QR> {
         let (rows, cols) = (self.rows, self.cols);
         let mut r = self.clone();
         let mut q = Matrix::identity(rows);
 
         for k in 0..min(rows, cols) {
             // 1. 部分ベクトルを抽出
-            let x = r.partial_col(k, k, rows).ok()?;
+            let x = r.partial_col(k, k, rows)?;
 
             // 2. ハウスホルダー"ベクトル"を計算
             if let Some(h_vec) = x.householder_vector() {
@@ -36,12 +36,12 @@ impl QrDecomposition for Matrix<f64> {
         // 対角成分の符号を正に揃える後処理 (この部分は変更なしでOK)
         for k in 0..min(rows, cols) {
             if r[(k, k)] < 0.0 {
-                r.scale_row(k, -1.0).ok()?;
-                q.scale_col(k, -1.0).ok()?;
+                r.scale_row(k, -1.0)?;
+                q.scale_col(k, -1.0)?;
             }
         }
 
-        Some(QR { q, r })
+        Ok(QR { q, r })
     }
 }
 

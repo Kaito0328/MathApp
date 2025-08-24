@@ -81,24 +81,24 @@ impl<'b, T: Ring> Mul<&'b Vector<T>> for &super::Matrix<T> {
 impl<'b, T: Ring> Mul<&'b T> for &super::Matrix<T> {
     type Output = super::Matrix<T>;
     fn mul(self, rhs: &'b T) -> Self::Output {
-        let data = self.data.iter().map(|x| x.clone() * rhs.clone()).collect();
-        super::Matrix::new(self.rows, self.cols, data).unwrap()
+    let data = self.data.iter().map(|x| x.clone() * rhs.clone()).collect();
+    super::Matrix { rows: self.rows, cols: self.cols, data }
     }
 }
 
 impl<'b, T: Ring> Add<&'b T> for &super::Matrix<T> {
     type Output = super::Matrix<T>;
     fn add(self, rhs: &'b T) -> Self::Output {
-        let data = self.data.iter().map(|x| x.clone() + rhs.clone()).collect();
-        super::Matrix::new(self.rows, self.cols, data).unwrap()
+    let data = self.data.iter().map(|x| x.clone() + rhs.clone()).collect();
+    super::Matrix { rows: self.rows, cols: self.cols, data }
     }
 }
 
 impl<'b, T: Ring> Sub<&'b T> for &super::Matrix<T> {
     type Output = super::Matrix<T>;
     fn sub(self, rhs: &'b T) -> Self::Output {
-        let data = self.data.iter().map(|x| x.clone() - rhs.clone()).collect();
-        super::Matrix::new(self.rows, self.cols, data).unwrap()
+    let data = self.data.iter().map(|x| x.clone() - rhs.clone()).collect();
+    super::Matrix { rows: self.rows, cols: self.cols, data }
     }
 }
 

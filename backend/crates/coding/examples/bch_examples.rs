@@ -30,7 +30,13 @@ fn main() {
     let u_bits = [1u16, 0, 1, 1, 0, 1, 0]; // 末尾0を保持するため直接フィールドに詰める
     let u = Poly { coeffs: u_bits.iter().copied().map(GFp::<2>).collect() };
     let msg = Message::from(linalg::Vector::new(u.coeffs.clone()));
-    let c = bch.encode(&msg);
+    let c = match bch.encode(&msg) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("encode failed: {e}");
+            return;
+        }
+    };
 
     println!("==== BCH(15,7) encode over GF(2) ====");
     println!("n={n}, k={k}, g(x) = {}", poly_to_string(bch.g()));

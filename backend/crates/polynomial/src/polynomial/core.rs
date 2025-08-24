@@ -63,7 +63,12 @@ impl<F: Field> Polynomial<F> {
         let mut q = vec![F::zero(); self.coeffs.len().saturating_sub(dl) + 1];
         while rpoly.coeffs.len() >= dl && !(rpoly.coeffs.len() == 1 && rpoly.coeffs[0].is_zero()) {
             let shift = rpoly.coeffs.len() - dl;
-            let coef = rpoly.coeffs.last().unwrap().clone() / lead.clone();
+            let coef = rpoly
+                .coeffs
+                .last()
+                .cloned()
+                .unwrap_or_else(F::zero)
+                / lead.clone();
             q[shift] = coef.clone();
             for i in 0..dl {
                 let idx = i + shift;
@@ -87,10 +92,10 @@ impl<F: Field> Polynomial<F> {
     }
 
     pub fn monic(&self) -> Self {
-        if self.deg() < 0 {
+    if self.deg() < 0 {
             return self.clone();
         }
-        let lc = self.coeffs.last().unwrap().clone();
+    let lc = self.coeffs.last().cloned().unwrap_or_else(F::zero);
         if lc.is_zero() {
             return Polynomial::zero();
         }
@@ -112,7 +117,8 @@ impl<F: Field + FromPrimitive> Polynomial<F> {
         }
         let mut new_coeffs = Vec::with_capacity(deg as usize);
         for (i, coeff) in self.coeffs.iter().enumerate().skip(1) {
-            new_coeffs.push(coeff.clone() * F::from_usize(i).unwrap());
+            let k = F::from_usize(i).unwrap_or_else(|| F::zero());
+            new_coeffs.push(coeff.clone() * k);
         }
         Polynomial::new(new_coeffs)
     }
@@ -122,7 +128,8 @@ impl<F: Field + FromPrimitive> Polynomial<F> {
         let mut new_coeffs: Vec<F> = Vec::with_capacity(deg as usize + 2);
         new_coeffs.push(F::zero());
         for (i, coeff) in self.coeffs.iter().enumerate() {
-            new_coeffs.push(coeff.clone() / F::from_usize(i + 1).unwrap());
+            let k = F::from_usize(i + 1).unwrap_or_else(|| F::one());
+            new_coeffs.push(coeff.clone() / k);
         }
         Polynomial::new(new_coeffs)
     }
@@ -187,8 +194,10 @@ impl Polynomial<f64> {
         if self.deg() < 0 || other.deg() < 0 {
             return Polynomial::zero();
         }
-        let y = convolution::convolve_fft_f64(&self.coeffs, &other.coeffs);
-        Polynomial::new(y)
+        match convolution::convolve_fft_f64(&self.coeffs, &other.coeffs) {
+            Ok(y) => Polynomial::new(y),
+            Err(e) => panic!("convolution failed: {e}"),
+        }
     }
     pub fn mul_auto(&self, other: &Self) -> Self {
         if self.deg() < 0 || other.deg() < 0 {

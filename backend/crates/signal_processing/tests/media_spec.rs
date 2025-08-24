@@ -10,8 +10,9 @@ fn grayscale_image_round_trip_vec() {
         .collect();
     let v = data.clone();
     let tmp = std::env::temp_dir().join("sp_img_rt.png");
-    image_io::save_vec_to_grayscale(tmp.to_str().unwrap(), &v, w, h).unwrap();
-    let (v2, w2, h2) = image_io::load_grayscale_to_vec(tmp.to_str().unwrap()).unwrap();
+    let tmp_str = tmp.to_str().unwrap_or("/dev/null");
+    assert!(image_io::save_vec_to_grayscale(tmp_str, &v, w, h).is_ok());
+    let (v2, w2, h2) = image_io::load_grayscale_to_vec(tmp_str).expect("load grayscale");
     assert_eq!((w2, h2), (w, h));
     assert_eq!(v2.len(), v.len());
     // Allow small quantization diffs
@@ -34,8 +35,9 @@ fn rgb_image_round_trip_vec() {
     ];
     let v = data.clone();
     let tmp = std::env::temp_dir().join("sp_img_rgb_rt.png");
-    image_io::save_vec_to_rgb(tmp.to_str().unwrap(), &v, w, h).unwrap();
-    let (v2, w2, h2) = image_io::load_rgb_to_vec(tmp.to_str().unwrap()).unwrap();
+    let tmp_str = tmp.to_str().unwrap_or("/dev/null");
+    assert!(image_io::save_vec_to_rgb(tmp_str, &v, w, h).is_ok());
+    let (v2, w2, h2) = image_io::load_rgb_to_vec(tmp_str).expect("load rgb");
     assert_eq!((w2, h2), (w, h));
     assert_eq!(v2.len(), v.len());
     for i in 0..v.len() {
@@ -54,8 +56,9 @@ fn wav_round_trip_vec() {
         .collect();
     let v = tone;
     let tmp = std::env::temp_dir().join("sp_audio_rt.wav");
-    audio_io::save_wav_mono_from_vec(tmp.to_str().unwrap(), &v, sr).unwrap();
-    let (v2, info) = audio_io::load_wav_mono_to_vec(tmp.to_str().unwrap()).unwrap();
+    let tmp_str = tmp.to_str().unwrap_or("/dev/null");
+    assert!(audio_io::save_wav_mono_from_vec(tmp_str, &v, sr).is_ok());
+    let (v2, info) = audio_io::load_wav_mono_to_vec(tmp_str).expect("load wav");
     assert_eq!(info.sample_rate, sr);
     assert!(v2.len() >= v.len()); // wav writer may pad
                                   // compare first N within small tolerance

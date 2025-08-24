@@ -42,8 +42,8 @@ fn eigen_4x4_mixed() {
             0.0, 0.0, 3.0, -4.0, -2.0, 5.0, -2.0, 2.0, -6.0, 9.0, -1.0, 2.0, 1.0, 2.0, 0.0, -1.0,
         ],
     )
-    .unwrap();
-    let q = base.qr_decomposition().unwrap().q;
+    .expect("Matrix::new");
+    let q = base.qr_decomposition().expect("qr").q;
     let a = &(&q * &d) * &q.transpose();
 
     let res = a.eigen_decomposition_complex().expect("eig failed");
@@ -98,8 +98,8 @@ fn eigen_7x7_mixed() {
             5.0,
         ],
     )
-    .unwrap();
-    let q = base.qr_decomposition().unwrap().q;
+    .expect("Matrix::new");
+    let q = base.qr_decomposition().expect("qr").q;
     let a = &(&q * &d) * &q.transpose();
 
     let res = a.eigen_decomposition_complex().expect("eig failed");

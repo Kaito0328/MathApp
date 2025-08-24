@@ -19,24 +19,24 @@ fn assert_orthogonal(a: &Matrix<f64>, tol: f64) {
 fn svd_reconstruction_random_shapes() {
     // 数ケース: 正方, 縦長, 横長, ランク落ち
     let cases = vec![
-        Matrix::new(3, 3, vec![4.0, 1.0, -2.0, 2.0, 5.0, 1.0, -1.0, 0.0, 6.0]).unwrap(),
+    Matrix::new(3, 3, vec![4.0, 1.0, -2.0, 2.0, 5.0, 1.0, -1.0, 0.0, 6.0]).expect("Matrix::new"),
         Matrix::new(
             5,
             3,
             vec![
                 2.0, -1.0, 0.0, 4.0, 1.0, -2.0, 0.0, 3.5, 1.0, -2.0, 0.0, 1.0, 1.0, 2.0, 0.0,
             ],
-        )
-        .unwrap(),
+    )
+    .expect("Matrix::new"),
         Matrix::new(
             3,
             5,
             vec![
                 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0,
             ],
-        )
-        .unwrap(),
-        Matrix::new(3, 3, vec![1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 3.0, 6.0, 9.0]).unwrap(),
+    )
+    .expect("Matrix::new"),
+    Matrix::new(3, 3, vec![1.0, 2.0, 3.0, 2.0, 4.0, 6.0, 3.0, 6.0, 9.0]).expect("Matrix::new"),
     ];
     for a in cases.into_iter() {
         let svd = a.svd().expect("svd failed");

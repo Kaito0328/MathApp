@@ -14,7 +14,7 @@ fn qr_reconstruction() {
             2.0, -1.0, 0.0, 4.0, 1.0, -2.0, 0.0, 3.5, 1.0, -2.0, 0.0, 1.0, 1.0, 2.0, 0.0,
         ],
     )
-    .unwrap();
+    .expect("Matrix::new");
     let qr = a.qr_decomposition().expect("qr failed");
     // Q は直交、R は上三角
     let qtq = &qr.q.transpose() * &qr.q;
@@ -49,7 +49,7 @@ fn lu_reconstruction() {
             0.0, 2.0, 1.0, -1.0, 2.0, 1.0, -2.0, 0.0, -1.0, 3.0, 0.0, 1.0, 1.0, -1.0, 4.0, 2.0,
         ],
     )
-    .unwrap();
+    .expect("Matrix::new");
     let lu = a.lu_decomposition().expect("lu failed");
     // LU 実装は P*A = L*U を満たす想定
     let lhs = &lu.p * &a;

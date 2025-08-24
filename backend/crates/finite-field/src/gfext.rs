@@ -68,19 +68,25 @@ impl<F: Field + Clone + PartialEq + Zero> GFExt<F> {
         &self.coeffs
     }
 
-    pub fn inv(&self) -> Self {
-        assert!(!self.is_zero(), "GFExt zero has no inverse");
+    pub fn inv(&self) -> crate::prelude::FieldResult<Self> {
+        if self.is_zero() {
+            return Err(crate::error::FieldError::DivisionByZero);
+        }
         let px_poly = Polynomial::new((*(self.px)).clone());
         let val_poly = Polynomial::new(self.coeffs.clone());
         let (_s, t, g) = poly_ext_gcd_poly(px_poly, val_poly);
-        // g は定数のはず（既約多項式を法とするため）。t / g を逆元とする。
         if g.deg() == 0 {
             let c = g.get(0);
             let cinv = F::one() / c;
             let tnorm = &t * cinv;
-            return GFExt::new(self.px.clone(), tnorm.coeffs);
+            Ok(GFExt::new(self.px.clone(), tnorm.coeffs))
+        } else {
+            Err(crate::error::FieldError::InvalidModulus { text: "gcd is not constant; modulus may not be irreducible".to_string() })
         }
-        panic!("GFExt inverse: gcd is not constant; modulus may not be irreducible");
+    }
+
+    pub fn try_inv(&self) -> crate::prelude::FieldResult<Self> {
+        self.inv()
     }
 }
 
@@ -235,7 +241,30 @@ impl<F: Field + Clone + PartialEq + Zero> Div for GFExt<F> {
             rhs.px.is_empty() || *px == *rhs.px,
             "GFExt div: px mismatch"
         );
-        GFExt::new(px.clone(), self.coeffs) * GFExt::new(px, rhs.coeffs).inv()
+        let inv = match GFExt::new(px.clone(), rhs.coeffs).inv() {
+            Ok(v) => v,
+            Err(e) => panic!(
+                "GFExt division failed: divisor has no inverse or invalid modulus: {e}"
+            ),
+        };
+        GFExt::new(px, self.coeffs) * inv
+    }
+}
+
+impl<F: Field + Clone + PartialEq + Zero> GFExt<F> {
+    pub fn checked_div(self, rhs: Self) -> crate::prelude::FieldResult<Self> {
+        if self.is_zero() {
+            return Ok(GFExt::new(rhs.px.clone(), vec![F::zero()]));
+        }
+        if rhs.is_one() {
+            return Ok(GFExt::new(self.px.clone(), self.coeffs));
+        }
+        let px = if self.px.is_empty() { rhs.px.clone() } else { self.px.clone() };
+        if !(rhs.px.is_empty() || *px == *rhs.px) {
+            return Err(crate::error::FieldError::InvalidArgument { text: "GFExt div: px mismatch".to_string() });
+        }
+    let inv = GFExt::new(px.clone(), rhs.coeffs).inv()?;
+        Ok(GFExt::new(px, self.coeffs) * inv)
     }
 }
 impl<F: Field + Clone + PartialEq + Zero> Neg for GFExt<F> {

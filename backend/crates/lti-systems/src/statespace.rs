@@ -114,7 +114,10 @@ impl ContinuousStateSpace {
         }
 
         // D (1×1)
-        let dmat = Matrix::new(1, 1, vec![d]).unwrap();
+        let dmat = match Matrix::new(1, 1, vec![d]) {
+            Ok(m) => m,
+            Err(e) => panic!("1x1 D must construct: {e}"),
+        };
 
         ContinuousStateSpace { a, b, c, d: dmat }
     }

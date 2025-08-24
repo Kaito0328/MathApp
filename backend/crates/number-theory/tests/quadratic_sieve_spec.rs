@@ -44,10 +44,10 @@ fn qs_factors_practical_minimum_semiprime() {
     // p, q はそれぞれ40ビット程度の大きさの素数
 
     // p = 1,000,000,000,039 (40-bit prime)
-    let p = BigInt::from_str("1000000000039").unwrap();
+    let p = BigInt::from_str("1000000000039").expect("parse p");
 
     // q = 3,000,000,000,017 (42-bit prime)
-    let q = BigInt::from_str("3000000000017").unwrap();
+    let q = BigInt::from_str("3000000000017").expect("parse q");
 
     // n = p * q = 3,000,000,000,134,000,000,000,063 (約82ビット)
     let n = &p * &q;

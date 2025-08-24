@@ -22,6 +22,6 @@ fn bch_encode_minimal_demo_compiles_and_has_length_n() {
 
     let u = Poly::new((0..k).map(|i| gf256_from_u8(i as u8 + 1)).collect());
     let msg = Message::from(linalg::Vector::new(u.coeffs.clone()));
-    let c = bch.encode(&msg);
+    let c = bch.encode(&msg).expect("encode");
     assert_eq!(c.as_ref().dim(), n);
 }

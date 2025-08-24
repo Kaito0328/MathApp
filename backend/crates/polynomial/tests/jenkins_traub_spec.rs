@@ -21,7 +21,7 @@ fn assert_roots_match(mut found: Vec<Complex<f64>>, mut expected: Vec<Complex<f6
             idx.is_some(),
             "expected root {e:?} not found within tol {tol} in {found:?}"
         );
-        found.remove(idx.unwrap());
+    found.remove(idx.expect("matching root index"));
     }
 }
 

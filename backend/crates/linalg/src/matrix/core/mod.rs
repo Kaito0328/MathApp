@@ -18,17 +18,18 @@ impl<T: Scalar> Matrix<T> {
         T: Default,
     {
         let data = (0..rows * cols).map(|_| T::default()).collect();
-        Self::new(rows, cols, data).unwrap()
+        // 検証済みサイズで直接構築（unwrap回避）
+        Self { rows, cols, data }
     }
 
     pub fn transpose(&self) -> Matrix<T> {
         if self.rows == 0 || self.cols == 0 {
-            return Matrix::new(self.cols, self.rows, vec![]).unwrap();
+            return Matrix { rows: self.cols, cols: self.rows, data: vec![] };
         }
         let data = (0..self.cols)
             .flat_map(|j| (0..self.rows).map(move |i| self[(i, j)].clone()))
             .collect();
-        Matrix::new(self.cols, self.rows, data).unwrap()
+        Matrix { rows: self.cols, cols: self.rows, data }
     }
 
     pub fn swap_rows(&mut self, r1: usize, r2: usize) -> Result<()> {
@@ -168,12 +169,11 @@ impl<T: Scalar> Matrix<T> {
                 found: format!("{} rows", other.rows),
             });
         }
-        let mut a = Matrix::new(
+    let mut a = Matrix::new(
             self.rows,
             self.cols,
             self.data.iter().cloned().map(|x| x.into()).collect(),
-        )
-        .unwrap();
+    )?;
         let mut b = other.clone();
         let mut row = 0usize;
         for col in 0..a.cols {
@@ -233,7 +233,8 @@ impl<T: Scalar> Matrix<T> {
         let data = (start_row..end_row)
             .flat_map(|i| (start_col..end_col).map(move |j| self[(i, j)].clone()))
             .collect();
-        Matrix::new(end_row - start_row, end_col - start_col, data).unwrap()
+        // 事前にサイズ計算済みなので直接構築（unwrap回避）
+        Matrix { rows: end_row - start_row, cols: end_col - start_col, data }
     }
 
     pub fn set_submatrix(

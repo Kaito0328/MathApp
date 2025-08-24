@@ -84,15 +84,12 @@ impl<T: Ring> Vector<T> {
         if m == rhs.rows {
             let mut data = Vec::with_capacity(rhs.cols);
             for j in 0..rhs.cols {
-                let mut acc = None;
+                let mut acc = T::zero();
                 for i in 0..rhs.rows {
                     let val = self.data[i].clone() * rhs[(i, j)].clone();
-                    acc = Some(match acc {
-                        Some(x) => x + val,
-                        None => val,
-                    });
+                    acc = acc + val;
                 }
-                data.push(acc.unwrap());
+                data.push(acc);
             }
             return Matrix::new(1, rhs.cols, data);
         }
@@ -184,7 +181,7 @@ impl Vector<f64> {
     }
 
     /// FFT 畳み込み
-    pub fn conv_fft(&self, other: &Self) -> Vector<f64> {
+    pub fn conv_fft(&self, other: &Self) -> crate::Result<Vector<f64>> {
         use num_complex::Complex;
         let x = &self.data;
         let h = &other.data;
@@ -193,18 +190,18 @@ impl Vector<f64> {
         let mut h_pad: Vec<Complex<f64>> = h.iter().map(|&v| Complex::new(v, 0.0)).collect();
         x_pad.resize(n, Complex::new(0.0, 0.0));
         h_pad.resize(n, Complex::new(0.0, 0.0));
-        let x_fft = fft_core::dft(&x_pad);
-        let h_fft = fft_core::dft(&h_pad);
+    let x_fft = fft_core::dft(&x_pad).map_err(|e| crate::error::LinalgError::InvalidArgument { text: format!("DFT failed: {e}") })?;
+    let h_fft = fft_core::dft(&h_pad).map_err(|e| crate::error::LinalgError::InvalidArgument { text: format!("DFT failed: {e}") })?;
         let y_fft: Vec<Complex<f64>> = x_fft.into_iter().zip(h_fft).map(|(a, b)| a * b).collect();
-        let y = fft_core::ift(&y_fft);
-        Vector::new(y.into_iter().map(|c| c.re).collect())
+    let y = fft_core::ift(&y_fft).map_err(|e| crate::error::LinalgError::InvalidArgument { text: format!("IFT failed: {e}") })?;
+    Ok(Vector::new(y.into_iter().map(|c| c.re).collect()))
     }
 
     /// サイズにより素朴/FFT を自動切替。
-    pub fn conv_auto(&self, other: &Self) -> Vector<f64> {
+    pub fn conv_auto(&self, other: &Self) -> crate::Result<Vector<f64>> {
         let work = self.data.len() * other.data.len();
         if work <= 2048 {
-            self.conv_simple(other)
+            Ok(self.conv_simple(other))
         } else {
             self.conv_fft(other)
         }

@@ -18,24 +18,24 @@ pub struct EigenComplex {
 pub trait EigenDecomposition {
     /// LU分解を行う。成功した場合はLU構造体を返す。
     /// 行列が正方行列でない場合はNoneを返す。
-    fn eigen_decomposition(&self) -> Option<Eigen>;
-    fn eigen_decomposition_complex(&self) -> Option<EigenComplex>;
+    fn eigen_decomposition(&self) -> crate::Result<Eigen>;
+    fn eigen_decomposition_complex(&self) -> crate::Result<EigenComplex>;
 }
 
 impl EigenDecomposition for Matrix<f64> {
-    fn eigen_decomposition(&self) -> Option<Eigen> {
+    fn eigen_decomposition(&self) -> crate::Result<Eigen> {
         // --- エッジケースの事前処理 (変更なし) ---
         if self.rows == 0 {
-            return Some(Eigen {
+            return Ok(Eigen {
                 eigen_values: vec![],
-                eigen_vectors: Matrix::new(0, 0, vec![]).unwrap(),
+                eigen_vectors: Matrix { rows: 0, cols: 0, data: vec![] },
             });
         }
         if !self.is_square() {
-            return None;
+            return Err(crate::LinalgError::NotSquareMatrix);
         }
         if self.rows == 1 {
-            return Some(Eigen {
+            return Ok(Eigen {
                 eigen_values: vec![self[(0, 0)]],
                 eigen_vectors: Matrix::identity(1),
             });
@@ -43,7 +43,11 @@ impl EigenDecomposition for Matrix<f64> {
 
         let n = self.rows;
         // Hessenberg 化して h を得る（固有値収束のために QR 反復はそのまま使う）
-        let (mut h, _v_dummy) = self.to_hessenberg()?; // v はここでは使わない（零空間で再構築する）
+                let (mut h, _v_dummy) = self
+                    .to_hessenberg()
+                    .ok_or(crate::LinalgError::InvalidArgument {
+                        text: "Hessenberg reduction failed".into(),
+                    })?; // v はここでは使わない（零空間で再構築する）
         let mut end = n;
 
         let max_total_iterations = 30 * n;
@@ -56,7 +60,7 @@ impl EigenDecomposition for Matrix<f64> {
             loop {
                 if total_iterations >= max_total_iterations {
                     println!("Maximum total iterations reached, returning None.");
-                    return None;
+                    return Err(crate::LinalgError::InvalidArgument { text: "Maximum total iterations reached".into() });
                 }
                 total_iterations += 1;
                 iterations_since_deflation += 1;
@@ -100,15 +104,18 @@ impl EigenDecomposition for Matrix<f64> {
                     shifted_h[(j, j)] -= shift;
                 }
 
-                if let Some(qr) = shifted_h.submatrix(0, end, 0, end).qr_decomposition() {
+                if let Ok(qr) = shifted_h
+                    .submatrix(0, end, 0, end)
+                    .qr_decomposition()
+                {
                     let q = qr.q;
                     let mut q_full = Matrix::identity(n);
-                    q_full.set_submatrix(0, 0, &q).ok()?;
+                            q_full.set_submatrix(0, 0, &q)?;
 
                     h = &(&q_full.transpose() * &h) * &q_full;
                     // v は累積しない（零空間で固有ベクトルを再計算するため）
                 } else {
-                    return None;
+                    return Err(crate::LinalgError::InvalidArgument { text: "QR decomposition failed".into() });
                 }
             }
         }
@@ -131,12 +138,12 @@ impl EigenDecomposition for Matrix<f64> {
             } else {
                 // 零空間が見つからなければ（数値的問題）、
                 // 代替として単位ベクトルを返すか None にする。ここでは None を返す。
-                return None;
+                return Err(crate::LinalgError::InvalidArgument { text: "Failed to compute nullspace vector".into() });
             }
         }
 
         // インデックスソート（固有値順）
-        let mut indices: Vec<usize> = (0..n).collect();
+    let mut indices: Vec<usize> = (0..n).collect();
         indices.sort_by(|&i, &j| {
             eigenvalues_unsorted[i]
                 .partial_cmp(&eigenvalues_unsorted[j])
@@ -147,42 +154,35 @@ impl EigenDecomposition for Matrix<f64> {
             indices.iter().map(|&i| eigenvalues_unsorted[i]).collect();
         let mut final_eigenvectors = Matrix::<f64>::zeros(n, n);
         for (col_idx, &i) in indices.iter().enumerate() {
-            final_eigenvectors
-                .set_col(col_idx, &eigenvectors_cols[i])
-                .ok()?;
+            final_eigenvectors.set_col(col_idx, &eigenvectors_cols[i])?;
         }
 
-        Some(Eigen {
+        Ok(Eigen {
             eigen_values: final_eigenvalues,
             eigen_vectors: final_eigenvectors,
         })
     }
 
-    fn eigen_decomposition_complex(&self) -> Option<EigenComplex> {
+    fn eigen_decomposition_complex(&self) -> crate::Result<EigenComplex> {
         // --- エッジケースの事前処理 (変更なし) ---
         if self.rows == 0 {
-            return Some(EigenComplex {
-                eigen_values: vec![],
-                eigen_vectors: Matrix::new(0, 0, vec![]).unwrap(),
-            });
+            return Ok(EigenComplex { eigen_values: vec![], eigen_vectors: Matrix { rows: 0, cols: 0, data: vec![] } });
         }
         if !self.is_square() {
-            return None;
+            return Err(crate::LinalgError::NotSquareMatrix);
         }
         // 小規模(<=4)では数値安定性を優先して多項式ルート法を採用
         if self.rows <= 4 {
             return Self::eigen_decomposition_complex_via_roots(self);
         }
         if self.rows == 1 {
-            return Some(EigenComplex {
-                eigen_values: vec![Complex::new(self[(0, 0)], 0.0)],
-                eigen_vectors: Matrix::new(1, 1, vec![Complex::new(1.0, 0.0)]).unwrap(),
-            });
+            return Ok(EigenComplex { eigen_values: vec![Complex::new(self[(0, 0)], 0.0)], eigen_vectors: Matrix { rows: 1, cols: 1, data: vec![Complex::new(1.0, 0.0)] } });
         }
         // 小規模行列に限定せず、まずはHessenberg+QRで試み、必要なら後段でフォールバック
         let n = self.rows;
-        // まずはヘッセンベルグ→明示的QR反復でシュアへ
-        let (mut h, mut q) = self.to_hessenberg()?;
+        let (mut h, mut q) = self
+            .to_hessenberg()
+            .ok_or(crate::LinalgError::InvalidArgument { text: "Hessenberg reduction failed".into() })?;
         if !Self::qr_iteration_to_schur(&mut h, &mut q, 1e-12) {
             // 最後の手段としてフォールバック
             return Self::eigen_decomposition_complex_via_roots(self);
@@ -197,11 +197,18 @@ impl EigenDecomposition for Matrix<f64> {
         let eigenvectors_unsorted = &q.to_complex() * &schur_eigenvectors;
 
         // 固有値と固有ベクトルを (実部→虚部) で安定ソート
-        let mut pairs: Vec<_> = eigenvalues_unsorted
-            .into_iter()
-            .zip(0..n)
-            .map(|(val, i)| (val, eigenvectors_unsorted.col(i).unwrap()))
-            .collect();
+        let mut pairs: Vec<(Complex<f64>, crate::Vector<Complex<f64>>)> = Vec::with_capacity(n);
+        for (val, i) in eigenvalues_unsorted.into_iter().zip(0..n) {
+            let col = match eigenvectors_unsorted.col(i) {
+                Ok(c) => c,
+                Err(_) => {
+                    return Err(crate::LinalgError::InvalidArgument {
+                        text: "Failed to extract eigenvector column".into(),
+                    })
+                }
+            };
+            pairs.push((val, col));
+        }
         pairs.sort_by(|(val_a, _), (val_b, _)| {
             val_a
                 .re
@@ -218,7 +225,7 @@ impl EigenDecomposition for Matrix<f64> {
         let final_eigenvalues: Vec<Complex<f64>> = pairs.iter().map(|(val, _)| *val).collect();
         let mut final_eigenvectors = Matrix::<Complex<f64>>::zeros(n, n);
         for (i, (_, vec)) in pairs.iter().enumerate() {
-            final_eigenvectors.set_col(i, vec).ok()?;
+            final_eigenvectors.set_col(i, vec)?;
         }
 
         // 追加の健全性チェック(1): 特性多項式 p(λ) の評価で固有値の妥当性を確認
@@ -242,7 +249,7 @@ impl EigenDecomposition for Matrix<f64> {
             .sum::<f64>()
             .sqrt();
         if resid.is_finite() && resid < 1e-6 && max_poly_resid < 1e-6 {
-            Some(EigenComplex {
+            Ok(EigenComplex {
                 eigen_values: final_eigenvalues,
                 eigen_vectors: final_eigenvectors,
             })
@@ -283,7 +290,11 @@ impl Matrix<f64> {
         while end > 0 {
             let mut progressed = false;
             for _ in 0..max_iter {
-                let Some(qr) = h.submatrix(0, end, 0, end).qr_decomposition() else {
+                let Some(qr) = h
+                    .submatrix(0, end, 0, end)
+                    .qr_decomposition()
+                    .ok()
+                else {
                     return false;
                 };
                 let q_step = qr.q;
@@ -623,15 +634,15 @@ impl Matrix<f64> {
         Some(v)
     }
 
-    fn eigen_decomposition_complex_via_roots(a: &Matrix<f64>) -> Option<EigenComplex> {
+    fn eigen_decomposition_complex_via_roots(a: &Matrix<f64>) -> crate::Result<EigenComplex> {
         if !a.is_square() {
-            return None;
+            return Err(crate::LinalgError::NotSquareMatrix);
         }
         let n = a.rows;
         if n == 0 {
-            return Some(EigenComplex {
+            return Ok(EigenComplex {
                 eigen_values: vec![],
-                eigen_vectors: Matrix::new(0, 0, vec![]).unwrap(),
+                eigen_vectors: Matrix { rows: 0, cols: 0, data: vec![] },
             });
         }
         let coeffs = Self::characteristic_polynomial_coeffs(a);
@@ -659,11 +670,18 @@ impl Matrix<f64> {
                     break;
                 }
             }
-            let v = v_opt?;
-            vecs.set_col(i, &v).ok()?;
+            let v = match v_opt {
+                Some(v) => v,
+                None => {
+                    return Err(crate::LinalgError::InvalidArgument {
+                        text: "Failed to compute complex nullspace vector".into(),
+                    })
+                }
+            };
+            vecs.set_col(i, &v)?;
         }
 
-        Some(EigenComplex {
+        Ok(EigenComplex {
             eigen_values: eigs,
             eigen_vectors: vecs,
         })

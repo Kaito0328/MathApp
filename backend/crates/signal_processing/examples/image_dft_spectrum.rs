@@ -52,12 +52,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("Spectrum has no finite values; skipping save.");
         return Ok(());
     }
-    vals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let lo = vals[(vals.len() as f32 * 0.02) as usize];
     let hi = vals[(vals.len() as f32 * 0.98) as usize];
     let norm = Image::<u8>::from_f32_normalized(&mag, lo, hi);
     let out = out_dir.join("spectrum.png");
-    norm.save_png(out.to_str().unwrap())?;
+    let out_str = out.to_string_lossy();
+    norm.save_png(&out_str)?;
     println!("Wrote {}", out.display());
     Ok(())
 }

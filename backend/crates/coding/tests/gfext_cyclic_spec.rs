@@ -21,7 +21,7 @@ fn gfext_basic_inv() {
     let c = (a.clone() * b.clone()).to_u8();
     assert_eq!(c, 0xFE);
     // 逆元
-    let inv = a.clone().inv();
+    let inv = a.clone().inv().expect("inv exists");
     let one = (a * inv).to_u8();
     assert_ne!(one, 0x00);
 }

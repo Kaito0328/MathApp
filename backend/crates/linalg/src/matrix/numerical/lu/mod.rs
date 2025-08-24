@@ -1,4 +1,5 @@
 use crate::matrix::Matrix;
+use crate::LinalgError;
 
 pub struct LU {
     pub p: Matrix<f64>,
@@ -8,14 +9,14 @@ pub struct LU {
 
 pub trait LuDecomposition {
     /// LU分解を行う。成功した場合はLU構造体を返す。
-    /// 行列が正方行列でない場合はNoneを返す。
-    fn lu_decomposition(&self) -> Option<LU>;
+    /// 非正方や特異行列などは Err を返す。
+    fn lu_decomposition(&self) -> crate::Result<LU>;
 }
 
 impl LuDecomposition for Matrix<f64> {
-    fn lu_decomposition(&self) -> Option<LU> {
+    fn lu_decomposition(&self) -> crate::Result<LU> {
         if !self.is_square() {
-            return None;
+            return Err(LinalgError::NotSquareMatrix);
         }
         let n = self.rows;
         // Lはゼロ行列から始め、UはAのコピーから始めるのがシンプル
@@ -35,7 +36,7 @@ impl LuDecomposition for Matrix<f64> {
             }
 
             if max_val < 1e-10 {
-                return None;
+                return Err(LinalgError::SingularMatrix);
             }
 
             // --- 2. 行の交換 ---
@@ -67,7 +68,7 @@ impl LuDecomposition for Matrix<f64> {
             }
         }
 
-        Some(LU { p, l, u })
+    Ok(LU { p, l, u })
     }
 }
 

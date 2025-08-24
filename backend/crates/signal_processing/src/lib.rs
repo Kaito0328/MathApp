@@ -8,3 +8,5 @@ pub mod plot;
 pub mod sampling;
 pub mod signal;
 pub mod window;
+pub mod error;
+pub mod prelude { pub use crate::error::{SignalError, Result as SignalResult}; }

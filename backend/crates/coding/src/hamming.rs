@@ -1,6 +1,7 @@
+use crate::error::Result as CodingResult;
+use crate::types::{Codeword, GeneratorMatrix, Message};
 use finite_field::gfp::GFp;
 use linalg::Vector;
-use crate::types::{Codeword, GeneratorMatrix, Message};
 
 // (7,4) Hamming code over GF(2)
 #[derive(Debug, Clone)]
@@ -17,15 +18,21 @@ impl Default for Hamming74 {
         .into_iter()
         .map(GFp::<2>)
         .collect();
-        let g = linalg::Matrix::new(4, 7, data).unwrap();
-        Self { g: GeneratorMatrix(g) }
+        let g = match linalg::Matrix::new(4, 7, data) {
+            Ok(m) => m,
+            Err(e) => panic!("valid Hamming(7,4) generator: {e}"),
+        };
+        Self {
+            g: GeneratorMatrix(g),
+        }
     }
 }
 
 impl Hamming74 {
-    pub fn encode(&self, u: &Message<GFp<2>>) -> Codeword<GFp<2>> {
+    pub fn encode(&self, u: &Message<GFp<2>>) -> CodingResult<Codeword<GFp<2>>> {
         let v: Vector<GFp<2>> = u.as_ref().clone();
         let g = &self.g.0;
-        ((v * g).row(0).unwrap()).into()
+        let row = (v * g).row(0)?;
+        Ok(Codeword::from(row))
     }
 }

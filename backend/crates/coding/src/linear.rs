@@ -1,3 +1,4 @@
+use crate::error::Result as CodingResult;
 use crate::types::{Codeword, GeneratorMatrix, Message};
 use linalg::{Field, Matrix, Vector};
 
@@ -12,13 +13,18 @@ impl<F: Field + Clone + PartialEq> LinearCode<F> {
     pub fn new(g: Matrix<F>) -> Self {
         let k = g.rows;
         let n = g.cols;
-        Self { n, k, g: GeneratorMatrix(g) }
+        Self {
+            n,
+            k,
+            g: GeneratorMatrix(g),
+        }
     }
 
-    pub fn encode(&self, u: &Message<F>) -> Codeword<F> {
+    pub fn encode(&self, u: &Message<F>) -> CodingResult<Codeword<F>> {
         // u: 1 x k
         let v: Vector<F> = u.as_ref().clone();
         let g = &self.g.0;
-        ((v * g).row(0).unwrap()).into()
+        let row = (v * g).row(0)?;
+        Ok(Codeword::from(row))
     }
 }

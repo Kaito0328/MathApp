@@ -44,12 +44,12 @@ impl<T: Ring> Matrix<T> {
 		let mut data = Vec::with_capacity(self.rows * rhs.cols);
 		for i in 0..self.rows {
 			for j in 0..rhs.cols {
-				let mut acc = None;
+				let mut acc = T::zero();
 				for k in 0..self.cols {
 					let val = self[(i, k)].clone() * rhs[(k, j)].clone();
-					acc = Some(match acc { Some(x) => x + val, None => val });
+					acc = acc + val;
 				}
-				data.push(acc.unwrap());
+				data.push(acc);
 			}
 		}
 		Matrix::new(self.rows, rhs.cols, data)
@@ -64,12 +64,12 @@ impl<T: Ring> Matrix<T> {
 		}
 		let mut out = Vec::with_capacity(self.rows);
 		for i in 0..self.rows {
-			let mut acc = None;
+			let mut acc = T::zero();
 			for k in 0..self.cols {
 				let val = self[(i, k)].clone() * rhs.data[k].clone();
-				acc = Some(match acc { Some(x) => x + val, None => val });
+				acc = acc + val;
 			}
-			out.push(acc.unwrap());
+			out.push(acc);
 		}
 		Ok(Vector::new(out))
 	}

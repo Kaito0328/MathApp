@@ -291,7 +291,12 @@ impl Polynomial<f64> {
         let real_thr = 1e-10;
         while pc.deg() > 2 {
             // 残差が小さいシードを優先
-            seeds.sort_by(|a, b| pc.eval(*a).norm().partial_cmp(&pc.eval(*b).norm()).unwrap());
+            seeds.sort_by(|a, b| {
+                pc.eval(*a)
+                    .norm()
+                    .partial_cmp(&pc.eval(*b).norm())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             let mut s = seeds.remove(0);
             s = Self::newton_polish(&pc, s, 50, tol);
             pc = Self::deflate_with_estimate(pc, s, real_thr, &mut roots);

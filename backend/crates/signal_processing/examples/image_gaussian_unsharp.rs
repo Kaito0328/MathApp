@@ -38,8 +38,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sharp = unsharp_mask_u8(&img, 1.4, 2, 0.6, Border::Reflect);
     let out_blur = out_dir.join("blur.png");
     let out_sharp = out_dir.join("unsharp.png");
-    blur.save_png(out_blur.to_str().unwrap())?;
-    sharp.save_png(out_sharp.to_str().unwrap())?;
+    let out_blur_str = match out_blur.to_str() { Some(s) => s, None => return Ok(()) };
+    let out_sharp_str = match out_sharp.to_str() { Some(s) => s, None => return Ok(()) };
+    blur.save_png(out_blur_str)?;
+    sharp.save_png(out_sharp_str)?;
     println!("Wrote {} and {}", out_blur.display(), out_sharp.display());
     Ok(())
 }

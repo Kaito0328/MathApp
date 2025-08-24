@@ -1,6 +1,6 @@
 use linalg::{Matrix, Vector};
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== 基本的な行列・ベクトル操作の例 ===");
 
     // ベクトルの作成と基本操作
@@ -18,7 +18,7 @@ fn main() {
 
     // 行列の作成
     let matrix_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
-    let matrix = Matrix::new(2, 3, matrix_data).unwrap();
+    let matrix = Matrix::new(2, 3, matrix_data)?;
     println!("\n行列 (2x3):");
     for i in 0..matrix.rows {
         for j in 0..matrix.cols {
@@ -46,4 +46,5 @@ fn main() {
         }
         println!();
     }
+    Ok(())
 }

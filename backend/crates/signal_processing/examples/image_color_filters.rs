@@ -73,25 +73,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let r_g = gaussian_blur_u8(&r, 1.4, 2, Border::Reflect);
     let g_g = gaussian_blur_u8(&g, 1.4, 2, Border::Reflect);
     let b_g = gaussian_blur_u8(&b, 1.4, 2, Border::Reflect);
-    merge_rgb(&r_g, &g_g, &b_g).save_png(out_dir.join("gaussian.png").to_str().unwrap())?;
+    {
+        let p = out_dir.join("gaussian.png");
+        let p_str = p.to_string_lossy();
+        merge_rgb(&r_g, &g_g, &b_g).save_png(&p_str)?;
+    }
 
     // Unsharp mask per channel
     let r_u = unsharp_mask_u8(&r, 1.4, 2, 0.6, Border::Reflect);
     let g_u = unsharp_mask_u8(&g, 1.4, 2, 0.6, Border::Reflect);
     let b_u = unsharp_mask_u8(&b, 1.4, 2, 0.6, Border::Reflect);
-    merge_rgb(&r_u, &g_u, &b_u).save_png(out_dir.join("unsharp.png").to_str().unwrap())?;
+    {
+        let p = out_dir.join("unsharp.png");
+        let p_str = p.to_string_lossy();
+        merge_rgb(&r_u, &g_u, &b_u).save_png(&p_str)?;
+    }
 
     // Median denoise per channel
     let r_m = median_filter_u8(&r, 1, Border::Reflect);
     let g_m = median_filter_u8(&g, 1, Border::Reflect);
     let b_m = median_filter_u8(&b, 1, Border::Reflect);
-    merge_rgb(&r_m, &g_m, &b_m).save_png(out_dir.join("median.png").to_str().unwrap())?;
+    {
+        let p = out_dir.join("median.png");
+        let p_str = p.to_string_lossy();
+        merge_rgb(&r_m, &g_m, &b_m).save_png(&p_str)?;
+    }
 
     // Bilateral (parameters are empirical for 8-bit range)
     let r_b = bilateral_filter_u8(&r, 2, 2.0, 20.0, Border::Reflect);
     let g_b = bilateral_filter_u8(&g, 2, 2.0, 20.0, Border::Reflect);
     let b_b = bilateral_filter_u8(&b, 2, 2.0, 20.0, Border::Reflect);
-    merge_rgb(&r_b, &g_b, &b_b).save_png(out_dir.join("bilateral.png").to_str().unwrap())?;
+    {
+        let p = out_dir.join("bilateral.png");
+        let p_str = p.to_string_lossy();
+        merge_rgb(&r_b, &g_b, &b_b).save_png(&p_str)?;
+    }
 
     // Sobel magnitude on luminance (grayscale proxy), then replicate to RGB for visualization
     // Convert RGB to grayscale via DynamicImage to access to_luma8
@@ -103,7 +119,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let v = sobel.as_slice()[i];
         sobel_rgb.as_mut_slice()[i] = [v, v, v];
     }
-    sobel_rgb.save_png(out_dir.join("sobel_gray.png").to_str().unwrap())?;
+    {
+        let p = out_dir.join("sobel_gray.png");
+        let p_str = p.to_string_lossy();
+        sobel_rgb.save_png(&p_str)?;
+    }
 
     println!("Wrote color filter outputs to {}", out_dir.display());
     Ok(())

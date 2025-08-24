@@ -1,6 +1,7 @@
 use num_complex::Complex;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
+use crate::error::{ConcreteMathError, Result as ConcreteMathResult};
 use poly::polynomial::Polynomial;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -69,6 +70,25 @@ impl ClosedForm {
     pub fn simplified(mut self) -> Self {
         self.simplify();
         self
+    }
+
+    /// Checked division by a complex scalar. Returns an error on zero divisor.
+    pub fn try_div_scalar(&self, scalar: Complex<f64>) -> ConcreteMathResult<ClosedForm> {
+        if scalar == Complex::new(0.0, 0.0) {
+            return Err(ConcreteMathError::InvalidArgument {
+                text: "division by zero scalar".into(),
+            });
+        }
+        Ok(ClosedForm::new(
+            self.terms
+                .iter()
+                .cloned()
+                .map(|mut t| {
+                    t.polynomial = &t.polynomial / scalar;
+                    t
+                })
+                .collect(),
+        ))
     }
 }
 
@@ -197,19 +217,10 @@ impl Mul<Complex<f64>> for &ClosedForm {
 impl Div<Complex<f64>> for &ClosedForm {
     type Output = ClosedForm;
     fn div(self, scalar: Complex<f64>) -> Self::Output {
-        if scalar == Complex::new(0.0, 0.0) {
-            panic!("Division by zero scalar in ClosedForm");
-        }
-        ClosedForm::new(
-            self.terms
-                .iter()
-                .cloned()
-                .map(|mut t| {
-                    t.polynomial = &t.polynomial / scalar;
-                    t
-                })
-                .collect(),
-        )
+        // 非チェック演算子: 0除算はゼロを返す（落とさない挙動）。
+        // 例外のないAPIを維持しつつ、エラー検出が必要な場合は try_div_scalar を使用してください。
+        self.try_div_scalar(scalar)
+            .unwrap_or_else(|_| ClosedForm::zero())
     }
 }
 

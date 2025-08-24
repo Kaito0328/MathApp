@@ -29,12 +29,17 @@ impl<const P: u16> GFp<P> {
         self.0
     }
 
-    // 拡張ユークリッドで逆元
-    pub fn inv(self) -> Self {
-        assert!(self.0 != 0, "GFp zero has no inverse");
+    // 逆元（Result版：破壊的変更）
+    pub fn inv(self) -> crate::prelude::FieldResult<Self> {
+        if self.0 == 0 {
+            return Err(crate::error::FieldError::DivisionByZero);
+        }
         let (_x, y) = egcd(P as i64, self.0 as i64);
-        // y が self の逆元係数（P*_x + self*y = 1）
-        GFp::<P>::new(y)
+        Ok(GFp::<P>::new(y))
+    }
+    // 後方互換のための別名（将来削除可）
+    pub fn try_inv(self) -> crate::prelude::FieldResult<Self> {
+        self.inv()
     }
     #[inline]
     fn mul_i64(a: i64, b: i64) -> Self {
@@ -75,8 +80,18 @@ impl<const P: u16> Div for GFp<P> {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
         // rhs.inv() を明示的に計算し、内部表現で乗算→剰余化して返す
-        let inv = rhs.inv().0 as i64;
+        let inv = rhs
+            .inv()
+            .expect("GFp division by zero")
+            .0 as i64;
         GFp::<P>::mul_i64(self.0 as i64, inv)
+    }
+}
+
+impl<const P: u16> GFp<P> {
+    // 除算（Result版）
+    pub fn checked_div(self, rhs: Self) -> crate::prelude::FieldResult<Self> {
+        Ok(self * rhs.inv()?)
     }
 }
 impl<const P: u16> Neg for GFp<P> {

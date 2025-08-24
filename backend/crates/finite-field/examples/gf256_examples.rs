@@ -7,7 +7,13 @@ fn main() {
     println!("({a})*({b}) = {c}");
 
     // 逆元の確認
-    let inv = a.clone().inv();
+    let inv = match a.clone().inv() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("inverse does not exist: {e}");
+            return;
+        }
+    };
     println!("a*inv(a) = {}", (a * inv));
 
     // 基本データ

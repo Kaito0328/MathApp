@@ -3,7 +3,8 @@ use crate::{LinalgError, Matrix, Result, Ring};
 
 impl<T: Ring> Matrix<T> {
     pub fn zeros(rows: usize, cols: usize) -> Self {
-        Self::new(rows, cols, vec![T::zero(); rows * cols]).unwrap()
+        // 事前にサイズが一致しているので直接構築（unwrap回避）
+        Self { rows, cols, data: vec![T::zero(); rows * cols] }
     }
 
     pub fn identity(size: usize) -> Self {
@@ -35,7 +36,7 @@ impl<T: Ring> Matrix<T> {
             .iter()
             .map(|x| x.clone() * scalar.clone())
             .collect();
-        Matrix::new(self.rows, self.cols, data).unwrap()
+        Matrix { rows: self.rows, cols: self.cols, data }
     }
 
     pub fn checked_add_scalar(&self, scalar: T) -> Matrix<T> {
@@ -44,7 +45,7 @@ impl<T: Ring> Matrix<T> {
             .iter()
             .map(|x| x.clone() + scalar.clone())
             .collect();
-        Matrix::new(self.rows, self.cols, data).unwrap()
+        Matrix { rows: self.rows, cols: self.cols, data }
     }
 
     pub fn checked_sub_scalar(&self, scalar: T) -> Matrix<T> {
@@ -53,12 +54,12 @@ impl<T: Ring> Matrix<T> {
             .iter()
             .map(|x| x.clone() - scalar.clone())
             .collect();
-        Matrix::new(self.rows, self.cols, data).unwrap()
+        Matrix { rows: self.rows, cols: self.cols, data }
     }
 
     pub fn checked_neg(&self) -> Matrix<T> {
         let data = self.data.iter().map(|v| -v.clone()).collect();
-        Matrix::new(self.rows, self.cols, data).unwrap()
+        Matrix { rows: self.rows, cols: self.cols, data }
     }
 
     pub fn scale_row(&mut self, r: usize, scalar: T) -> Result<()> {
@@ -105,11 +106,10 @@ impl<T: Ring> Matrix<T> {
         Ok(())
     }
 
-    pub fn trace(&self) -> T {
+    pub fn trace(&self) -> Result<T> {
         if !self.is_square() {
-            // 正方行列でない場合はパニックさせるか、エラーを返す
-            panic!("Trace is only defined for square matrices.");
+            return Err(LinalgError::NotSquareMatrix);
         }
-        (0..self.rows).map(|i| self[(i, i)].clone()).sum()
+        Ok((0..self.rows).map(|i| self[(i, i)].clone()).sum())
     }
 }

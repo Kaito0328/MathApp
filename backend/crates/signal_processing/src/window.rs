@@ -47,7 +47,12 @@ pub fn generate_window(size: usize, window_type: WindowType) -> Vec<f64> {
             WindowType::Kaiser { beta } => {
                 // xを [-1.0, 1.0] の範囲に変換し、カイザー窓の公式に適用する。
                 let t = 2.0 * x - 1.0;
-                calc_bessel_i0(beta * (1.0 - t * t).sqrt()) / kaiser_denominator.unwrap()
+                    let denom = kaiser_denominator.unwrap_or(1.0);
+                    if denom == 0.0 {
+                        0.0
+                    } else {
+                        calc_bessel_i0(beta * (1.0 - t * t).sqrt()) / denom
+                    }
             }
             WindowType::Blackman => 0.42 - 0.5 * (2.0 * PI * x).cos() + 0.08 * (4.0 * PI * x).cos(),
             WindowType::Rectangular => 1.0,

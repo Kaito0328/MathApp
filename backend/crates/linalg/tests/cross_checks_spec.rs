@@ -15,7 +15,7 @@ fn svd_vs_eigen_on_ata() {
         3,
         vec![1.0, 2.0, 0.0, 0.5, -0.5, 3.0, 0.0, 1.0, 1.0, 2.0, 0.0, -1.0],
     )
-    .unwrap();
+    .expect("Matrix::new");
     let svd = a.svd().expect("svd failed");
     let ata = &a.transpose() * &a;
     let eig = ata.eigen_decomposition().expect("eig failed");
@@ -23,9 +23,9 @@ fn svd_vs_eigen_on_ata() {
     let mut sig2: Vec<f64> = (0..svd.sigma.dim())
         .map(|i| svd.sigma[i] * svd.sigma[i])
         .collect();
-    sig2.sort_by(|x, y| x.partial_cmp(y).unwrap());
+    sig2.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
     let mut evals = eig.eigen_values.clone();
-    evals.sort_by(|x, y| x.partial_cmp(y).unwrap());
+    evals.sort_by(|x, y| x.partial_cmp(y).unwrap_or(std::cmp::Ordering::Equal));
     assert_eq!(sig2.len(), evals.len());
     for (s2, e) in sig2.iter().zip(evals.iter()) {
         assert!(approx(*s2, *e, 1e-6));

@@ -25,9 +25,11 @@ impl<T: Field> Matrix<T> {
                 continue; // この列にはピボットがない
             }
 
-            if pivot_row != not_zero_index.unwrap() {
-                rref_matrix.swap_rows(pivot_row, not_zero_index.unwrap())?;
-                det_factor = -det_factor;
+            if let Some(nzi) = not_zero_index {
+                if pivot_row != nzi {
+                    rref_matrix.swap_rows(pivot_row, nzi)?;
+                    det_factor = -det_factor;
+                }
             }
 
             let pivot_value = rref_matrix[(pivot_row, c)].clone();
@@ -64,8 +66,11 @@ impl<T: Field> Matrix<T> {
         let mut rank = 0;
         for r in 0..rref_matrix.rows {
             // is_zero()を実装している前提
-            if rref_matrix.row(r).unwrap().iter().any(|x| !x.is_zero()) {
-                rank += 1;
+            // rowは範囲内で必ず成功するはずだが、安全のため失敗時はスキップ
+            if let Ok(row_vec) = rref_matrix.row(r) {
+                if row_vec.iter().any(|x| !x.is_zero()) {
+                    rank += 1;
+                }
             }
         }
         rank
@@ -88,7 +93,10 @@ impl<T: Field> Matrix<T> {
         }
 
         let i_mat = Self::identity(self.rows);
-        let augmented = self.hstack(&i_mat).unwrap();
+        let augmented = match self.hstack(&i_mat) {
+            Ok(m) => m,
+            Err(_) => return None,
+        };
 
         let (rref, _) = augmented._gauss_elimination().ok()?;
         let left_half = rref.submatrix(0, self.rows, 0, self.cols);

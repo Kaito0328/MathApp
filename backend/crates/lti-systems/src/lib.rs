@@ -6,6 +6,8 @@ mod responses;
 pub mod statespace;
 pub mod transfer; // deprecated placeholder
 pub mod zpk;
+pub mod error;
+pub mod prelude { pub use crate::error::{LtiError, Result as LtiResult}; }
 
 // 再エクスポートは poly から
 pub use poly::polynomial::Polynomial;

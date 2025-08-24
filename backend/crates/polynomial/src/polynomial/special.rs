@@ -77,9 +77,9 @@ pub fn legendre<F: Field + FromPrimitive>(n: usize) -> Polynomial<F> {
     // i を 1 から n-1 までループさせて P₂(x) から Pₙ(x) を順に計算
     for i in 1..n {
         // --- ★修正点：係数をループ内で毎回計算する ---
-        let i_f = F::from_usize(i).unwrap();
-        let i_plus_1_f = F::from_usize(i + 1).unwrap();
-        let two_i_plus_1_f = F::from_usize(2 * i + 1).unwrap();
+    let i_f = F::from_usize(i).unwrap_or_else(|| F::zero());
+    let i_plus_1_f = F::from_usize(i + 1).unwrap_or_else(|| F::one());
+    let two_i_plus_1_f = F::from_usize(2 * i + 1).unwrap_or_else(|| F::one());
         // ------------------------------------------
 
         // 漸化式: (i+1)P_{i+1} = (2i+1)xPᵢ - iP_{i-1}
@@ -119,7 +119,7 @@ pub fn hermite_physicists<F: Field + FromPrimitive>(n: usize) -> Polynomial<F> {
     let mut h_nm2 = p0;
     let mut h_nm1 = p1;
     for k in 2..=n {
-        let k_minus_1 = F::from_usize(k - 1).unwrap();
+    let k_minus_1 = F::from_usize(k - 1).unwrap_or_else(|| F::zero());
         let coef = two.clone() * k_minus_1; // 2(n-1)
         let term1 = &(&x_poly * &h_nm1) * two.clone(); // 2x H_{n-1}
         let term2 = &h_nm2 * coef; // 2(n-1) H_{n-2}
@@ -147,13 +147,13 @@ pub fn laguerre<F: Field + FromPrimitive>(n: usize) -> Polynomial<F> {
     let mut l_nm2 = p0;
     let mut l_nm1 = p1;
     for k in 2..=n {
-        let k_f = F::from_usize(k).unwrap();
-        let two_k_minus_1 = F::from_usize(2 * k - 1).unwrap();
+    let k_f = F::from_usize(k).unwrap_or_else(|| F::one());
+    let two_k_minus_1 = F::from_usize(2 * k - 1).unwrap_or_else(|| F::one());
         // (2n-1 - x) L_{n-1} = (2n-1)L_{n-1} - x L_{n-1}
         let term_a = &l_nm1 * two_k_minus_1;
         let term_b = &x_poly * &l_nm1;
         let left = &term_a - &term_b;
-        let right = &l_nm2 * F::from_usize(k - 1).unwrap();
+    let right = &l_nm2 * F::from_usize(k - 1).unwrap_or_else(|| F::one());
         let num = &left - &right; // 分子
         let l_n = &num / k_f; // / n
         l_nm2 = l_nm1;

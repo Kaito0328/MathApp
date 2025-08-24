@@ -47,6 +47,6 @@ fn process_first_png_in_img_in() {
     let _ = fs::create_dir_all(&tmp_dir);
     let out1 = tmp_dir.join("test_out_blur.png");
     let out2 = tmp_dir.join("test_out_sobel.png");
-    assert!(blur.save_png(out1.to_str().unwrap()).is_ok());
-    assert!(sobel.save_png(out2.to_str().unwrap()).is_ok());
+    assert!(blur.save_png(out1.to_str().unwrap_or("/dev/null")).is_ok());
+    assert!(sobel.save_png(out2.to_str().unwrap_or("/dev/null")).is_ok());
 }

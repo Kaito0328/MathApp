@@ -57,7 +57,7 @@ impl Vector<f64> {
         if self.data.len() < 2 {
             return 0.0;
         }
-        let mean = self.mean().unwrap();
+    let mean = self.mean().unwrap_or(0.0);
         let squared_diffs: Vec<f64> = self
             .data
             .iter()

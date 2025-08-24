@@ -17,10 +17,10 @@ fn linear_code_encode_over_gf5() {
             F::new(3),
         ],
     )
-    .unwrap();
+    .expect("Matrix::new");
     let lc: LinearCode<F> = LinearCode::new(g);
     let u = Message(Vector::new(vec![F::new(2), F::new(4)]));
-    let c = lc.encode(&u);
+    let c = lc.encode(&u).expect("encode");
     // c = u * G = [2,4] * [[1,0,2],[0,1,3]] = [2,4, (2*2+4*3)=16≡1]
     assert_eq!(c.dim(), 3);
     assert_eq!(c[0].value(), 2);
@@ -37,6 +37,6 @@ fn hamming74_encode() {
         GFp::<2>::new(1),
         GFp::<2>::new(1),
     ]));
-    let c = ham.encode(&u);
+    let c = ham.encode(&u).expect("encode");
     assert_eq!(c.dim(), 7);
 }

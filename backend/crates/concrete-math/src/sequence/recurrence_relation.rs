@@ -104,10 +104,11 @@ impl RecurrenceRelation {
         }
 
         let mut pow_one_minus_t: Vec<Polynomial<f64>> = Vec::with_capacity(m + 1);
-        pow_one_minus_t.push(Polynomial::one());
+        let mut prev = Polynomial::one();
+        pow_one_minus_t.push(prev.clone());
         for _p in 1..=m {
-            let prev = pow_one_minus_t.last().unwrap().clone();
-            pow_one_minus_t.push(&prev * &one_minus_t);
+            prev = &prev * &one_minus_t;
+            pow_one_minus_t.push(prev.clone());
         }
 
         let mut num_t = Polynomial::zero();

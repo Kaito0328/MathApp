@@ -56,16 +56,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for p in files {
         // Load as grayscale using Image<u8>
-        let img = Image::<u8>::load_from_path_as_gray(p.to_str().unwrap())?;
+        let p_str = p.to_string_lossy();
+        let img = Image::<u8>::load_from_path_as_gray(&p_str)?;
         // Simple processing
         let blur = gaussian_blur_u8(&img, 1.2, 2, Border::Reflect);
         let sobel = sobel_magnitude_u8(&img, Border::Replicate);
 
         let name = stem(&p);
-        let out_blur = out_blur_dir.join(format!("{name}_blur.png"));
-        let out_sobel = out_sobel_dir.join(format!("{name}_sobel.png"));
-        blur.save_png(out_blur.to_str().unwrap())?;
-        sobel.save_png(out_sobel.to_str().unwrap())?;
+    let out_blur = out_blur_dir.join(format!("{name}_blur.png"));
+    let out_sobel = out_sobel_dir.join(format!("{name}_sobel.png"));
+    let out_blur_str = out_blur.to_string_lossy();
+    let out_sobel_str = out_sobel.to_string_lossy();
+    blur.save_png(&out_blur_str)?;
+    sobel.save_png(&out_sobel_str)?;
         println!(
             "Processed {} -> {}, {}",
             p.file_name().and_then(OsStr::to_str).unwrap_or("(unknown)"),

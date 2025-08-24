@@ -91,7 +91,7 @@ impl Matrix<f64> {
             .iter()
             .map(|&val| Complex::new(val, 0.0))
             .collect();
-        Matrix::new(self.rows, self.cols, complex_data).unwrap()
+    Matrix { rows: self.rows, cols: self.cols, data: complex_data }
     }
 
     pub(super) fn nullspace_vector(&self, tol: f64) -> Option<crate::Vector<f64>> {

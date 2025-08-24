@@ -30,8 +30,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bi = bilateral_filter_u8(&img, 2, 2.0, 20.0, Border::Reflect);
     let out_med = out_dir.join("median.png");
     let out_bi = out_dir.join("bilateral.png");
-    med.save_png(out_med.to_str().unwrap())?;
-    bi.save_png(out_bi.to_str().unwrap())?;
+    let out_med_str = out_med.to_string_lossy();
+    let out_bi_str = out_bi.to_string_lossy();
+    med.save_png(&out_med_str)?;
+    bi.save_png(&out_bi_str)?;
     println!("Wrote {} and {}", out_med.display(), out_bi.display());
     Ok(())
 }

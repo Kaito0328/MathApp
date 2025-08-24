@@ -113,16 +113,13 @@ fn ring_identity_diag_and_scaling_ops() {
 #[test]
 fn ring_trace_and_operator_panic_on_dim_mismatch() {
     let m = Matrix::new(3, 3, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]).unwrap();
-    let tr = m.trace();
+    let tr = m.trace().unwrap();
     println!("trace={tr}");
     assert!(approx(tr, 1.0 + 5.0 + 9.0, 1e-12));
 
-    // 非正方で trace() は panic
+    // 非正方で trace() は Err
     let rect = Matrix::new(2, 3, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).unwrap();
-    let res = panic::catch_unwind(|| {
-        let _ = rect.trace();
-    });
-    assert!(res.is_err(), "trace on non-square should panic");
+    assert!(rect.trace().is_err(), "trace on non-square should be Err");
 
     // 次元不一致の演算子は panic
     let a = Matrix::new(2, 2, vec![1.0; 4]).unwrap();

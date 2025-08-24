@@ -13,7 +13,7 @@ pub struct Svd {
 }
 
 impl Svd {
-    pub fn sort(&mut self) {
+    pub fn sort(&mut self) -> crate::Result<()> {
         let mut pairs: Vec<_> = self.sigma.data.iter().cloned().enumerate().collect();
         pairs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
@@ -24,38 +24,36 @@ impl Svd {
         // 並べ替え対象は特異値数 n 列分のみ
         for (new_idx, (old_idx, val)) in pairs.iter().enumerate() {
             new_sigma[new_idx] = *val;
-            new_u
-                .set_col(new_idx, &self.u.col(*old_idx).unwrap())
-                .unwrap();
-            new_v
-                .set_col(new_idx, &self.v.col(*old_idx).unwrap())
-                .unwrap();
+            let u_col = self.u.col(*old_idx)?;
+            new_u.set_col(new_idx, &u_col)?;
+            let v_col = self.v.col(*old_idx)?;
+            new_v.set_col(new_idx, &v_col)?;
         }
 
         // U の残り列（n..m-1）は元の直交基底をそのまま保持する
         let n = self.sigma.dim();
         for col in n..self.u.cols {
-            new_u
-                .set_col(col, &self.u.col(col).unwrap())
-                .unwrap();
+            let ucol = self.u.col(col)?;
+            new_u.set_col(col, &ucol)?;
         }
 
         self.sigma.data = new_sigma;
         self.u = new_u;
         self.v = new_v;
+        Ok(())
     }
 }
 
 pub trait SvdDeComposition {
-    fn svd(&self) -> Option<Svd>;
-    fn simple_svd(&self) -> Option<Svd>;
+    fn svd(&self) -> crate::Result<Svd>;
+    fn simple_svd(&self) -> crate::Result<Svd>;
 }
 
 impl SvdDeComposition for Matrix<f64> {
-    fn svd(&self) -> Option<Svd> {
+    fn svd(&self) -> crate::Result<Svd> {
         if self.rows < self.cols {
             let svd_t = self.transpose().svd()?;
-            return Some(Svd {
+            return Ok(Svd {
                 u: svd_t.v,
                 sigma: svd_t.sigma,
                 v: svd_t.u,
@@ -74,16 +72,16 @@ impl SvdDeComposition for Matrix<f64> {
             }
         }
 
-        let mut svd = Svd { u, sigma, v };
-        svd.sort();
+    let mut svd = Svd { u, sigma, v };
+    svd.sort()?;
 
-        Some(svd)
+    Ok(svd)
     }
-    fn simple_svd(&self) -> Option<Svd> {
+    fn simple_svd(&self) -> crate::Result<Svd> {
         if self.rows < self.cols {
             // Aが横長の行列(m < n)の場合、A^TのSVDを計算して結果を変換する
             let svd_t = self.transpose().svd()?;
-            return Some(Svd {
+            return Ok(Svd {
                 u: svd_t.v,
                 sigma: svd_t.sigma,
                 v: svd_t.u,
@@ -92,7 +90,7 @@ impl SvdDeComposition for Matrix<f64> {
 
         // 1. A^T * A の固有値問題を解く
         let ata = &self.transpose() * self;
-        let eigen_decomp = ata.eigen_decomposition()?;
+    let eigen_decomp = ata.eigen_decomposition()?;
         let eigenvalues = eigen_decomp.eigen_values;
         let v_raw = eigen_decomp.eigen_vectors; // 固有値分解直後のV
 
@@ -104,15 +102,15 @@ impl SvdDeComposition for Matrix<f64> {
         let mut sigma_vec = Vec::with_capacity(self.cols);
 
         for (i, (eigenval, original_idx)) in pairs.iter().enumerate() {
-            let v_col = v_raw.col(*original_idx).unwrap();
-            sorted_v.set_col(i, &v_col).ok()?; // この時点ではまだ正規化も直交化も不完全
+            let v_col = v_raw.col(*original_idx)?;
+            sorted_v.set_col(i, &v_col)?; // この時点ではまだ正規化も直交化も不完全
             sigma_vec.push(eigenval.sqrt());
         }
 
         // ★★★ 変更点 ① ★★★
         // ソート後のV行列の直交性が崩れている可能性があるため、QR分解で直交性を回復させる
         // v_final は V^T ではなく V なので注意
-        let qr = sorted_v.qr_decomposition()?;
+    let qr = sorted_v.qr_decomposition()?;
         let v_final = qr.q;
 
         // 3. 特異値ベクトル Σ と 左特異ベクトル U を計算する
@@ -121,7 +119,7 @@ impl SvdDeComposition for Matrix<f64> {
 
         for i in 0..self.cols {
             let sigma_i = sigma[i];
-            let v_i = v_final.col(i).unwrap();
+            let v_i = v_final.col(i)?;
 
             if sigma_i.abs() < 1e-14 {
                 // 特異値がゼロの場合、グラム・シュミット法でUの基底を補充する
@@ -131,24 +129,24 @@ impl SvdDeComposition for Matrix<f64> {
                     let mut candidate_vec = Vector::zeros(self.rows);
                     candidate_vec[k] = 1.0;
                     for j in 0..i {
-                        let u_j = u.col(j).unwrap();
+                        let u_j = u.col(j)?;
                         let proj = u_j.dot(&candidate_vec);
                         candidate_vec = &candidate_vec - &(&u_j * proj);
                     }
                     let norm = candidate_vec.norm();
                     if norm > 1e-12 {
-                        u.set_col(i, &(&candidate_vec * (1.0 / norm))).unwrap();
+                        u.set_col(i, &(&candidate_vec * (1.0 / norm)))?;
                         new_basis_found = true;
                         break;
                     }
                 }
                 if !new_basis_found {
-                    u.set_col(i, &Vector::zeros(self.rows)).unwrap();
+                    u.set_col(i, &Vector::zeros(self.rows))?;
                 }
             } else {
                 // u_i = A * v_i / sigma_i
                 let u_i = self * &v_i * (1.0 / sigma_i);
-                u.set_col(i, &u_i).unwrap();
+                u.set_col(i, &u_i)?;
             }
         }
 
@@ -169,7 +167,7 @@ impl SvdDeComposition for Matrix<f64> {
 
         let u_final = qr.q; // QR分解後のU行列
 
-        Some(Svd {
+        Ok(Svd {
             u: u_final,
             sigma,
             v: v_final,
@@ -178,14 +176,14 @@ impl SvdDeComposition for Matrix<f64> {
 }
 
 impl Matrix<f64> {
-    pub(super) fn bidiagonalize(&self) -> Option<(Matrix<f64>, Matrix<f64>, Matrix<f64>)> {
+    pub(super) fn bidiagonalize(&self) -> crate::Result<(Matrix<f64>, Matrix<f64>, Matrix<f64>)> {
         let mut b = self.clone();
         let mut u = Matrix::identity(self.rows);
         let mut v = Matrix::identity(self.cols); // Vを直接計算する
 
         for k in 0..self.cols {
             // --- 1. 左からのHouseholder変換 (列をゼロにする) ---
-            let x = b.partial_col(k, k, self.rows).ok()?;
+            let x = b.partial_col(k, k, self.rows)?;
             if let Some(h_vec) = x.householder_vector() {
                 // b = H * b
                 b.apply_householder_transform(&h_vec, Direction::Left, k, k);
@@ -195,7 +193,7 @@ impl Matrix<f64> {
 
             // --- 2. 右からのHouseholder変換 (行をゼロにする) ---
             if k < self.cols - 2 {
-                let y = b.partial_row(k, k + 1, self.cols).ok()?;
+                let y = b.partial_row(k, k + 1, self.cols)?;
                 if let Some(h_vec) = y.householder_vector() {
                     // b = b * G
                     b.apply_householder_transform(&h_vec, Direction::Right, k, k + 1);
@@ -205,14 +203,14 @@ impl Matrix<f64> {
             }
         }
         // SVDでは V が欲しいため、最初からVを計算して返す
-        Some((b, u, v))
+        Ok((b, u, v))
     }
 
     pub fn solve_bidiagonal_svd(
         b: &mut Matrix<f64>,
         u: &mut Matrix<f64>,
         v: &mut Matrix<f64>,
-    ) -> Option<()> {
+    ) -> crate::Result<()> {
         // 元の A を保持（A = U B V^T）
         let u0 = u.clone();
         let b0 = b.clone();
@@ -221,7 +219,7 @@ impl Matrix<f64> {
 
         let n = b.cols;
         if n == 0 {
-            return Some(());
+            return Ok(());
         }
         let tol = 1e-12f64;
         let max_iter = 10_000usize;
@@ -236,7 +234,7 @@ impl Matrix<f64> {
                 break;
             }
             if it > max_iter {
-                return None;
+                return Err(crate::LinalgError::InvalidArgument { text: "Maximum iterations reached in solve_bidiagonal_svd".into() });
             }
             it += 1;
 
@@ -293,8 +291,8 @@ impl Matrix<f64> {
         Self::ensure_nonnegative_diagonal(b, u);
 
         // U を A と V, σ から再構成
-        Self::reconstruct_u_from_a_and_v(u, v, b, &a0)?;
-        Some(())
+    Self::reconstruct_u_from_a_and_v(u, v, b, &a0)?;
+    Ok(())
     }
     // --- helpers ---
     fn extract_band_from_b(b: &Matrix<f64>) -> (Vec<f64>, Vec<f64>) {
@@ -409,7 +407,7 @@ impl Matrix<f64> {
         v: &Matrix<f64>,
         b: &Matrix<f64>,
         a0: &Matrix<f64>,
-    ) -> Option<()> {
+    ) -> crate::Result<()> {
         let m = u.rows;
         let n = b.cols;
         let mut u_new = Matrix::<f64>::zeros(m, m);
@@ -419,7 +417,7 @@ impl Matrix<f64> {
         for i in 0..n {
             let sigma_i = b[(i, i)].abs();
             if sigma_i > eps {
-                let v_i = v.col(i).ok()?;
+                let v_i = v.col(i)?;
                 let mut u_i = a0 * &v_i; // m x 1
                 let inv = 1.0 / sigma_i;
                 for r in 0..m {
@@ -432,13 +430,13 @@ impl Matrix<f64> {
                         u_i[r] /= norm;
                     }
                 }
-                u_new.set_col(i, &u_i).ok()?;
+                u_new.set_col(i, &u_i)?;
             }
         }
 
         // 未設定列（ゼロ特異値列を含む）と残り列を直交補完で埋める
         for target_col in 0..m {
-            let col = u_new.col(target_col).ok()?;
+            let col = u_new.col(target_col)?;
             if col.norm() > 1e-12 {
                 continue; // すでに設定済み
             }
@@ -446,7 +444,7 @@ impl Matrix<f64> {
             let mut cand = Vector::<f64>::zeros(m);
             cand[target_col.min(m - 1)] = 1.0;
             for j in 0..m {
-                let cj = u_new.col(j).ok()?;
+                let cj = u_new.col(j)?;
                 let nj = cj.norm();
                 if nj <= 1e-12 {
                     continue;
@@ -461,11 +459,11 @@ impl Matrix<f64> {
                 for r in 0..m {
                     cand[r] /= norm;
                 }
-                u_new.set_col(target_col, &cand).ok()?;
+                u_new.set_col(target_col, &cand)?;
             }
         }
         *u = u_new;
-        Some(())
+        Ok(())
     }
     #[allow(dead_code)]
     /// Chases a bulge off the matrix near e[k] using right rotations only.
@@ -477,17 +475,17 @@ impl Matrix<f64> {
         e: &mut [f64],
         v: &mut Matrix<f64>,
         // u: &mut Matrix<f64>, // A full implementation would update U as well.
-    ) -> Option<()> {
+    ) -> crate::Result<()> {
         let n = d.len();
         if n == 0 {
-            return Some(());
+            return Ok(());
         }
         let l = l.min(n - 1);
         if k >= l {
             if k < e.len() {
                 e[k] = 0.0;
             }
-            return Some(());
+            return Ok(());
         }
 
         // Build B0 from d,e
@@ -514,7 +512,7 @@ impl Matrix<f64> {
         if k < e.len() {
             e[k] = 0.0;
         }
-        Some(())
+    Ok(())
     }
     /// Computes parameters for a Givens rotation in a numerically stable way.
     /// Given a and b, computes c and s such that:

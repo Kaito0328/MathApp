@@ -16,8 +16,8 @@ fn weight_distribution_gf2_small() {
             F::new(1),
         ],
     )
-    .unwrap();
-    let codebook = generate_codebook_gfp::<2>(&GeneratorMatrix(g));
+    .expect("Matrix::new");
+    let codebook = generate_codebook_gfp::<2>(&GeneratorMatrix(g)).expect("generate_codebook");
     let bins = weight_distribution(&codebook);
     assert_eq!(bins.iter().sum::<usize>(), 4);
 }

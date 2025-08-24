@@ -229,9 +229,9 @@ fn perform_sieving(
     sqrt_n: &BigInt,
     m: i64,
 ) {
-    let m_bigint = m.to_bigint().unwrap();
+    let m_bigint = match m.to_bigint() { Some(v) => v, None => return };
     for &p in factor_base {
-        let p_bigint = p.to_bigint().unwrap();
+    let Some(p_bigint) = p.to_bigint() else { continue };
         let log_p = (p as f64).log2();
         if let Some((s1, s2)) = solve_square_roots(n, p) {
             let rem = (&s1 - (sqrt_n % &p_bigint) + &p_bigint) % &p_bigint;
@@ -239,7 +239,7 @@ fn perform_sieving(
             let offset = (rem - (&current_z % &p_bigint) + &p_bigint) % &p_bigint;
             current_z += offset;
             while current_z <= m_bigint {
-                let index = (current_z.clone() + &m_bigint).to_usize().unwrap();
+                let Some(index) = (current_z.clone() + &m_bigint).to_usize() else { break };
                 if index < sieve_array.len() {
                     sieve_array[index] -= log_p;
                 }
@@ -251,7 +251,7 @@ fn perform_sieving(
                 let offset = (rem - (&current_z % &p_bigint) + &p_bigint) % &p_bigint;
                 current_z += offset;
                 while current_z <= m_bigint {
-                    let index = (current_z.clone() + &m_bigint).to_usize().unwrap();
+                    let Some(index) = (current_z.clone() + &m_bigint).to_usize() else { break };
                     if index < sieve_array.len() {
                         sieve_array[index] -= log_p;
                     }
@@ -272,7 +272,9 @@ fn collect_smooth_relations(
 ) -> Vec<Relation> {
     let mut relations = Vec::new();
     let mut idxs: Vec<usize> = (0..sieve_array.len()).collect();
-    idxs.sort_unstable_by(|&a, &b| sieve_array[a].partial_cmp(&sieve_array[b]).unwrap());
+    idxs.sort_unstable_by(|&a, &b| sieve_array[a]
+        .partial_cmp(&sieve_array[b])
+        .unwrap_or(std::cmp::Ordering::Equal));
     for i in idxs.into_iter() {
         let z = i as i64 - m;
         let x = sqrt_n + BigInt::from(z);
@@ -317,8 +319,8 @@ fn solve_linear_algebra(relations: &[Relation], num_primes: usize) -> Vec<Vec<us
             data.push(F::new(bit as i64));
         }
     }
-    let a: Matrix<F> = Matrix::new(rows, cols, data).unwrap();
-    let rref = a.rref().unwrap();
+    let a: Matrix<F> = match Matrix::new(rows, cols, data) { Ok(m) => m, Err(_) => return vec![] };
+    let rref = match a.rref() { Ok(m) => m, Err(_) => return vec![] };
     let mut pivot_col = vec![false; cols];
     let mut r = 0usize;
     for c in 0..cols {
@@ -589,7 +591,7 @@ fn solve_square_roots(_n: &BigInt, _p: u64) -> Option<(BigInt, BigInt)> {
     if p == 2 {
         return Some((BigInt::from(1u64), BigInt::from(1u64)));
     }
-    let n_mod = (_n % p).to_u64().unwrap() % p;
+    let n_mod = (_n % p).to_u64().unwrap_or(0) % p;
     if n_mod == 0 {
         return Some((BigInt::from(0u64), BigInt::from(0u64)));
     }

@@ -14,13 +14,37 @@ impl<T: Scalar> Vector<T> {
         self.data.len()
     }
 
+    /// dim と同じ（慣用的な名前）
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
     /// 転置して行ベクトル（1行のMatrix）を生成する
     pub fn transpose(&self) -> Matrix<T> {
-        Matrix::new(1, self.dim(), self.data.clone()).unwrap()
+    Matrix { rows: 1, cols: self.dim(), data: self.data.clone() }
     }
 
     pub fn iter(&self) -> std::slice::Iter<'_, T> {
         self.data.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
+        self.data.iter_mut()
+    }
+
+    pub fn as_slice(&self) -> &[T] {
+        &self.data
+    }
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        &mut self.data
+    }
+
+    pub fn into_inner(self) -> Vec<T> {
+        self.data
     }
 
     pub fn argmax(&self) -> Option<usize>
@@ -110,7 +134,11 @@ impl<T: Scalar> Vector<T> {
 // 追加のユーティリティ: 数値型向けの to_real / to_complex と Iterators
 impl Vector<f64> {
     pub fn to_complex(&self) -> Vector<num_complex::Complex<f64>> {
-        let v = self.data.iter().map(|&x| num_complex::Complex::new(x, 0.0)).collect();
+        let v = self
+            .data
+            .iter()
+            .map(|&x| num_complex::Complex::new(x, 0.0))
+            .collect();
         Vector::new(v)
     }
 }
@@ -118,8 +146,11 @@ impl Vector<f64> {
 impl Vector<num_complex::Complex<f64>> {
     /// 虚部が tol 以下なら実数ベクトルに変換。超える要素があれば Err。
     pub fn to_real(&self, tol: f64) -> crate::Result<Vector<f64>> {
-        let v = utils::complex_vec_to_real(&self.data, tol)
-            .map_err(|e| crate::LinalgError::InvalidArgument { text: format!("{e:?}") })?;
+        let v = utils::complex_vec_to_real(&self.data, tol).map_err(|e| {
+            crate::LinalgError::InvalidArgument {
+                text: format!("{e:?}"),
+            }
+        })?;
         Ok(Vector::new(v))
     }
 }
@@ -128,7 +159,9 @@ impl Vector<num_complex::Complex<f64>> {
 impl<T: Scalar> IntoIterator for Vector<T> {
     type Item = T;
     type IntoIter = std::vec::IntoIter<T>;
-    fn into_iter(self) -> Self::IntoIter { self.data.into_iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.into_iter()
+    }
 }
 
 // 参照でのイテレータは ops/mod.rs に実装済み

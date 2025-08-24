@@ -1,4 +1,5 @@
 use crate::Poly;
+use crate::error::{Result as CodingResult, CodingError};
 use crate::types::{Message, Codeword};
 use linalg::{Field, Vector};
 use num_traits::{One, Zero};
@@ -31,9 +32,9 @@ impl<F: Field + Clone + PartialEq + Zero + One> BCHCode<F> {
     }
 
     // 新API: Message -> Codeword（簡易: x^n≡1で縮約）
-    pub fn encode(&self, u: &Message<F>) -> Codeword<F> {
+    pub fn encode(&self, u: &Message<F>) -> CodingResult<Codeword<F>> {
         let k = self.k();
-        assert_eq!(u.dim(), k);
+        if u.dim() != k { return Err(CodingError::InvalidParameters{ text: format!("message length {} must be k {}", u.dim(), k) }); }
         let mut v = vec![F::zero(); k + self.g.coeffs.len() - 1];
         for i in 0..k {
             for j in 0..self.g.coeffs.len() {
@@ -44,7 +45,7 @@ impl<F: Field + Clone + PartialEq + Zero + One> BCHCode<F> {
         for (i, coef) in v.into_iter().enumerate() {
             c[i % self.n] = c[i % self.n].clone() + coef;
         }
-        Codeword::from(Vector::new(c))
+        Ok(Codeword::from(Vector::new(c)))
     }
 
     pub fn k(&self) -> usize {
