@@ -1,89 +1,27 @@
-use crate::prime::GFp; // base prime example, but works with any Field
+use crate::gfp::GFp; // for convenience helpers; generic impl works for any Field
 use linalg::Field;
 use num_traits::{One, Zero};
-// use serde::{Deserialize, Serialize};
+use poly::Polynomial;
 use std::fmt::{Debug, Display, Formatter};
 use std::iter::Sum;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 use std::sync::Arc;
 
-// 多項式演算（係数低次→高次）
-fn zero_pop<F: Field + Clone + PartialEq + Zero>(mut v: Vec<F>) -> Vec<F> {
-    while v.len() > 1 && v.last().map(|c| c.is_zero()).unwrap_or(false) {
-        v.pop();
-    }
-    if v.is_empty() {
-        v.push(F::zero());
-    }
-    v
-}
-fn poly_add<F: Field + Clone + PartialEq + Zero>(a: &[F], b: &[F]) -> Vec<F> {
-    let n = a.len().max(b.len());
-    let mut v = vec![F::zero(); n];
-    for (i, val) in v.iter_mut().enumerate() {
-        let ai = a.get(i).cloned().unwrap_or_else(F::zero);
-        let bi = b.get(i).cloned().unwrap_or_else(F::zero);
-        *val = ai + bi;
-    }
-    zero_pop(v)
-}
-fn poly_sub<F: Field + Clone + PartialEq + Zero>(a: &[F], b: &[F]) -> Vec<F> {
-    let n = a.len().max(b.len());
-    let mut v = vec![F::zero(); n];
-    for (i, val) in v.iter_mut().enumerate() {
-        let ai = a.get(i).cloned().unwrap_or_else(F::zero);
-        let bi = b.get(i).cloned().unwrap_or_else(F::zero);
-        *val = ai - bi;
-    }
-    zero_pop(v)
-}
-fn poly_mul<F: Field + Clone + PartialEq + Zero>(a: &[F], b: &[F]) -> Vec<F> {
-    let mut v = vec![F::zero(); a.len() + b.len() - 1];
-    for i in 0..a.len() {
-        for j in 0..b.len() {
-            let t = a[i].clone() * b[j].clone();
-            v[i + j] = v[i + j].clone() + t;
-        }
-    }
-    zero_pop(v)
-}
-fn poly_div_rem<F: Field + Clone + PartialEq + Zero>(a: &[F], b: &[F]) -> (Vec<F>, Vec<F>) {
-    let mut r = zero_pop(a.to_vec());
-    let b = zero_pop(b.to_vec());
-    if b.len() == 1 && b[0].is_zero() {
-        return (vec![F::zero()], r);
-    }
-    if r.len() < b.len() {
-        return (vec![F::zero()], r);
-    }
-    let mut q = vec![F::zero(); r.len() - b.len() + 1];
-    let lead = b[b.len() - 1].clone();
-    while r.len() >= b.len() && !(r.len() == 1 && r[0].is_zero()) {
-        let shift = r.len() - b.len();
-        let coef = r[r.len() - 1].clone() / lead.clone();
-        q[shift] = coef.clone();
-        for (i, val) in b.iter().enumerate() {
-            let idx = i + shift;
-            let r_val = r[idx].clone() - coef.clone() * val.clone();
-            r[idx] = r_val;
-        }
-        r = zero_pop(r);
-    }
-    (zero_pop(q), zero_pop(r))
-}
-fn poly_ext_gcd<F: Field + Clone + PartialEq + Zero>(
-    mut a: Vec<F>,
-    mut b: Vec<F>,
-) -> (Vec<F>, Vec<F>) {
-    // return (s, t) such that s*a + t*b = gcd(a,b)
-    let mut s0: Vec<F> = vec![F::one()];
-    let mut t0: Vec<F> = vec![F::zero()];
-    let mut s1: Vec<F> = vec![F::zero()];
-    let mut t1: Vec<F> = vec![F::one()];
-    while !(b.len() == 1 && b[0].is_zero()) {
-        let (q, r) = poly_div_rem(&a, &b);
-        let ns = poly_sub(&s0, &poly_mul(&q, &s1));
-        let nt = poly_sub(&t0, &poly_mul(&q, &t1));
+// Polynomial に委譲した拡張ユークリッド互除法
+fn poly_ext_gcd_poly<F: Field>(
+    mut a: Polynomial<F>,
+    mut b: Polynomial<F>,
+) -> (Polynomial<F>, Polynomial<F>, Polynomial<F>) {
+    // 返り値: (s, t, g) で s*a0 + t*b0 = g = gcd(a0, b0)
+    let mut s0 = Polynomial::one();
+    let mut t0 = Polynomial::zero();
+    let mut s1 = Polynomial::zero();
+    let mut t1 = Polynomial::one();
+
+    while !b.is_zero() {
+        let (q, r) = a.div_rem(&b);
+        let ns = &s0 - &(&q * &s1);
+        let nt = &t0 - &(&q * &t1);
         a = b;
         b = r;
         s0 = s1;
@@ -91,8 +29,7 @@ fn poly_ext_gcd<F: Field + Clone + PartialEq + Zero>(
         s1 = ns;
         t1 = nt;
     }
-    // gcd = a; return (s0, t0)
-    (s0, t0)
+    (s0, t0, a) // a が gcd
 }
 
 // 拡大体: 既約多項式 px を法とする多項式係数ベクトル
@@ -110,8 +47,10 @@ impl<F: Field + Clone + PartialEq + Zero> GFExt<F> {
         }
     }
     fn mod_poly(px: &Arc<Vec<F>>, v: Vec<F>) -> Vec<F> {
-        let (_q, r) = poly_div_rem(&v, px.as_ref());
-        r
+        let r = Polynomial::new(v)
+            .div_rem(&Polynomial::new((**px).clone()))
+            .1;
+        r.coeffs
     }
     pub fn from_base(px: Arc<Vec<F>>, a: F) -> Self {
         Self::new(px, vec![a])
@@ -131,9 +70,17 @@ impl<F: Field + Clone + PartialEq + Zero> GFExt<F> {
 
     pub fn inv(&self) -> Self {
         assert!(!self.is_zero(), "GFExt zero has no inverse");
-        let (_s, t) = poly_ext_gcd((*(self.px)).clone(), self.coeffs.clone());
-        // t is such that s*px + t*val = 1 => t is inverse mod px
-        GFExt::new(self.px.clone(), t)
+        let px_poly = Polynomial::new((*(self.px)).clone());
+        let val_poly = Polynomial::new(self.coeffs.clone());
+        let (_s, t, g) = poly_ext_gcd_poly(px_poly, val_poly);
+        // g は定数のはず（既約多項式を法とするため）。t / g を逆元とする。
+        if g.deg() == 0 {
+            let c = g.get(0);
+            let cinv = F::one() / c;
+            let tnorm = &t * cinv;
+            return GFExt::new(self.px.clone(), tnorm.coeffs);
+        }
+        panic!("GFExt inverse: gcd is not constant; modulus may not be irreducible");
     }
 }
 
@@ -213,14 +160,17 @@ impl<F: Field + Clone + PartialEq + Zero> Add for GFExt<F> {
             rhs.px.is_empty() || *px == *rhs.px,
             "GFExt add: px mismatch"
         );
-        GFExt::new(px, poly_add(&self.coeffs, &rhs.coeffs))
+        // Polynomial 加算に委譲
+        let s = &Polynomial::new(self.coeffs) + &Polynomial::new(rhs.coeffs);
+        GFExt::new(px, s.coeffs)
     }
 }
 impl<F: Field + Clone + PartialEq + Zero> Sub for GFExt<F> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         if self.is_zero() {
-            return GFExt::new(rhs.px.clone(), poly_sub(&[F::zero()], &rhs.coeffs));
+            let s = &Polynomial::zero() - &Polynomial::new(rhs.coeffs);
+            return GFExt::new(rhs.px.clone(), s.coeffs);
         }
         if rhs.is_zero() {
             return GFExt::new(self.px.clone(), self.coeffs);
@@ -234,7 +184,8 @@ impl<F: Field + Clone + PartialEq + Zero> Sub for GFExt<F> {
             rhs.px.is_empty() || *px == *rhs.px,
             "GFExt sub: px mismatch"
         );
-        GFExt::new(px, poly_sub(&self.coeffs, &rhs.coeffs))
+        let s = &Polynomial::new(self.coeffs) - &Polynomial::new(rhs.coeffs);
+        GFExt::new(px, s.coeffs)
     }
 }
 impl<F: Field + Clone + PartialEq + Zero> Mul for GFExt<F> {
@@ -261,7 +212,9 @@ impl<F: Field + Clone + PartialEq + Zero> Mul for GFExt<F> {
             rhs.px.is_empty() || *px == *rhs.px,
             "GFExt mul: px mismatch"
         );
-        GFExt::new(px, poly_mul(&self.coeffs, &rhs.coeffs))
+        let prod = &Polynomial::new(self.coeffs) * &Polynomial::new(rhs.coeffs);
+        // 剰余は new() 側で取られるが、係数が大きいときもあるため一旦生の係数を渡す
+        GFExt::new(px, prod.coeffs)
     }
 }
 impl<F: Field + Clone + PartialEq + Zero> Div for GFExt<F> {

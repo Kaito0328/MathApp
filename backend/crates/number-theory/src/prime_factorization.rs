@@ -1,84 +1,8 @@
-//! 素因数分解ユーティリティ。
-//!
-//! - `factor(n)` は u64 向けの高速な分解（試し割り + Pollard Rho + Miller-Rabin）
-//! - 大きな整数向けの雛形（Quadratic Sieve）は `#[cfg(feature = "quadratic-sieve")]` で提供
+//! 素因数分解ユーティリティ。number_theory クレート版
 
-// 循環依存を避けるため、GF(2) の最小実装をこのモジュール内に用意する。
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
-struct GF2(u8); // 値は 0 or 1
-
-impl GF2 {
-    #[inline]
-    fn new(v: i64) -> Self {
-        GF2((v & 1) as u8)
-    }
-}
-
-impl std::fmt::Display for GF2 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl num_traits::Zero for GF2 {
-    fn zero() -> Self {
-        GF2(0)
-    }
-    fn is_zero(&self) -> bool {
-        self.0 == 0
-    }
-}
-impl num_traits::One for GF2 {
-    fn one() -> Self {
-        GF2(1)
-    }
-}
-
-impl std::ops::Add for GF2 {
-    type Output = GF2;
-    fn add(self, rhs: Self) -> Self::Output {
-        GF2(self.0 ^ rhs.0)
-    }
-}
-impl std::ops::Sub for GF2 {
-    type Output = GF2;
-    fn sub(self, rhs: Self) -> Self::Output {
-        GF2(self.0 ^ rhs.0)
-    }
-}
-impl std::ops::Mul for GF2 {
-    type Output = GF2;
-    fn mul(self, rhs: Self) -> Self::Output {
-        GF2(self.0 & rhs.0)
-    }
-}
-impl std::ops::Div for GF2 {
-    type Output = GF2;
-    fn div(self, rhs: Self) -> Self::Output {
-        assert!(rhs.0 == 1, "GF2: division by zero");
-        self
-    }
-}
-impl std::ops::Neg for GF2 {
-    type Output = GF2;
-    fn neg(self) -> Self::Output {
-        self // -x == x in GF(2)
-    }
-}
-impl std::iter::Sum for GF2 {
-    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(Self::zero(), |a, x| a + x)
-    }
-}
-
-impl linalg::matrix::DisplayElement for GF2 {
-    fn to_formatted_string(&self) -> String {
-        self.to_string()
-    }
-}
-impl linalg::Scalar for GF2 {}
-impl linalg::Ring for GF2 {}
-impl linalg::Field for GF2 {}
+// GF(2) は finite-field の GFp<2> を再利用する
+use finite_field::gfp::GFp;
+type GF2 = GFp<2>;
 use linalg::Matrix;
 use num_bigint::{BigInt, ToBigInt};
 use num_integer::Integer;
@@ -111,7 +35,7 @@ pub fn factor(n: u64) -> Vec<u64> {
             d = 30 * k + r;
             if d < 7 {
                 continue;
-            } // 1は除外（2,3,5は先に処理済み）
+            }
             if d * d > m {
                 break;
             }
@@ -123,11 +47,9 @@ pub fn factor(n: u64) -> Vec<u64> {
         k += 1;
     }
     if m > 1 {
-        // 残りは素数 or 大きい合成数。u64 では Miller-Rabin + Pollard Rho で対応
         if is_probable_prime_u64(m) {
             factors.push(m);
         } else {
-            // Pollard Rho で分割
             let (a, b) = pollards_rho_split_u64(m);
             factors.extend(factor(a));
             factors.extend(factor(b));
@@ -138,29 +60,26 @@ pub fn factor(n: u64) -> Vec<u64> {
 }
 
 pub fn factor_for_big(n: &BigInt) -> Vec<BigInt> {
-    // 0) u64に収まるなら高速版に委譲
     if let Some(u) = n.to_u64() {
         if u < 2 {
             return vec![];
         }
         return factor(u).into_iter().map(BigInt::from).collect();
     }
-    // 1) n が素数なら即返す
     if is_probable_prime_big(n) {
         return vec![n.clone()];
     }
-    // 2) 小さな素数で試し割り（最大 ~5万）
+
     let (mut small_factors, rem_after_small) = trial_divide_collect(n, 50_000);
     if rem_after_small == BigInt::one() {
         return small_factors;
     }
     if rem_after_small != *n {
-        // 何か見つかったので残りを再帰分解
         let mut rest = factor_for_big(&rem_after_small);
         small_factors.append(&mut rest);
         return small_factors;
     }
-    // 3) BigInt Pollard's Rho を複数回試す（小〜中規模への近道）
+
     for _ in 0..5 {
         if let Some(d) = pollards_rho_big(n, 20_000) {
             if d > BigInt::one() && &d < n {
@@ -171,9 +90,8 @@ pub fn factor_for_big(n: &BigInt) -> Vec<BigInt> {
             }
         }
     }
-    // 4) ここまでで割れなければ QS にフォールバック
+
     let bits = n.bits();
-    // Heuristic: increase B for 30-32bit inputs and widen M for more relations
     let b_bound: u64 = if bits <= 28 {
         200
     } else if bits <= 32 {
@@ -184,16 +102,11 @@ pub fn factor_for_big(n: &BigInt) -> Vec<BigInt> {
         2500
     } else if bits <= 60 {
         4000
-    // ===== ここから変更 =====
     } else if bits <= 85 {
-        // 約83ビットの入力に対応する分岐を追加
-        20000 // Bを大幅に増やす
+        20000
     } else {
-        // それより大きい数向けの計算式
         ((bits as f64).powf(1.8)).min(100_000.0) as u64
     };
-
-    // MもBに合わせてスケールさせる
     let m_width: i64 = (b_bound as i64 * 30).clamp(5000, 1_000_000);
     let factor_base = build_factor_base(n, b_bound);
     let sqrt_n = isqrt_big(n);
@@ -201,7 +114,6 @@ pub fn factor_for_big(n: &BigInt) -> Vec<BigInt> {
         .map(|z| {
             let x = &sqrt_n + BigInt::from(z);
             let val = &x * &x - n;
-            // 初期値: log2(|x^2 - n|) の近似として bit 長を使う
             (val.bits() as f64).max(1.0)
         })
         .collect();
@@ -236,7 +148,6 @@ pub fn factor_for_big(n: &BigInt) -> Vec<BigInt> {
     }
     let mut combos = solve_linear_algebra(&relations, factor_base.len());
     if combos.is_empty() {
-        // Fallback: enlarge factor base and retry once
         let b2 = (b_bound * 2).min(20_000);
         let factor_base2 = build_factor_base(n, b2);
         let m2 = (m_width * 2).min(300_000);
@@ -259,14 +170,13 @@ pub fn factor_for_big(n: &BigInt) -> Vec<BigInt> {
         if relations2.len() > factor_base2.len() {
             combos = solve_linear_algebra(&relations2, factor_base2.len());
             relations = relations2;
-            // also replace factor_base for subsequent find
-            // shadowing is fine in this scope
         } else if let Some(u) = n.to_u64() {
             return factor(u).into_iter().map(BigInt::from).collect();
         } else {
             return vec![];
         }
     }
+
     let mut factor_opt = None;
     for combo in combos.iter() {
         if let Some(f) = find_factor(n, combo, &relations, &factor_base) {
@@ -292,11 +202,9 @@ pub fn factor_for_big(n: &BigInt) -> Vec<BigInt> {
     }
 }
 
-// ファクターベースを構築するメインの処理
 fn build_factor_base(n: &BigInt, bound: u64) -> Vec<u64> {
     let prime_candidates = sieve_of_eratosthenes(bound);
     let mut factor_base = Vec::new();
-
     for p in prime_candidates {
         if is_quadratic_residue(n, p) {
             factor_base.push(p);
@@ -314,7 +222,6 @@ fn is_quadratic_residue(n: &BigInt, p: u64) -> bool {
     result == 1
 }
 
-// 篩を実行し、sieve_arrayを更新する（修正版）
 fn perform_sieving(
     sieve_array: &mut [f64],
     factor_base: &[u64],
@@ -323,24 +230,14 @@ fn perform_sieving(
     m: i64,
 ) {
     let m_bigint = m.to_bigint().unwrap();
-
     for &p in factor_base {
         let p_bigint = p.to_bigint().unwrap();
-        let log_p = (p as f64).log2(); // 対数の底は何でも良いが、一貫させることが重要
-
-        // 1. s^2 ≡ n (mod p) を解く
+        let log_p = (p as f64).log2();
         if let Some((s1, s2)) = solve_square_roots(n, p) {
-            // --- s1に対する処理 ---
-            // 2. 最初のインデックスを見つける
-            // sqrt_n + z ≡ s1 (mod p)  =>  z ≡ s1 - sqrt_n (mod p)
             let rem = (&s1 - (sqrt_n % &p_bigint) + &p_bigint) % &p_bigint;
             let mut current_z = -m_bigint.clone();
-
-            // z = -m から始めて、remと合同になる最初のzを探す
             let offset = (rem - (&current_z % &p_bigint) + &p_bigint) % &p_bigint;
             current_z += offset;
-
-            // 3. ステップpでジャンプしながらlog(p)を引く
             while current_z <= m_bigint {
                 let index = (current_z.clone() + &m_bigint).to_usize().unwrap();
                 if index < sieve_array.len() {
@@ -348,14 +245,11 @@ fn perform_sieving(
                 }
                 current_z += &p_bigint;
             }
-
-            // --- s2に対する処理（s1 != s2 の場合のみ）---
             if s1 != s2 {
                 let rem = (&s2 - (sqrt_n % &p_bigint) + &p_bigint) % &p_bigint;
                 let mut current_z = -m_bigint.clone();
                 let offset = (rem - (&current_z % &p_bigint) + &p_bigint) % &p_bigint;
                 current_z += offset;
-
                 while current_z <= m_bigint {
                     let index = (current_z.clone() + &m_bigint).to_usize().unwrap();
                     if index < sieve_array.len() {
@@ -368,7 +262,6 @@ fn perform_sieving(
     }
 }
 
-// 関係式（xと、x^2-nの素因数分解の結果）を収集する
 fn collect_smooth_relations(
     sieve_array: &[f64],
     factor_base: &[u64],
@@ -378,7 +271,6 @@ fn collect_smooth_relations(
     desired: usize,
 ) -> Vec<Relation> {
     let mut relations = Vec::new();
-    // indices sorted by sieve score ascending (more negative/smaller first)
     let mut idxs: Vec<usize> = (0..sieve_array.len()).collect();
     idxs.sort_unstable_by(|&a, &b| sieve_array[a].partial_cmp(&sieve_array[b]).unwrap());
     for i in idxs.into_iter() {
@@ -406,15 +298,12 @@ fn collect_smooth_relations(
     relations
 }
 
-// 関係式を保持するための構造体
 struct Relation {
     x: BigInt,
     exponents: Vec<u32>,
 }
 
-// 行列の線形従属な関係を見つける
 fn solve_linear_algebra(relations: &[Relation], num_primes: usize) -> Vec<Vec<usize>> {
-    // 行: num_primes, 列: relations.len()
     type F = GF2;
     let rows = num_primes;
     let cols = relations.len();
@@ -430,7 +319,6 @@ fn solve_linear_algebra(relations: &[Relation], num_primes: usize) -> Vec<Vec<us
     }
     let a: Matrix<F> = Matrix::new(rows, cols, data).unwrap();
     let rref = a.rref().unwrap();
-    // ピボット列検出
     let mut pivot_col = vec![false; cols];
     let mut r = 0usize;
     for c in 0..cols {
@@ -438,13 +326,10 @@ fn solve_linear_algebra(relations: &[Relation], num_primes: usize) -> Vec<Vec<us
             break;
         }
         if !rref[(r, c)].is_zero() {
-            // この列はピボット
             pivot_col[c] = true;
-            // 次の行に進む
             r += 1;
         }
     }
-    // 最初の自由列を1にして依存を構築
     let mut combos: Vec<Vec<usize>> = Vec::new();
     for j in 0..cols {
         if pivot_col[j] {
@@ -475,7 +360,6 @@ fn solve_linear_algebra(relations: &[Relation], num_primes: usize) -> Vec<Vec<us
     combos
 }
 
-// 最終的な因数を見つける
 fn find_factor(
     n: &BigInt,
     combination: &[usize],
@@ -485,12 +369,10 @@ fn find_factor(
     if combination.is_empty() {
         return None;
     }
-    // X = Π x_i (mod n)
     let mut x_prod = BigInt::one();
     for &idx in combination {
         x_prod = (x_prod * &relations[idx].x) % n;
     }
-    // E = sum of exponents
     let num_p = relations[0].exponents.len();
     let mut e_sum = vec![0u32; num_p];
     for &idx in combination {
@@ -498,7 +380,6 @@ fn find_factor(
             *exp += relations[idx].exponents[j];
         }
     }
-    // Y = Π p_j^(e_sum[j]/2) (mod n)
     let mut y_prod = BigInt::one();
     for j in 0..num_p {
         let half = e_sum[j] / 2;
@@ -521,7 +402,6 @@ fn sieve_of_eratosthenes(max: u64) -> Vec<u64> {
     let mut is_prime = vec![true; (max + 1) as usize];
     is_prime[0] = false;
     is_prime[1] = false;
-
     for i in 2..=((max as f64).sqrt() as u64) {
         if is_prime[i as usize] {
             for j in (i * i..=max).step_by(i as usize) {
@@ -529,7 +409,6 @@ fn sieve_of_eratosthenes(max: u64) -> Vec<u64> {
             }
         }
     }
-
     is_prime
         .iter()
         .enumerate()
@@ -537,7 +416,6 @@ fn sieve_of_eratosthenes(max: u64) -> Vec<u64> {
         .collect()
 }
 
-// ===== Pre-processing for BigInt factorization =====
 fn trial_divide_collect(n: &BigInt, max_prime: u64) -> (Vec<BigInt>, BigInt) {
     let mut rem = n.clone();
     let mut out: Vec<BigInt> = Vec::new();
@@ -570,7 +448,6 @@ fn pollards_rho_big(n: &BigInt, max_iters: usize) -> Option<BigInt> {
     let one = BigInt::one();
     let f = |x: &BigInt, c: &BigInt, m: &BigInt| -> BigInt { (x * x + c) % m };
     for _ in 0..5 {
-        // different random constants
         let c = BigInt::from(rng.gen_range(1u64..=1_000_000u64));
         let mut x = BigInt::from(rng.gen_range(2u64..=1_000_000u64)) % n;
         let mut y = x.clone();
@@ -593,7 +470,6 @@ fn pollards_rho_big(n: &BigInt, max_iters: usize) -> Option<BigInt> {
     None
 }
 
-// ===== Miller-Rabin (u64) =====
 fn modmul_u128(a: u128, b: u128, m: u128) -> u128 {
     ((a % m) * (b % m)) % m
 }
@@ -621,7 +497,6 @@ fn is_probable_prime_u64(n: u64) -> bool {
             return n == p;
         }
     }
-    // n-1 = d * 2^s (d odd)
     let mut d = n - 1;
     let mut s = 0u32;
     while d % 2 == 0 {
@@ -645,7 +520,6 @@ fn is_probable_prime_u64(n: u64) -> bool {
     true
 }
 
-// ===== Pollard's Rho (u64) =====
 fn gcd_u64(mut a: u64, mut b: u64) -> u64 {
     while b != 0 {
         let t = a % b;
@@ -682,9 +556,7 @@ fn pollards_rho_split_u64(n: u64) -> (u64, u64) {
     }
 }
 
-// ===== BigInt helpers for QS stubs =====
 fn isqrt_big(n: &BigInt) -> BigInt {
-    // Newton iteration for integer sqrt
     if n.is_zero() {
         return BigInt::zero();
     }
@@ -713,7 +585,6 @@ fn mod_pow_big_u64(a: &BigInt, e: u64, m: u64) -> u64 {
 }
 
 fn solve_square_roots(_n: &BigInt, _p: u64) -> Option<(BigInt, BigInt)> {
-    // Tonelli–Shanks for odd prime p
     let p = _p;
     if p == 2 {
         return Some((BigInt::from(1u64), BigInt::from(1u64)));
@@ -722,18 +593,15 @@ fn solve_square_roots(_n: &BigInt, _p: u64) -> Option<(BigInt, BigInt)> {
     if n_mod == 0 {
         return Some((BigInt::from(0u64), BigInt::from(0u64)));
     }
-    // Check Legendre symbol n^((p-1)/2) ≡ 1
     if mod_pow_big_u64(_n, (p - 1) / 2, p) != 1 {
         return None;
     }
-    // write p-1 = q * 2^s with q odd
     let mut q = p - 1;
     let mut s = 0u32;
     while q % 2 == 0 {
         q /= 2;
         s += 1;
     }
-    // find z non-residue
     let mut z = 2u64;
     while mod_pow_big_u64(&BigInt::from(z), (p - 1) / 2, p) == 1 {
         z += 1;
@@ -765,15 +633,14 @@ fn solve_square_roots(_n: &BigInt, _p: u64) -> Option<(BigInt, BigInt)> {
 
 fn mod_pow_bigint(a: &BigInt, e: &BigInt, m: &BigInt) -> BigInt {
     let mut base = a % m;
-    let mut exp = e.clone(); // ループ内で変更するためクローン
+    let mut exp = e.clone();
     let mut res = BigInt::one();
-
     while exp > BigInt::zero() {
         if &exp & BigInt::one() == BigInt::one() {
             res = (&res * &base) % m;
         }
         base = (&base * &base) % m;
-        exp >>= 1; // 右に1ビットシフト
+        exp >>= 1;
     }
     res
 }
@@ -785,9 +652,7 @@ fn is_probable_prime_big(n: &BigInt) -> bool {
     if n < &BigInt::from(2u64) {
         return false;
     }
-    // simple bases for Miller–Rabin on BigInt
     let bases: [u64; 5] = [2, 3, 5, 7, 11];
-    // n-1 = d * 2^s
     let mut d = n - 1u32;
     let mut s = 0u32;
     while (&d & BigInt::from(1u32)).is_zero() {
@@ -810,5 +675,3 @@ fn is_probable_prime_big(n: &BigInt) -> bool {
     }
     true
 }
-
-// removed fallback helper: we now pass factor_base into find_factor

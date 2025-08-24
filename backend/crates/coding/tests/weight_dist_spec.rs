@@ -1,4 +1,4 @@
-use coding::{code_utils::*, GFp};
+use coding::{code_utils::*, types::GeneratorMatrix, GFp};
 use linalg::Matrix;
 
 #[test]
@@ -17,7 +17,7 @@ fn weight_distribution_gf2_small() {
         ],
     )
     .unwrap();
-    let codebook = generate_codebook_gfp::<2>(&g);
+    let codebook = generate_codebook_gfp::<2>(&GeneratorMatrix(g));
     let bins = weight_distribution(&codebook);
     assert_eq!(bins.iter().sum::<usize>(), 4);
 }

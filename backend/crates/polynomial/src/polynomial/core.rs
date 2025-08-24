@@ -187,7 +187,7 @@ impl Polynomial<f64> {
         if self.deg() < 0 || other.deg() < 0 {
             return Polynomial::zero();
         }
-        let y = utils::convolution::convolve_fft_f64(&self.coeffs, &other.coeffs);
+        let y = convolution::convolve_fft_f64(&self.coeffs, &other.coeffs);
         Polynomial::new(y)
     }
     pub fn mul_auto(&self, other: &Self) -> Self {
@@ -247,7 +247,7 @@ impl<F: Field> Div for &Polynomial<F> {
 }
 
 // 所有/参照の3パターン (Poly op &Poly, &Poly op Poly, Poly op Poly) を自動実装
-utils::impl_ops_by_ref_variants!(Polynomial<F>, Add, add, linalg::Field);
-utils::impl_ops_by_ref_variants!(Polynomial<F>, Sub, sub, linalg::Field);
-utils::impl_ops_by_ref_variants!(Polynomial<F>, Mul, mul, linalg::Field);
-utils::impl_ops_by_ref_variants!(Polynomial<F>, Div, div, linalg::Field);
+crate::impl_ops_by_ref_variants!(Polynomial<F>, Add, add, linalg::Field);
+crate::impl_ops_by_ref_variants!(Polynomial<F>, Sub, sub, linalg::Field);
+crate::impl_ops_by_ref_variants!(Polynomial<F>, Mul, mul, linalg::Field);
+crate::impl_ops_by_ref_variants!(Polynomial<F>, Div, div, linalg::Field);

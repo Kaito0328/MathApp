@@ -1,4 +1,4 @@
-use coding::{GFp, Hamming74, LinearCode};
+use coding::{types::Message, GFp, Hamming74, LinearCode};
 use linalg::{Matrix, Vector};
 
 fn main() {
@@ -18,18 +18,18 @@ fn main() {
     )
     .unwrap();
     let lc: LinearCode<F> = LinearCode::new(g);
-    let u = Vector::new(vec![F::new(2), F::new(4)]);
+    let u = Message(Vector::new(vec![F::new(2), F::new(4)]));
     let c = lc.encode(&u);
     println!("u={u:?}, c={c:?}");
 
     // Hamming(7,4)
     let ham: Hamming74 = Default::default();
-    let u2 = Vector::new(vec![
+    let u2 = Message(Vector::new(vec![
         GFp::<2>::new(1),
         GFp::<2>::new(0),
         GFp::<2>::new(1),
         GFp::<2>::new(1),
-    ]);
+    ]));
     let c2 = ham.encode(&u2);
     println!("u2={u2:?}, c2={c2:?}");
 }

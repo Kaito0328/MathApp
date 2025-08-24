@@ -1,4 +1,4 @@
-use utils::prime_factorization::factor;
+use number_theory::prime_factorization::factor;
 
 #[test]
 fn factor_small_primes() {

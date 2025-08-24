@@ -1,5 +1,5 @@
-use coding::gf256::gf256_from_u8;
 use coding::{ReedSolomon, GF256};
+use finite_field::gf256::gf256_from_u8;
 use linalg::Vector;
 
 fn main() {

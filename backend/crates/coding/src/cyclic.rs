@@ -1,4 +1,5 @@
-use linalg::Field;
+use linalg::{Field, Vector};
+use crate::types::{Message, Codeword};
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
 
@@ -14,10 +15,10 @@ impl<F: Field + Clone + PartialEq + Zero + One> CyclicCode<F> {
         Self { n, g }
     }
 
-    // 情報多項式 u(x) を長さ n の符号語へ（系統形での単純な畳み込み+mod x^n-1）
-    pub fn encode_poly(&self, u: &[F]) -> Vec<F> {
+    // 新API: Message -> Codeword
+    pub fn encode(&self, u: &Message<F>) -> Codeword<F> {
         let k = self.k();
-        assert!(u.len() == k);
+        assert_eq!(u.dim(), k, "message length must be k");
         // 系統形 [I | parity] を構築する代わりに畳み込みして mod x^n-1
         let mut v = vec![F::zero(); k + self.g.len() - 1];
         for i in 0..k {
@@ -30,10 +31,16 @@ impl<F: Field + Clone + PartialEq + Zero + One> CyclicCode<F> {
         for (i, coef) in v.into_iter().enumerate() {
             c[i % self.n] = c[i % self.n].clone() + coef;
         }
-        c
+        Codeword::from(Vector::new(c))
     }
 
     pub fn k(&self) -> usize {
         self.n - (self.g.len() - 1)
+    }
+
+    // 旧API互換（将来削除予定）
+    pub fn encode_poly(&self, u: &[F]) -> Vec<F> {
+        let msg = Message::from(Vector::new(u.to_vec()));
+        self.encode(&msg).0.data
     }
 }

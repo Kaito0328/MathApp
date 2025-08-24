@@ -1,10 +1,11 @@
-use crate::prime::GFp;
-use linalg::{Matrix, Vector};
+use finite_field::gfp::GFp;
+use linalg::Vector;
+use crate::types::{Codeword, GeneratorMatrix, Message};
 
 // (7,4) Hamming code over GF(2)
 #[derive(Debug, Clone)]
 pub struct Hamming74 {
-    pub g: Matrix<GFp<2>>, // 4x7 generator
+    pub g: GeneratorMatrix<GFp<2>>, // 4x7 generator
 }
 
 impl Default for Hamming74 {
@@ -16,13 +17,15 @@ impl Default for Hamming74 {
         .into_iter()
         .map(GFp::<2>)
         .collect();
-        let g = Matrix::new(4, 7, data).unwrap();
-        Self { g }
+        let g = linalg::Matrix::new(4, 7, data).unwrap();
+        Self { g: GeneratorMatrix(g) }
     }
 }
 
 impl Hamming74 {
-    pub fn encode(&self, u: &Vector<GFp<2>>) -> Vector<GFp<2>> {
-        (u.clone() * &self.g).row(0).unwrap()
+    pub fn encode(&self, u: &Message<GFp<2>>) -> Codeword<GFp<2>> {
+        let v: Vector<GFp<2>> = u.as_ref().clone();
+        let g = &self.g.0;
+        ((v * g).row(0).unwrap()).into()
     }
 }

@@ -1,4 +1,5 @@
-use coding::{gf256::gf256_from_u8, BCHCode, CyclicCode, GFp, Poly, GF256};
+use coding::{BCHCode, CyclicCode, GFp, Poly, GF256, Message};
+use finite_field::gf256::gf256_from_u8;
 
 #[test]
 fn cyclic_encode_over_gf2_example_matches_example_output() {
@@ -20,6 +21,7 @@ fn bch_encode_minimal_demo_compiles_and_has_length_n() {
     let k = bch.k();
 
     let u = Poly::new((0..k).map(|i| gf256_from_u8(i as u8 + 1)).collect());
-    let c = bch.encode(&u);
-    assert_eq!(c.len(), n);
+    let msg = Message::from(linalg::Vector::new(u.coeffs.clone()));
+    let c = bch.encode(&msg);
+    assert_eq!(c.as_ref().dim(), n);
 }

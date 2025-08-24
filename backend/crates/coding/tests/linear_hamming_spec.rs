@@ -1,4 +1,4 @@
-use coding::{GFp, Hamming74, LinearCode};
+use coding::{types::Message, GFp, Hamming74, LinearCode};
 use linalg::{Matrix, Vector};
 
 #[test]
@@ -19,7 +19,7 @@ fn linear_code_encode_over_gf5() {
     )
     .unwrap();
     let lc: LinearCode<F> = LinearCode::new(g);
-    let u = Vector::new(vec![F::new(2), F::new(4)]);
+    let u = Message(Vector::new(vec![F::new(2), F::new(4)]));
     let c = lc.encode(&u);
     // c = u * G = [2,4] * [[1,0,2],[0,1,3]] = [2,4, (2*2+4*3)=16≡1]
     assert_eq!(c.dim(), 3);
@@ -31,12 +31,12 @@ fn linear_code_encode_over_gf5() {
 #[test]
 fn hamming74_encode() {
     let ham = Hamming74::default();
-    let u = Vector::new(vec![
+    let u = Message(Vector::new(vec![
         GFp::<2>::new(1),
         GFp::<2>::new(0),
         GFp::<2>::new(1),
         GFp::<2>::new(1),
-    ]);
+    ]));
     let c = ham.encode(&u);
     assert_eq!(c.dim(), 7);
 }

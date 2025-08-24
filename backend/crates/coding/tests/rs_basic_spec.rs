@@ -1,5 +1,5 @@
-use coding::{GF256, ReedSolomon};
-use coding::gf256::gf256_from_u8;
+use coding::{GF256, ReedSolomon, Message};
+use finite_field::gf256::gf256_from_u8;
 use linalg::Vector;
 
 fn b(x: u8) -> GF256 { gf256_from_u8(x) }
@@ -18,9 +18,9 @@ fn alphas_n(n: usize) -> Vec<GF256> {
 fn encode_length_matches() {
     let k = 4; let n = 7;
     let rs = ReedSolomon::new(k, alphas_n(n));
-    let msg = Vector::new(vec![b(1), b(2), b(3), b(4)]);
+    let msg = Message::from(Vector::new(vec![b(1), b(2), b(3), b(4)]));
     let code = rs.encode(&msg);
-    assert_eq!(code.dim(), n);
+    assert_eq!(code.as_ref().dim(), n);
 }
 
 #[test]
@@ -28,9 +28,9 @@ fn systematic_roundtrip_no_errors_small() {
     // デコードは暫定実装のため、ここでは t=1, n=5, k=3 程度で roundtrip を確認
     let k = 3; let n = 5;
     let rs = ReedSolomon::new(k, alphas_n(n));
-    let msg = Vector::new(vec![b(7), b(0x20), b(0x55)]);
+    let msg = Message::from(Vector::new(vec![b(7), b(0x20), b(0x55)]));
     let code = rs.encode(&msg);
     let out = rs.decode(&code);
     // 少なくとも先頭 k 係数が元のメッセージと一致することを期待
-    for i in 0..k.min(out.decoded.dim()) { assert_eq!(out.decoded[i], msg[i]); }
+    for i in 0..k.min(out.decoded.as_ref().dim()) { assert_eq!(out.decoded[i], msg[i]); }
 }

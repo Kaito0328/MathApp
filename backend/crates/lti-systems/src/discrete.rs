@@ -97,6 +97,53 @@ impl TransferFunction {
     pub fn from_zpk(z: &crate::zpk::DiscreteZpk, sample_rate: f64) -> Self {
         z.to_transfer_function(sample_rate)
     }
+
+    // --- 接続ユーティリティ ---
+    /// 直列接続: self(z) * other(z)（サンプリング周波数の一致を前提）
+    pub fn series(&self, other: &Self) -> Self {
+        assert!(
+            self.sample_rate == other.sample_rate,
+            "sample rates must match"
+        );
+        let ratio = &self.ratio * &other.ratio;
+        Self {
+            ratio,
+            sample_rate: self.sample_rate,
+        }
+    }
+    /// 並列接続: self(z) + other(z)
+    pub fn parallel(&self, other: &Self) -> Self {
+        assert!(
+            self.sample_rate == other.sample_rate,
+            "sample rates must match"
+        );
+        let ratio = &self.ratio + &other.ratio;
+        Self {
+            ratio,
+            sample_rate: self.sample_rate,
+        }
+    }
+    /// フィードバック接続: G / (1 ± G H)
+    pub fn feedback(&self, h: &Self, sign: i32) -> Self {
+        assert!(self.sample_rate == h.sample_rate, "sample rates must match");
+        let gh = &self.ratio * &h.ratio;
+        let one = poly::rational_function::RationalFunction::one();
+        let denom = if sign >= 0 { &one + &gh } else { &one - &gh };
+        let ratio = &self.ratio / &denom;
+        Self {
+            ratio,
+            sample_rate: self.sample_rate,
+        }
+    }
+    /// 単位フィードバック（負帰還）
+    pub fn feedback_unity(&self) -> Self {
+        let one = poly::rational_function::RationalFunction::one();
+        let h = Self {
+            ratio: one,
+            sample_rate: self.sample_rate,
+        };
+        self.feedback(&h, 1)
+    }
 }
 
 // --- 共通ロジック: 直接形Iの時間領域適用（離散系で使用） ---

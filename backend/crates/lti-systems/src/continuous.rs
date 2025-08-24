@@ -111,4 +111,36 @@ impl TransferFunction {
         }
         out
     }
+
+    // --- 接続ユーティリティ ---
+    /// 直列接続: self(s) * other(s)
+    pub fn series(&self, other: &Self) -> Self {
+        let r = &self.ratio * &other.ratio;
+        Self { ratio: r }
+    }
+
+    /// 並列接続: self(s) + other(s)
+    pub fn parallel(&self, other: &Self) -> Self {
+        let r = &self.ratio + &other.ratio;
+        Self { ratio: r }
+    }
+
+    /// フィードバック接続: G / (1 ± G H)
+    /// sign = +1 で正帰還, -1 で負帰還（一般的には負帰還を用いる）
+    pub fn feedback(&self, h: &Self, sign: i32) -> Self {
+        let gh = &self.ratio * &h.ratio;
+        let one = poly::rational_function::RationalFunction::one();
+        let denom = if sign >= 0 { &one + &gh } else { &one - &gh };
+        let r = &self.ratio / &denom;
+        Self { ratio: r }
+    }
+    /// 単位フィードバック（負帰還）: G / (1 + G)
+    pub fn feedback_unity(&self) -> Self {
+        self.feedback(
+            &Self {
+                ratio: poly::rational_function::RationalFunction::one(),
+            },
+            1,
+        )
+    }
 }

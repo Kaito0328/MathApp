@@ -1,9 +1,10 @@
 use crate::Poly;
+use crate::types::{Codeword, Message};
 use linalg::{Field, Matrix, Vector};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct RSDecodeResult<F: Field + Clone> {
-    pub decoded: Vector<F>,
+    pub decoded: Message<F>,
 }
 
 // C++版の RS: k, elements(alpha^i), px はGF(256)では簡約
@@ -36,14 +37,15 @@ impl<F: Field + Clone + PartialEq> ReedSolomon<F> {
         Self { k, n, t, alphas, g }
     }
 
-    pub fn encode(&self, f: &Vector<F>) -> Vector<F> {
+    pub fn encode(&self, f: &Message<F>) -> Codeword<F> {
         // 行ベクトル f (1 x k) と G (k x n) の積 => (1 x n)
-        (f.clone() * &self.g).row(0).unwrap()
+        let v: Vector<F> = (f.as_ref().clone() * &self.g).row(0).unwrap();
+        Codeword::from(v)
     }
 
     // 簡易デコード（Berlekamp–Welch相当は未実装）: 連立を作り最小二乗的に復元
     // まずはユーティリティ的に placeholder を返す
-    pub fn decode(&self, r: &Vector<F>) -> RSDecodeResult<F> {
+    pub fn decode(&self, r: &Codeword<F>) -> RSDecodeResult<F> {
         // A = [A0 | r .* A1] を作って RREF、q0, q1 を抽出し q0 / q1 を行う
         // A0: n x (n-t), A1: n x (t+1) with exp_table
         let max_pow = (self.k).max(self.n - self.t).max(self.t + 1);
@@ -67,7 +69,7 @@ impl<F: Field + Clone + PartialEq> ReedSolomon<F> {
 
         // A = [A0 | diag(r) * A1]
         let mut data = Vec::with_capacity(self.n * (self.n + 1));
-        for i in 0..self.n {
+    for i in 0..self.n {
             // A0 部分
             for j in 0..(self.n - self.t) {
                 data.push(a0[(i, j)].clone());
@@ -100,8 +102,6 @@ impl<F: Field + Clone + PartialEq> ReedSolomon<F> {
         let q0p: Poly<F> = Poly::new(q0);
         let q1p: Poly<F> = Poly::new(q1);
         let (fpoly, _rem) = q0p.div_rem(&q1p);
-        RSDecodeResult {
-            decoded: Vector::new(fpoly.coeffs),
-        }
+    RSDecodeResult { decoded: Message::from(Vector::new(fpoly.coeffs)) }
     }
 }

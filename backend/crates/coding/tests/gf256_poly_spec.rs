@@ -1,4 +1,4 @@
-use coding::gf256::gf256_from_u8;
+use finite_field::gf256::gf256_from_u8;
 use coding::{PolyGF256, GF256};
 
 fn b(x: u8) -> GF256 {

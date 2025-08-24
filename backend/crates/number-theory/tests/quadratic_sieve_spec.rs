@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use num_bigint::BigInt;
 use num_traits::One;
-use utils::prime_factorization::factor_for_big;
+use number_theory::prime_factorization::factor_for_big;
 
 fn product(nums: &[BigInt]) -> BigInt {
     nums.iter().fold(BigInt::one(), |acc, x| acc * x)

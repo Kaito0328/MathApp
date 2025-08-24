@@ -1,5 +1,4 @@
-use coding::gf256::{gf256_from_u8, gf256_modulus};
-use coding::GF256;
+use finite_field::gf256::{gf256_from_u8, gf256_modulus, GF256};
 
 fn main() {
     let a: GF256 = gf256_from_u8(0x57);

@@ -9,6 +9,9 @@ members = [
     "crates/lti-systems",
     "crates/concrete-math",
     "crates/fft-core",
+    "crates/finite-field",
+    "crates/convolution",
+    "crates/number-theory",
     "crates/utils",
     "crates/signal_processing",
 ]

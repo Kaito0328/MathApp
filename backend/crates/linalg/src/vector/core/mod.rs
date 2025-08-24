@@ -106,3 +106,29 @@ impl<T: Scalar> Vector<T> {
         Vector::new(new_data)
     }
 }
+
+// 追加のユーティリティ: 数値型向けの to_real / to_complex と Iterators
+impl Vector<f64> {
+    pub fn to_complex(&self) -> Vector<num_complex::Complex<f64>> {
+        let v = self.data.iter().map(|&x| num_complex::Complex::new(x, 0.0)).collect();
+        Vector::new(v)
+    }
+}
+
+impl Vector<num_complex::Complex<f64>> {
+    /// 虚部が tol 以下なら実数ベクトルに変換。超える要素があれば Err。
+    pub fn to_real(&self, tol: f64) -> crate::Result<Vector<f64>> {
+        let v = utils::complex_vec_to_real(&self.data, tol)
+            .map_err(|e| crate::LinalgError::InvalidArgument { text: format!("{e:?}") })?;
+        Ok(Vector::new(v))
+    }
+}
+
+// IntoIterator 実装（所有権を消費）
+impl<T: Scalar> IntoIterator for Vector<T> {
+    type Item = T;
+    type IntoIter = std::vec::IntoIter<T>;
+    fn into_iter(self) -> Self::IntoIter { self.data.into_iter() }
+}
+
+// 参照でのイテレータは ops/mod.rs に実装済み

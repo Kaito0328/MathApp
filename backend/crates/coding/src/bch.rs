@@ -1,5 +1,6 @@
 use crate::Poly;
-use linalg::Field;
+use crate::types::{Message, Codeword};
+use linalg::{Field, Vector};
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
 
@@ -29,21 +30,21 @@ impl<F: Field + Clone + PartialEq + Zero + One> BCHCode<F> {
         &self.g
     }
 
-    // 簡易版: 系統形の構築を避け、Cyclic の encode に倣い x^n≡1 で縮約
-    pub fn encode(&self, u: &Poly<F>) -> Vec<F> {
+    // 新API: Message -> Codeword（簡易: x^n≡1で縮約）
+    pub fn encode(&self, u: &Message<F>) -> Codeword<F> {
         let k = self.k();
-        assert_eq!(u.coeffs.len(), k);
+        assert_eq!(u.dim(), k);
         let mut v = vec![F::zero(); k + self.g.coeffs.len() - 1];
         for i in 0..k {
             for j in 0..self.g.coeffs.len() {
-                v[i + j] = v[i + j].clone() + u.coeffs[i].clone() * self.g.coeffs[j].clone();
+                v[i + j] = v[i + j].clone() + u[i].clone() * self.g.coeffs[j].clone();
             }
         }
         let mut c = vec![F::zero(); self.n];
         for (i, coef) in v.into_iter().enumerate() {
             c[i % self.n] = c[i % self.n].clone() + coef;
         }
-        c
+        Codeword::from(Vector::new(c))
     }
 
     pub fn k(&self) -> usize {

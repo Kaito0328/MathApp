@@ -15,3 +15,4 @@ path = "src/lib.rs"
 num-traits = "0.2"
 num-complex = "0.4"
 fft-core = { path = "../fft-core" }
+utils = { path = "../utils" }

@@ -1,6 +1,6 @@
+use crate::gfp::GFp;
 use crate::gfext::GFExt;
-use crate::prime::GFp;
-use polynomial::Polynomial;
+use poly::Polynomial;
 use std::sync::Arc;
 
 // GF256 を GFExt<GFp<2>> の具象として提供

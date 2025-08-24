@@ -1,4 +1,4 @@
-use coding::{code_utils::*, GFp};
+use coding::{code_utils::*, types::GeneratorMatrix, GFp};
 use linalg::{Matrix, Vector};
 
 #[test]
@@ -25,7 +25,7 @@ fn generate_codebook_gf2_small() {
         ],
     )
     .unwrap();
-    let codebook = generate_codebook_gfp::<2>(&g);
+    let codebook = generate_codebook_gfp::<2>(&GeneratorMatrix(g));
     assert_eq!(codebook.len(), 4);
 }
 
@@ -47,7 +47,7 @@ fn formed_g_to_h_standard_shape() {
         ],
     )
     .unwrap();
-    let h = formed_g_to_h(&g);
-    assert_eq!(h.rows, 2);
-    assert_eq!(h.cols, 4);
+    let h = formed_g_to_h(&GeneratorMatrix(g));
+    assert_eq!(h.0.rows, 2);
+    assert_eq!(h.0.cols, 4);
 }
