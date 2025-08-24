@@ -1,5 +1,6 @@
 use num_complex::Complex;
 use poly::{polynomial::Polynomial, rational_function::RationalFunction};
+use std::fmt;
 
 /// 離散系の伝達関数 H(z) = B(z) / A(z)
 #[derive(Clone, Debug, PartialEq)]
@@ -143,6 +144,25 @@ impl TransferFunction {
             sample_rate: self.sample_rate,
         };
         self.feedback(&h, 1)
+    }
+}
+
+// --- 表示ユーティリティ ---
+impl TransferFunction {
+    /// 既定の変数名 "z" で可読表示するラッパーを返す
+    pub fn display(&self) -> poly::RfDisplay<'_, f64> {
+        self.ratio.display_with("z")
+    }
+    /// 変数名を指定して可読表示するラッパーを返す
+    pub fn display_with(&self, var: &'static str) -> poly::RfDisplay<'_, f64> {
+        self.ratio.display_with(var)
+    }
+}
+
+impl fmt::Display for TransferFunction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // 離散系は既定で z を使う
+        write!(f, "{}", self.display())
     }
 }
 

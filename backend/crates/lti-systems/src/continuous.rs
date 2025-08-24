@@ -2,6 +2,7 @@ use crate::conversions::{bilinear_transform, bilinear_transform_prewarp, inverse
 use crate::statespace::{tf_c2d_zoh_siso, DiscreteStateSpace};
 use num_complex::Complex;
 use poly::{polynomial::Polynomial, rational_function::RationalFunction};
+use std::fmt;
 
 /// 連続系の伝達関数 G(s) = B(s)/A(s)
 #[derive(Clone, Debug, PartialEq)]
@@ -142,5 +143,24 @@ impl TransferFunction {
             },
             1,
         )
+    }
+}
+
+// --- 表示ユーティリティ ---
+impl TransferFunction {
+    /// 既定の変数名 "s" で可読表示するラッパーを返す
+    pub fn display(&self) -> poly::RfDisplay<'_, f64> {
+        self.ratio.display_with("s")
+    }
+    /// 変数名を指定して可読表示するラッパーを返す
+    pub fn display_with(&self, var: &'static str) -> poly::RfDisplay<'_, f64> {
+        self.ratio.display_with(var)
+    }
+}
+
+impl fmt::Display for TransferFunction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // 連続系は既定で s を使う
+        write!(f, "{}", self.display())
     }
 }

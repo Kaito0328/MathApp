@@ -32,6 +32,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let spec_svg = format!("{out_dir}/magnitude_spectrum.svg");
     x_freq.save_svg_magnitude_db_with_axes(&spec_svg, 800, 400, "|X| (dB)")?;
 
+    // Terminal summaries
+    println!("time: {x}");
+    println!("freq: {x_freq}");
     println!("Wrote {out_dir}/time_signal.svg and {out_dir}/magnitude_spectrum.svg");
     Ok(())
 }

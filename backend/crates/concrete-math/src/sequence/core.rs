@@ -1,7 +1,9 @@
 use num_complex::Complex;
+use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::error::{ConcreteMathError, Result as ConcreteMathResult};
+use poly::format::fmt_complex;
 use poly::polynomial::Polynomial;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -89,6 +91,225 @@ impl ClosedForm {
                 })
                 .collect(),
         ))
+    }
+}
+
+// ---------------- Display helpers ----------------
+fn fmt_poly_complex(
+    poly: &Polynomial<Complex<f64>>,
+    var: &str,
+    unicode_superscript: bool,
+) -> String {
+    // 係数が複素数の多項式を "a_k var^k + ... + a_0" 形式で表示（'*' なし）
+    if poly.is_zero() {
+        return "0".to_string();
+    }
+    let tol = 1e-12;
+    let mut out: Vec<String> = Vec::new();
+    for (k, c) in poly.coeffs.iter().enumerate().rev() {
+        if c.norm() <= tol {
+            continue;
+        }
+        let deg = k;
+        let abs_c = if c.re.abs() <= tol && c.im.abs() <= tol {
+            Complex::new(0.0, 0.0)
+        } else {
+            *c
+        };
+        let c_str = fmt_complex(abs_c);
+        let term = if deg == 0 {
+            c_str
+        } else if deg == 1 {
+            if (abs_c - Complex::new(1.0, 0.0)).norm() <= tol {
+                var.to_string()
+            } else if (abs_c + Complex::new(-1.0, 0.0)).norm() <= tol {
+                // -1
+                format!("-{var}")
+            } else {
+                format!("{c_str}{var}")
+            }
+        } else if (abs_c - Complex::new(1.0, 0.0)).norm() <= tol {
+            if unicode_superscript {
+                format!("{var}{}", to_superscript(deg as isize))
+            } else {
+                format!("{var}^{deg}")
+            }
+        } else if (abs_c + Complex::new(-1.0, 0.0)).norm() <= tol {
+            if unicode_superscript {
+                format!("-{var}{}", to_superscript(deg as isize))
+            } else {
+                format!("-{var}^{deg}")
+            }
+        } else if unicode_superscript {
+            format!("{c_str}{var}{}", to_superscript(deg as isize))
+        } else {
+            format!("{c_str}{var}^{deg}")
+        };
+        out.push(term);
+    }
+    // 結合：符号が文字列に含まれている場合があるので、適切にスペースを入れる
+    let mut s = String::new();
+    for (i, t) in out.into_iter().enumerate() {
+        if i == 0 {
+            s.push_str(&t);
+        } else if t.starts_with('-') {
+            s.push_str(" - ");
+            s.push_str(t.trim_start_matches('-'));
+        } else {
+            s.push_str(" + ");
+            s.push_str(&t);
+        }
+    }
+    s
+}
+
+impl fmt::Display for GeneralTerm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.polynomial.is_zero() {
+            return write!(f, "0");
+        }
+        let p = fmt_poly_complex(&self.polynomial, "n", false);
+        let eps = 1e-12;
+        if (self.base - Complex::new(1.0, 0.0)).norm() < eps {
+            // P(n)
+            write!(f, "{p}")
+        } else {
+            // P(n) (r)^n  （'*' は付けない）
+            let r = fmt_complex(self.base);
+            write!(f, "{p} ({r})^n")
+        }
+    }
+}
+
+impl fmt::Display for ClosedForm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_zero() {
+            return write!(f, "0");
+        }
+        let mut parts: Vec<String> = Vec::new();
+        for t in &self.terms {
+            let s = t.to_string();
+            if s == "0" {
+                continue;
+            }
+            parts.push(s);
+        }
+        if parts.is_empty() {
+            return write!(f, "0");
+        }
+        let mut out = String::new();
+        for (i, s) in parts.into_iter().enumerate() {
+            if i == 0 {
+                out.push_str(&s);
+            } else if s.starts_with('-') {
+                out.push_str(" - ");
+                out.push_str(s.trim_start_matches('-'));
+            } else {
+                out.push_str(" + ");
+                out.push_str(&s);
+            }
+        }
+        write!(f, "{out}")
+    }
+}
+
+// --------- 可読表示ラッパ（変数名と上付き指数の選択） ---------
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SeqStyle {
+    pub unicode_superscript: bool,
+}
+
+pub struct ClosedFormDisplay<'a> {
+    pub cf: &'a ClosedForm,
+    pub var: &'static str,
+    pub style: SeqStyle,
+}
+
+impl<'a> ClosedFormDisplay<'a> {
+    pub fn new(cf: &'a ClosedForm, var: &'static str) -> Self {
+        Self {
+            cf,
+            var,
+            style: SeqStyle::default(),
+        }
+    }
+    pub fn unicode_superscript(mut self, on: bool) -> Self {
+        self.style.unicode_superscript = on;
+        self
+    }
+}
+
+fn to_superscript(n: isize) -> String {
+    let digits = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+    let minus = '⁻';
+    let mut x = n;
+    if x == 0 {
+        return digits[0].to_string();
+    }
+    let mut out = String::new();
+    if x < 0 {
+        out.push(minus);
+        x = -x;
+    }
+    let mut buf = Vec::new();
+    while x > 0 {
+        buf.push((x % 10) as usize);
+        x /= 10;
+    }
+    for d in buf.iter().rev() {
+        out.push(digits[*d]);
+    }
+    out
+}
+
+impl<'a> fmt::Display for ClosedFormDisplay<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.cf.is_zero() {
+            return write!(f, "0");
+        }
+        let mut parts: Vec<String> = Vec::new();
+        for t in &self.cf.terms {
+            if t.polynomial.is_zero() {
+                continue;
+            }
+            let p = fmt_poly_complex(&t.polynomial, self.var, self.style.unicode_superscript);
+            let eps = 1e-12;
+            let s = if (t.base - Complex::new(1.0, 0.0)).norm() < eps {
+                p
+            } else {
+                let r = fmt_complex(t.base);
+                // base^n（n は記号のため Unicode 上付きは使わず ^n とする）
+                format!("{p} ({r})^n")
+            };
+            parts.push(s);
+        }
+        if parts.is_empty() {
+            return write!(f, "0");
+        }
+        let mut out = String::new();
+        for (i, s) in parts.into_iter().enumerate() {
+            if i == 0 {
+                out.push_str(&s);
+            } else if s.starts_with('-') {
+                out.push_str(" - ");
+                out.push_str(s.trim_start_matches('-'));
+            } else {
+                out.push_str(" + ");
+                out.push_str(&s);
+            }
+        }
+        write!(f, "{out}")
+    }
+}
+
+impl ClosedForm {
+    /// 表示ラッパ（変数名: 既定は "n"）
+    pub fn display(&self) -> ClosedFormDisplay<'_> {
+        ClosedFormDisplay::new(self, "n")
+    }
+    /// 変数名指定付き表示ラッパ
+    pub fn display_with(&self, var: &'static str) -> ClosedFormDisplay<'_> {
+        ClosedFormDisplay::new(self, var)
     }
 }
 

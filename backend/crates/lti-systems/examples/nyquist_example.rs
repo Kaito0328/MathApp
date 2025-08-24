@@ -12,6 +12,8 @@ fn main() -> std::io::Result<()> {
     // --- 離散系の例: 移動平均と差分器 ---
     let ma = DTF::from_coeffs(vec![0.5, 0.5], vec![1.0]); // H(z) = 0.5(1 + z)
     let diff = DTF::from_coeffs(vec![-1.0, 1.0], vec![1.0]); // H(z) = z - 1
+    println!("MA:   H(z) = {ma}");
+    println!("Diff: H(z) = {diff}");
 
     let opts_z = DiscreteNyquistOptions {
         n_points: 720,
@@ -34,6 +36,8 @@ fn main() -> std::io::Result<()> {
         Polynomial::new(vec![1.0]),
         Polynomial::new(vec![1.0, 0.4, 1.0]),
     );
+    println!("G1: G(s) = {g1}");
+    println!("G2: G(s) = {g2}");
 
     let opts_s = ContinuousNyquistOptions {
         n_points: 800,

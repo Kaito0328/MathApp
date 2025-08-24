@@ -81,7 +81,9 @@ impl<F: Field + Clone + PartialEq + Zero> GFExt<F> {
             let tnorm = &t * cinv;
             Ok(GFExt::new(self.px.clone(), tnorm.coeffs))
         } else {
-            Err(crate::error::FieldError::InvalidModulus { text: "gcd is not constant; modulus may not be irreducible".to_string() })
+            Err(crate::error::FieldError::InvalidModulus {
+                text: "gcd is not constant; modulus may not be irreducible".to_string(),
+            })
         }
     }
 
@@ -123,6 +125,116 @@ impl<F: Field + Clone + PartialEq + Zero + One + Display> Display for GFExt<F> {
         } else {
             write!(f, "{}", terms.join(" + "))
         }
+    }
+}
+
+// ---------------- 表示ラッパ: 生成元記号を任意化し、上付き指数も選択可 ----------------
+
+fn to_superscript(n: isize) -> String {
+    // Unicode 上付き数字への簡易変換（負号対応）
+    let digits = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+    let minus = '⁻';
+    let mut x = n;
+    if x == 0 {
+        return digits[0].to_string();
+    }
+    let mut out = String::new();
+    if x < 0 {
+        out.push(minus);
+        x = -x;
+    }
+    let mut buf = Vec::new();
+    while x > 0 {
+        buf.push((x % 10) as usize);
+        x /= 10;
+    }
+    for d in buf.iter().rev() {
+        out.push(digits[*d]);
+    }
+    out
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct GFExtStyle {
+    pub unicode_superscript: bool,
+}
+
+pub struct GFExtDisplay<'a, F: Field + Clone + PartialEq + Zero + One + Display> {
+    pub elem: &'a GFExt<F>,
+    pub var: &'static str,
+    pub style: GFExtStyle,
+}
+
+impl<'a, F> GFExtDisplay<'a, F>
+where
+    F: Field + Clone + PartialEq + Zero + One + Display,
+{
+    pub fn new(elem: &'a GFExt<F>, var: &'static str) -> Self {
+        Self {
+            elem,
+            var,
+            style: GFExtStyle::default(),
+        }
+    }
+    pub fn unicode_superscript(mut self, on: bool) -> Self {
+        self.style.unicode_superscript = on;
+        self
+    }
+}
+
+impl<'a, F> Display for GFExtDisplay<'a, F>
+where
+    F: Field + Clone + PartialEq + Zero + One + Display,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut terms: Vec<String> = Vec::new();
+        for (i, c) in self.elem.coeffs.iter().enumerate() {
+            if c.is_zero() {
+                continue;
+            }
+            let i_isize = i as isize;
+            let pow_str = if i == 1 {
+                self.var.to_string()
+            } else if i >= 2 {
+                if self.style.unicode_superscript {
+                    format!("{}{}", self.var, to_superscript(i_isize))
+                } else {
+                    format!("{}^{}", self.var, i)
+                }
+            } else {
+                String::new()
+            };
+
+            let term = if i == 0 {
+                format!("{c}")
+            } else if *c == F::one() {
+                pow_str
+            } else if pow_str.is_empty() {
+                format!("{c}")
+            } else {
+                format!("{c}*{pow_str}")
+            };
+            terms.push(term);
+        }
+        if terms.is_empty() {
+            write!(f, "0")
+        } else {
+            write!(f, "{}", terms.join(" + "))
+        }
+    }
+}
+
+impl<F> GFExt<F>
+where
+    F: Field + Clone + PartialEq + Zero + One + Display,
+{
+    /// 既定の表示ラッパ（既定記号は "x"）
+    pub fn display(&self) -> GFExtDisplay<'_, F> {
+        GFExtDisplay::new(self, "x")
+    }
+    /// 記号を指定する表示ラッパ（例: "α"）
+    pub fn display_with(&self, var: &'static str) -> GFExtDisplay<'_, F> {
+        GFExtDisplay::new(self, var)
     }
 }
 
@@ -243,9 +355,9 @@ impl<F: Field + Clone + PartialEq + Zero> Div for GFExt<F> {
         );
         let inv = match GFExt::new(px.clone(), rhs.coeffs).inv() {
             Ok(v) => v,
-            Err(e) => panic!(
-                "GFExt division failed: divisor has no inverse or invalid modulus: {e}"
-            ),
+            Err(e) => {
+                panic!("GFExt division failed: divisor has no inverse or invalid modulus: {e}")
+            }
         };
         GFExt::new(px, self.coeffs) * inv
     }
@@ -259,11 +371,17 @@ impl<F: Field + Clone + PartialEq + Zero> GFExt<F> {
         if rhs.is_one() {
             return Ok(GFExt::new(self.px.clone(), self.coeffs));
         }
-        let px = if self.px.is_empty() { rhs.px.clone() } else { self.px.clone() };
+        let px = if self.px.is_empty() {
+            rhs.px.clone()
+        } else {
+            self.px.clone()
+        };
         if !(rhs.px.is_empty() || *px == *rhs.px) {
-            return Err(crate::error::FieldError::InvalidArgument { text: "GFExt div: px mismatch".to_string() });
+            return Err(crate::error::FieldError::InvalidArgument {
+                text: "GFExt div: px mismatch".to_string(),
+            });
         }
-    let inv = GFExt::new(px.clone(), rhs.coeffs).inv()?;
+        let inv = GFExt::new(px.clone(), rhs.coeffs).inv()?;
         Ok(GFExt::new(px, self.coeffs) * inv)
     }
 }

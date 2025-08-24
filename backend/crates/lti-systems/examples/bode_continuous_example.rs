@@ -7,6 +7,7 @@ fn main() -> std::io::Result<()> {
         Polynomial::new(vec![1.0]),
         Polynomial::new(vec![1.0, 0.4, 1.0]),
     );
+    println!("G(s) = {g}");
 
     let out = format!("{}/plot/bode_cont.svg", env!("CARGO_MANIFEST_DIR"));
     std::fs::create_dir_all(format!("{}/plot", env!("CARGO_MANIFEST_DIR")))?;

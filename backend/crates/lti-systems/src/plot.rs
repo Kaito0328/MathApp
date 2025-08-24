@@ -75,6 +75,26 @@ impl DiscreteTransferFunction {
     ) -> Result<()> {
         save_nyquist_svg_discrete_multi(series, path, width, height, opts)
     }
+
+    /// 単一ループブロック図（負帰還/正帰還）を SVG へ保存（離散）
+    pub fn plot_block_feedback_svg(
+        &self,
+        path: &str,
+        width: u32,
+        height: u32,
+        negative_feedback: bool,
+        feedback_label: Option<&str>,
+    ) -> Result<()> {
+        let g_label = format!("{}", self.display());
+        save_block_feedback_svg(
+            &g_label,
+            path,
+            width,
+            height,
+            negative_feedback,
+            feedback_label,
+        )
+    }
 }
 
 impl ContinuousTransferFunction {
@@ -163,6 +183,203 @@ impl ContinuousTransferFunction {
     ) -> Result<()> {
         crate::plot::save_nyquist_svg_continuous_multi(series, path, width, height, opts)
     }
+
+    /// 単一ループブロック図（負帰還/正帰還）を SVG へ保存（連続）
+    pub fn plot_block_feedback_svg(
+        &self,
+        path: &str,
+        width: u32,
+        height: u32,
+        negative_feedback: bool,
+        feedback_label: Option<&str>,
+    ) -> Result<()> {
+        let g_label = format!("{}", self.display());
+        save_block_feedback_svg(
+            &g_label,
+            path,
+            width,
+            height,
+            negative_feedback,
+            feedback_label,
+        )
+    }
+}
+
+// ===== Block Diagram (simple single-loop) =====
+
+fn xml_escape(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            '&' => "&amp;".to_string(),
+            '<' => "&lt;".to_string(),
+            '>' => "&gt;".to_string(),
+            '"' => "&quot;".to_string(),
+            '\'' => "&apos;".to_string(),
+            _ => c.to_string(),
+        })
+        .collect()
+}
+
+/// 単一ループ（前向き G、後向き H(任意)）のブロック図を描画
+/// - negative_feedback: true で負帰還（サマで "+" を上、"-" を下）、false で正帰還
+/// - feedback_label: Some("H") なら後向きに H ブロックを描く、None ならユニティ
+fn save_block_feedback_svg(
+    g_label: &str,
+    path: &str,
+    width: u32,
+    height: u32,
+    negative_feedback: bool,
+    feedback_label: Option<&str>,
+) -> Result<()> {
+    let mut f = File::create(path)?;
+    let w = width as f64;
+    let h = height as f64;
+    let mid_y = h * 0.5;
+
+    // レイアウト定数
+    let margin = 20.0;
+    let sum_x = margin + 60.0;
+    let sum_r = 12.0;
+    let block_w = (w * 0.45).clamp(160.0, 460.0);
+    let block_h = 60.0;
+    let block_x = sum_x + 40.0;
+    let block_y = mid_y - block_h / 2.0;
+    let out_x = block_x + block_w + 40.0;
+
+    let sign_up = "+";
+    let sign_down = if negative_feedback { "-" } else { "+" };
+
+    // SVG ヘッダ
+    writeln!(f, "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>")?;
+    writeln!(
+        f,
+        "<defs><style>
+    .bg {{ fill:#ffffff; }}
+        .blk {{ fill:#ffffff; stroke:#222; stroke-width:1.5; }}
+        .sum {{ fill:#fff; stroke:#222; stroke-width:1.5; }}
+        .arrow {{ stroke:#222; stroke-width:1.5; fill:none; marker-end:url(#arrow); }}
+        .wire {{ stroke:#222; stroke-width:1.5; fill:none; }}
+        .text {{ font-family: 'DejaVu Sans', Arial, sans-serif; font-size:12px; fill:#222; }}
+    </style>
+    <marker id='arrow' markerWidth='10' markerHeight='8' refX='10' refY='4' orient='auto'>
+      <path d='M 0 0 L 10 4 L 0 8 z' fill='#222'/>
+    </marker></defs>"
+    )?;
+    // 背景（白）
+    writeln!(
+        f,
+        "<rect class='bg' x='0' y='0' width='{width}' height='{height}' />"
+    )?;
+
+    // 入力 r → サマ
+    let in_x = margin;
+    writeln!(
+        f,
+        "<line class='arrow' x1='{in_x}' y1='{mid_y}' x2='{sum_x}' y2='{mid_y}' />"
+    )?;
+    writeln!(
+        f,
+        "<text class='text' x='{:.1}' y='{:.1}' text-anchor='start' dy='-6'>r</text>",
+        in_x + 2.0,
+        mid_y
+    )?;
+
+    // サマ（記号は円の外側に）
+    writeln!(
+        f,
+        "<circle class='sum' cx='{sum_x}' cy='{mid_y}' r='{sum_r}' />"
+    )?;
+    let y_up = mid_y - sum_r - 4.0;
+    let y_down = mid_y + sum_r + 12.0;
+    // 下側記号はフィードバックの縦配線と重なりやすいので、少し右へずらす
+    let x_down = sum_x + sum_r + 10.0;
+    writeln!(
+        f,
+        "<text class='text' x='{sum_x:.1}' y='{y_up:.1}' text-anchor='middle'>{sign_up}</text>"
+    )?;
+    writeln!(f, "<text class='text' x='{x_down:.1}' y='{y_down:.1}' text-anchor='middle'>{sign_down}</text>")?;
+
+    // サマ → G ブロック
+    writeln!(
+        f,
+        "<line class='arrow' x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' />",
+        sum_x + sum_r,
+        mid_y,
+        block_x,
+        mid_y
+    )?;
+
+    // G ブロック
+    writeln!(f, "<rect class='blk' x='{block_x}' y='{block_y}' width='{block_w}' height='{block_h}' rx='6' ry='6' />")?;
+    let gtxt = xml_escape(g_label);
+    writeln!(f, "<text class='text' x='{:.1}' y='{:.1}' text-anchor='middle' dominant-baseline='middle'>{}</text>", block_x + block_w / 2.0, mid_y - 6.0, gtxt)?;
+
+    // 出力 → y
+    writeln!(
+        f,
+        "<line class='arrow' x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' />",
+        block_x + block_w,
+        mid_y,
+        out_x,
+        mid_y
+    )?;
+    writeln!(
+        f,
+        "<text class='text' x='{:.1}' y='{:.1}' text-anchor='start' dy='-6'>y</text>",
+        out_x + 2.0,
+        mid_y
+    )?;
+
+    // フィードバック配線: 右から下、左、上
+    let fb_y = mid_y + 80.0;
+    // 出力ノードから下
+    writeln!(
+        f,
+        "<path class='wire' d='M {out_x:.1} {mid_y:.1} V {fb_y:.1}' />"
+    )?;
+    // 右から左へ（H ブロック領域考慮）
+    let fb_left_x = sum_x;
+    // H ブロックがある場合は描画
+    if let Some(h_label) = feedback_label {
+        let h_w = 120.0;
+        let h_h = 46.0;
+        let h_x = block_x + block_w - h_w * 0.5; // 右側下流に配置
+        let h_y = fb_y - h_h / 2.0;
+        // 横線: 出力下から H 左端まで
+        writeln!(
+            f,
+            "<line class='wire' x1='{out_x:.1}' y1='{fb_y:.1}' x2='{h_x:.1}' y2='{fb_y:.1}' />"
+        )?;
+        // H ブロック
+        writeln!(
+            f,
+            "<rect class='blk' x='{h_x}' y='{h_y}' width='{h_w}' height='{h_h}' rx='6' ry='6' />"
+        )?;
+        let htxt = xml_escape(h_label);
+        writeln!(f, "<text class='text' x='{:.1}' y='{:.1}' text-anchor='middle' dominant-baseline='middle'>{}</text>", h_x + h_w / 2.0, fb_y - 6.0, htxt)?;
+        // H 右から左配線
+        let hx2 = h_x + h_w;
+        writeln!(
+            f,
+            "<line class='wire' x1='{hx2:.1}' y1='{fb_y:.1}' x2='{fb_left_x:.1}' y2='{fb_y:.1}' />"
+        )?;
+    } else {
+        // ユニティ: そのまま左へ
+        writeln!(f, "<line class='wire' x1='{out_x:.1}' y1='{fb_y:.1}' x2='{fb_left_x:.1}' y2='{fb_y:.1}' />")?;
+    }
+    // 上に戻る
+    let mid_y_sr = mid_y + sum_r;
+    writeln!(
+        f,
+        "<path class='wire' d='M {fb_left_x:.1} {fb_y:.1} V {mid_y_sr:.1}' />"
+    )?;
+    // サマへ矢印
+    let mid_y_p = mid_y + 1.0;
+    writeln!(f, "<line class='arrow' x1='{fb_left_x:.1}' y1='{mid_y_sr:.1}' x2='{fb_left_x:.1}' y2='{mid_y_p:.1}' />")?;
+
+    // 終了
+    writeln!(f, "</svg>")?;
+    Ok(())
 }
 
 /// 色パレット（可読性の高い 10 色）

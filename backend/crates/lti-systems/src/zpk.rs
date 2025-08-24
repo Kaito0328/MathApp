@@ -1,5 +1,6 @@
 use num_complex::Complex;
 use poly::polynomial::Polynomial;
+use std::fmt;
 
 /// 連続系 ZPK: G(s) = gain * prod(s - z_i) / prod(s - p_i)
 #[derive(Clone, Debug, PartialEq)]
@@ -119,4 +120,109 @@ fn poly_from_roots_real(roots: &[Complex<f64>]) -> Polynomial<f64> {
         }
     }
     poly
+}
+
+// ---- Display helpers ----
+fn fmt_real(x: f64) -> String {
+    let tol = 1e-12;
+    if x.abs() < tol {
+        return "0".to_string();
+    }
+    let xr = x.round();
+    if (x - xr).abs() < tol {
+        return format!("{}", xr as i64);
+    }
+    // Trim trailing zeros from a fixed representation
+    let s = format!("{x:.6}");
+    let s = s.trim_end_matches('0').trim_end_matches('.').to_string();
+    if s.is_empty() {
+        "0".to_string()
+    } else {
+        s
+    }
+}
+
+fn fmt_factor(var: &str, root: Complex<f64>) -> String {
+    let tol = 1e-12;
+    if root.im.abs() < tol {
+        let r = root.re;
+        if r.abs() < tol {
+            return format!("({var})");
+        }
+        let sign = if r < 0.0 { "+" } else { "-" };
+        return format!("({}{}{})", var, sign, fmt_real(r.abs()));
+    }
+    // Complex root: keep explicit subtraction with parentheses
+    let a = root.re;
+    let b = root.im;
+    let a_str = if a.abs() < tol {
+        String::new()
+    } else {
+        fmt_real(a)
+    };
+    let b_abs = b.abs();
+    let b_str = match b_abs {
+        _ if b_abs < tol => "0".to_string(),
+        _ if (b_abs - 1.0).abs() < tol => "i".to_string(),
+        _ => format!("{}i", fmt_real(b_abs)),
+    };
+    let sign = if b < 0.0 { '-' } else { '+' };
+    if a_str.is_empty() {
+        format!("({var}- ({sign}{b_str}))") // (z - (±bi))
+    } else {
+        format!("({var}- ({a_str}{sign}{b_str}))") // (z - (a±bi))
+    }
+}
+
+fn fmt_zpk(var: &str, zeros: &[Complex<f64>], poles: &[Complex<f64>], gain: f64) -> String {
+    let tol = 1e-12;
+    let num = if zeros.is_empty() {
+        "1".to_string()
+    } else {
+        zeros
+            .iter()
+            .map(|&z| fmt_factor(var, z))
+            .collect::<Vec<_>>()
+            .join("")
+    };
+    let den = if poles.is_empty() {
+        "1".to_string()
+    } else {
+        poles
+            .iter()
+            .map(|&p| fmt_factor(var, p))
+            .collect::<Vec<_>>()
+            .join("")
+    };
+
+    let gprefix = if (gain - 1.0).abs() < tol {
+        String::new()
+    } else {
+        fmt_real(gain)
+    };
+    if den == "1" {
+        if num == "1" {
+            if gprefix.is_empty() {
+                "1".to_string()
+            } else {
+                gprefix
+            }
+        } else {
+            format!("{gprefix}{num}")
+        }
+    } else {
+        format!("{gprefix}{num}/{den}")
+    }
+}
+
+impl fmt::Display for ContinuousZpk {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", fmt_zpk("s", &self.zeros, &self.poles, self.gain))
+    }
+}
+
+impl fmt::Display for DiscreteZpk {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", fmt_zpk("z", &self.zeros, &self.poles, self.gain))
+    }
 }

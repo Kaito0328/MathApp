@@ -1,6 +1,8 @@
+use crate::format::PolyDisplay;
 use linalg::Field;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -63,12 +65,7 @@ impl<F: Field> Polynomial<F> {
         let mut q = vec![F::zero(); self.coeffs.len().saturating_sub(dl) + 1];
         while rpoly.coeffs.len() >= dl && !(rpoly.coeffs.len() == 1 && rpoly.coeffs[0].is_zero()) {
             let shift = rpoly.coeffs.len() - dl;
-            let coef = rpoly
-                .coeffs
-                .last()
-                .cloned()
-                .unwrap_or_else(F::zero)
-                / lead.clone();
+            let coef = rpoly.coeffs.last().cloned().unwrap_or_else(F::zero) / lead.clone();
             q[shift] = coef.clone();
             for i in 0..dl {
                 let idx = i + shift;
@@ -92,10 +89,10 @@ impl<F: Field> Polynomial<F> {
     }
 
     pub fn monic(&self) -> Self {
-    if self.deg() < 0 {
+        if self.deg() < 0 {
             return self.clone();
         }
-    let lc = self.coeffs.last().cloned().unwrap_or_else(F::zero);
+        let lc = self.coeffs.last().cloned().unwrap_or_else(F::zero);
         if lc.is_zero() {
             return Polynomial::zero();
         }
@@ -106,6 +103,82 @@ impl<F: Field> Polynomial<F> {
                 .map(|c| c.clone() * inv.clone())
                 .collect(),
         )
+    }
+}
+
+// -------- Display implementations --------
+impl<F> fmt::Display for Polynomial<F>
+where
+    F: linalg::Field + fmt::Display + Clone + PartialEq,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // 既定の変数名は x。符号は係数の文字列先頭 '-' で判定し、係数 ±1 の省略を行う。
+        let var = "x";
+        if self.is_zero() {
+            return write!(f, "0");
+        }
+        let mut first = true;
+        for (k, c) in self.coeffs.iter().enumerate().rev() {
+            if c.is_zero() {
+                continue;
+            }
+            let deg = k as isize;
+            let s = c.to_string();
+            let is_neg = s.starts_with('-');
+            let abs_s: &str = if is_neg { &s[1..] } else { &s };
+            let is_one = *c == F::one();
+            let is_neg_one = *c == (F::zero() - F::one());
+
+            // 符号/区切り
+            if first {
+                if is_neg {
+                    write!(f, "-")?;
+                }
+            } else if is_neg {
+                write!(f, " - ")?;
+            } else {
+                write!(f, " + ")?;
+            }
+
+            // 本体
+            if deg == 0 {
+                // 定数項はそのまま（先頭 '-' は既に書いている場合は除去済）
+                if first {
+                    // 先頭項: 符号は既に出力済みなので絶対値部分のみ
+                    write!(f, "{abs_s}")?;
+                } else if is_neg {
+                    write!(f, "{abs_s}")?;
+                } else {
+                    write!(f, "{s}")?; // 非先頭かつ正: そのまま
+                }
+            } else {
+                // 非定数項: 係数の 1/-1 は省略
+                let omit_coeff = (is_neg && is_neg_one) || (!is_neg && is_one);
+                if !omit_coeff {
+                    // 係数の出力（先頭 '-' はすでに出力済みの場合は除去）
+                    if first || is_neg {
+                        write!(f, "{abs_s}")?;
+                    } else {
+                        write!(f, "{s}")?;
+                    }
+                }
+                // 変数と次数
+                if deg == 1 {
+                    write!(f, "{var}")?;
+                } else {
+                    write!(f, "{var}^{deg}")?;
+                }
+            }
+            first = false;
+        }
+        Ok(())
+    }
+}
+
+impl Polynomial<f64> {
+    /// 表示用のラッパーを返す（変数名・表記スタイルを指定可能）
+    pub fn display_with<'a>(&'a self, var: &'a str) -> PolyDisplay<'a, f64> {
+        PolyDisplay::new(self, var)
     }
 }
 

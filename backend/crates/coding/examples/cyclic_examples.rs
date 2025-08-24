@@ -1,4 +1,6 @@
+use coding::types::{Codeword, Message};
 use coding::{CyclicCode, GFp};
+use linalg::Vector;
 
 fn main() {
     // GF(2) 上の単純な循環符号例: n=7, g(x)=1 + x + x^3 （例示）
@@ -12,9 +14,11 @@ fn main() {
     let u = vec![F::new(1), F::new(0), F::new(1), F::new(1)];
     assert_eq!(u.len(), k);
 
-    let c = code.encode_poly(&u);
+    let msg: Message<F> = Message::from(Vector::new(u.clone()));
+    let c: Codeword<F> = code.encode(&msg).expect("encode");
+
     println!("==== Cyclic encode (GF(2)) ====");
-    println!("n={n}, k={k}, g(x)=1+x+x^3");
-    println!("u: {u:?}");
-    println!("c: {c:?}");
+    println!("{code}"); // uses Display for CyclicCode
+    println!("u: {msg}");
+    println!("c: {c}");
 }

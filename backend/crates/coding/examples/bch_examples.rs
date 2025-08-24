@@ -1,6 +1,6 @@
 use coding::GFExt;
 use coding::GFp;
-use coding::{BCHCode, Poly, Message};
+use coding::{BCHCode, Message, Poly};
 use std::sync::Arc;
 
 type GF2 = GFp<2>;
@@ -28,7 +28,9 @@ fn main() {
 
     // 情報語 u（長さ k = 7）をエンコードしてコード語 c を得る
     let u_bits = [1u16, 0, 1, 1, 0, 1, 0]; // 末尾0を保持するため直接フィールドに詰める
-    let u = Poly { coeffs: u_bits.iter().copied().map(GFp::<2>).collect() };
+    let u = Poly {
+        coeffs: u_bits.iter().copied().map(GFp::<2>).collect(),
+    };
     let msg = Message::from(linalg::Vector::new(u.coeffs.clone()));
     let c = match bch.encode(&msg) {
         Ok(v) => v,
@@ -39,6 +41,7 @@ fn main() {
     };
 
     println!("==== BCH(15,7) encode over GF(2) ====");
+    println!("{bch}");
     println!("n={n}, k={k}, g(x) = {}", poly_to_string(bch.g()));
     println!("u: {}", bits_to_string(&u.coeffs));
     let c_vec: Vec<GF2> = c.as_ref().data.clone();
@@ -58,7 +61,11 @@ fn main() {
     for &i in &errs {
         r[i] = r[i] + GFp::<2>(1);
     }
-    println!("-- inject errors at positions {:?} -> r: {}", errs, bits_to_string(&r));
+    println!(
+        "-- inject errors at positions {:?} -> r: {}",
+        errs,
+        bits_to_string(&r)
+    );
 
     // GF(2^4) の構築（原始多項式 x^4 + x + 1）と α
     let px = Arc::new(vec![

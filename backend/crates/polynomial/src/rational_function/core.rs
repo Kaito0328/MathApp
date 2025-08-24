@@ -1,7 +1,9 @@
 use std::ops::{Add, Div, Mul, Sub};
 
+use crate::format::RfDisplay;
 use crate::polynomial::Polynomial;
 use linalg::Field;
+use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct RationalFunction<F: Field> {
@@ -185,3 +187,27 @@ crate::impl_ops_by_ref_variants!(RationalFunction<F>, Add, add, linalg::Field);
 crate::impl_ops_by_ref_variants!(RationalFunction<F>, Sub, sub, linalg::Field);
 crate::impl_ops_by_ref_variants!(RationalFunction<F>, Mul, mul, linalg::Field);
 crate::impl_ops_by_ref_variants!(RationalFunction<F>, Div, div, linalg::Field);
+
+// -------- Display (generic over field F) --------
+impl<F> fmt::Display for RationalFunction<F>
+where
+    F: linalg::Field + fmt::Display + Clone + PartialEq,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.denominator.is_zero() {
+            return write!(f, "(invalid: denominator=0)");
+        }
+        if self.denominator.deg() == 0 {
+            write!(f, "{}", self.numerator)
+        } else {
+            write!(f, "({})/({})", self.numerator, self.denominator)
+        }
+    }
+}
+
+impl RationalFunction<f64> {
+    /// 表示用のラッパーを返す（変数名・表記スタイルを指定可能）
+    pub fn display_with<'a>(&'a self, var: &'a str) -> RfDisplay<'a, f64> {
+        RfDisplay::new(self, var)
+    }
+}

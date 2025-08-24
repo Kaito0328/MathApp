@@ -1,5 +1,6 @@
 use finite_field::gfp::GFp;
 use linalg::{Field, Matrix, Scalar, Vector};
+use std::fmt;
 use std::ops::Deref;
 
 // メッセージ（情報語）
@@ -22,29 +23,116 @@ pub struct ParityCheckMatrix<F: Field>(pub Matrix<F>);
 
 // 使いやすさのための From/AsRef/Deref 実装
 impl<F: Scalar> From<Vector<F>> for Message<F> {
-    fn from(v: Vector<F>) -> Self { Self(v) }
+    fn from(v: Vector<F>) -> Self {
+        Self(v)
+    }
 }
 impl<F: Scalar> From<Vector<F>> for Codeword<F> {
-    fn from(v: Vector<F>) -> Self { Self(v) }
+    fn from(v: Vector<F>) -> Self {
+        Self(v)
+    }
 }
 impl From<Vector<GFp<2>>> for Syndrome {
-    fn from(v: Vector<GFp<2>>) -> Self { Self(v) }
+    fn from(v: Vector<GFp<2>>) -> Self {
+        Self(v)
+    }
 }
 impl<F: Field> From<Matrix<F>> for GeneratorMatrix<F> {
-    fn from(m: Matrix<F>) -> Self { Self(m) }
+    fn from(m: Matrix<F>) -> Self {
+        Self(m)
+    }
 }
 impl<F: Field> From<Matrix<F>> for ParityCheckMatrix<F> {
-    fn from(m: Matrix<F>) -> Self { Self(m) }
+    fn from(m: Matrix<F>) -> Self {
+        Self(m)
+    }
 }
 
-impl<F: Scalar> AsRef<Vector<F>> for Message<F> { fn as_ref(&self) -> &Vector<F> { &self.0 } }
-impl<F: Scalar> AsRef<Vector<F>> for Codeword<F> { fn as_ref(&self) -> &Vector<F> { &self.0 } }
-impl AsRef<Vector<GFp<2>>> for Syndrome { fn as_ref(&self) -> &Vector<GFp<2>> { &self.0 } }
-impl<F: Field> AsRef<Matrix<F>> for GeneratorMatrix<F> { fn as_ref(&self) -> &Matrix<F> { &self.0 } }
-impl<F: Field> AsRef<Matrix<F>> for ParityCheckMatrix<F> { fn as_ref(&self) -> &Matrix<F> { &self.0 } }
+impl<F: Scalar> AsRef<Vector<F>> for Message<F> {
+    fn as_ref(&self) -> &Vector<F> {
+        &self.0
+    }
+}
+impl<F: Scalar> AsRef<Vector<F>> for Codeword<F> {
+    fn as_ref(&self) -> &Vector<F> {
+        &self.0
+    }
+}
+impl AsRef<Vector<GFp<2>>> for Syndrome {
+    fn as_ref(&self) -> &Vector<GFp<2>> {
+        &self.0
+    }
+}
+impl<F: Field> AsRef<Matrix<F>> for GeneratorMatrix<F> {
+    fn as_ref(&self) -> &Matrix<F> {
+        &self.0
+    }
+}
+impl<F: Field> AsRef<Matrix<F>> for ParityCheckMatrix<F> {
+    fn as_ref(&self) -> &Matrix<F> {
+        &self.0
+    }
+}
 
-impl<F: Scalar> Deref for Message<F> { type Target = Vector<F>; fn deref(&self) -> &Self::Target { &self.0 } }
-impl<F: Scalar> Deref for Codeword<F> { type Target = Vector<F>; fn deref(&self) -> &Self::Target { &self.0 } }
-impl Deref for Syndrome { type Target = Vector<GFp<2>>; fn deref(&self) -> &Self::Target { &self.0 } }
-impl<F: Field> Deref for GeneratorMatrix<F> { type Target = Matrix<F>; fn deref(&self) -> &Self::Target { &self.0 } }
-impl<F: Field> Deref for ParityCheckMatrix<F> { type Target = Matrix<F>; fn deref(&self) -> &Self::Target { &self.0 } }
+impl<F: Scalar> Deref for Message<F> {
+    type Target = Vector<F>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<F: Scalar> Deref for Codeword<F> {
+    type Target = Vector<F>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl Deref for Syndrome {
+    type Target = Vector<GFp<2>>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<F: Field> Deref for GeneratorMatrix<F> {
+    type Target = Matrix<F>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<F: Field> Deref for ParityCheckMatrix<F> {
+    type Target = Matrix<F>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// ---------------- Display impls ----------------
+impl<F: Scalar + linalg::matrix::DisplayElement> fmt::Display for Message<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl<F: Scalar + linalg::matrix::DisplayElement> fmt::Display for Codeword<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl fmt::Display for Syndrome {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // GF(2) ベクトルを 0/1 表示（例: [1 0 1 1]）
+        let mut parts: Vec<&'static str> = Vec::with_capacity(self.0.len());
+        for x in self.0.iter() {
+            parts.push(if x.0 == 0 { "0" } else { "1" });
+        }
+        write!(f, "[{}]", parts.join(" "))
+    }
+}
+impl<F: Field + linalg::matrix::DisplayElement> fmt::Display for GeneratorMatrix<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl<F: Field + linalg::matrix::DisplayElement> fmt::Display for ParityCheckMatrix<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}

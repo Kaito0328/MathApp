@@ -1,15 +1,19 @@
 pub mod continuous;
 pub mod conversions;
+pub mod diagram;
 pub mod discrete;
+pub mod error;
 pub mod plot;
 mod responses;
 pub mod statespace;
 pub mod transfer; // deprecated placeholder
 pub mod zpk;
-pub mod error;
-pub mod prelude { pub use crate::error::{LtiError, Result as LtiResult}; }
+pub mod prelude {
+    pub use crate::error::{LtiError, Result as LtiResult};
+}
 
 // 再エクスポートは poly から
+pub use poly::format::{PolyDisplay, PolyStyle, RfDisplay};
 pub use poly::polynomial::Polynomial;
 pub use poly::rational_function::RationalFunction;
 // 新API: モジュール分割により短い型名に

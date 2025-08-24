@@ -2,6 +2,7 @@ use crate::error::{CodingError, Result as CodingResult};
 use crate::types::{Codeword, Message};
 use crate::Poly;
 use linalg::{Field, Matrix, Vector};
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct RSDecodeResult<F: Field + Clone> {
@@ -114,5 +115,22 @@ impl<F: Field + Clone + PartialEq> ReedSolomon<F> {
         Ok(RSDecodeResult {
             decoded: Message::from(Vector::new(fpoly.coeffs)),
         })
+    }
+}
+
+impl<F> fmt::Display for ReedSolomon<F>
+where
+    F: Field + Clone + PartialEq + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // alphas の詳細は長いのでサイズのみを表示
+        write!(
+            f,
+            "RS(n={}, k={}, t={}, |alphas|={})",
+            self.n,
+            self.k,
+            self.t,
+            self.alphas.len()
+        )
     }
 }

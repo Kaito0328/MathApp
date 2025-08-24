@@ -44,6 +44,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             (&x_resamp, &format!("Resampled x{l}/{m}")),
         ],
     );
+    // Terminal summaries
+    println!("original: {x}");
+    println!("upsampled: {x_up}");
+    println!("resampled: {x_resamp}");
     println!("Wrote {svg_path}");
     Ok(())
 }

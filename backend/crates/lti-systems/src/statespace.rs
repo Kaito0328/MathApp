@@ -2,6 +2,7 @@ use linalg::matrix::numerical::exp::MatrixExponential;
 use linalg::matrix::Matrix;
 use poly::polynomial::Polynomial;
 use poly::rational_function::RationalFunction;
+use std::fmt;
 
 /// 連続時間の状態空間表現
 #[derive(Clone, Debug, PartialEq)]
@@ -148,6 +149,41 @@ impl ContinuousStateSpace {
         }
         num[n] = self.d[(0, 0)];
         RationalFunction::new(Polynomial::new(num), Polynomial::new(den))
+    }
+}
+
+// ---- Display ----
+impl fmt::Display for ContinuousStateSpace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "ContinuousStateSpace A:{}x{}, B:{}x{}, C:{}x{}, D:{}x{}",
+            self.a.rows,
+            self.a.cols,
+            self.b.rows,
+            self.b.cols,
+            self.c.rows,
+            self.c.cols,
+            self.d.rows,
+            self.d.cols
+        )
+    }
+}
+
+impl fmt::Display for DiscreteStateSpace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "DiscreteStateSpace A:{}x{}, B:{}x{}, C:{}x{}, D:{}x{}",
+            self.a.rows,
+            self.a.cols,
+            self.b.rows,
+            self.b.cols,
+            self.c.rows,
+            self.c.cols,
+            self.d.rows,
+            self.d.cols
+        )
     }
 }
 

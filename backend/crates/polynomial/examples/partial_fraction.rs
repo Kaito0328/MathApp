@@ -11,6 +11,9 @@ fn main() {
 
     let pfe = rf.partial_fraction_expansion();
 
+    // 元の有理式を可読表示
+    println!("f(s) = {}", rf.display_with("s").unicode_superscript(true));
+
     // Polynomial part (real coefficients)
     let poly_str = pfe
         .polynomial_part
@@ -29,12 +32,18 @@ fn main() {
         .collect::<Vec<_>>()
         .join(" + ");
     println!(
-        "polynomial part: {}",
+        "polynomial part (coeff form): {}",
         if poly_str.is_empty() {
             "0".to_string()
         } else {
             poly_str
         }
+    );
+    println!(
+        "polynomial part (pretty): {}",
+        pfe.polynomial_part
+            .display_with("s")
+            .unicode_superscript(true)
     );
     for term in pfe.pole_terms {
         print!("pole at s = {}: ", fmt_complex(term.pole));

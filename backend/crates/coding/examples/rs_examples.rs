@@ -21,6 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Message ラッパーで encode する
     let c = rs.encode(&Message::from(f.clone()))?;
     println!("==== RS encode (GF(256)) ====");
+    println!("{rs}");
     println!(
         "n={}, k={}, t={} (<= t errors correctable)",
         rs.n, rs.k, rs.t

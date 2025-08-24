@@ -53,6 +53,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // スペクトルとして包んで dB 表示の SVG を出力
         let sp = Spectrum::new(h_freq, 1.0);
         sp.save_svg_magnitude_db_with_axes(&svg_path, 900, 420, &format!("FIR {name}"))?;
+        // Terminal summary (first spectrum only shown per filter)
+        println!("spec[{name}]: {sp}");
         println!("Wrote {svg_path}");
     }
 

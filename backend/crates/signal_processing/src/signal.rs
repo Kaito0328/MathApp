@@ -1,6 +1,7 @@
 use crate::fir::{self, FIRFilter};
 use crate::plot::{self, Series};
 use num_complex::Complex;
+use std::fmt;
 
 /// 時間領域の実数信号。サンプル列とサンプルレート(Hz)を保持。
 #[derive(Clone, Debug, PartialEq)]
@@ -296,5 +297,51 @@ impl From<(Vec<Complex<f64>>, f64)> for Spectrum {
 impl From<Spectrum> for Vec<Complex<f64>> {
     fn from(value: Spectrum) -> Self {
         value.data
+    }
+}
+
+// -------- Display impls (concise) --------
+impl fmt::Display for Signal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let n = self.len();
+        let fs = self.sample_rate;
+        let dur = self.duration();
+        let preview_n = n.min(6);
+        let mut parts: Vec<String> = Vec::with_capacity(preview_n);
+        for i in 0..preview_n {
+            parts.push(format!("{:.4}", self.data[i]));
+        }
+        let ell = if n > preview_n { ", …" } else { "" };
+        write!(
+            f,
+            "Signal(n={}, fs={:.3}Hz, dur={:.3}s): [{}{}]",
+            n,
+            fs,
+            dur,
+            parts.join(", "),
+            ell
+        )
+    }
+}
+
+impl fmt::Display for Spectrum {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let n = self.len();
+        let fs = self.sample_rate;
+        let preview_n = n.min(6);
+        let mut parts: Vec<String> = Vec::with_capacity(preview_n);
+        for i in 0..preview_n {
+            let c = self.data[i];
+            parts.push(format!("{:.4}+{:.4}j", c.re, c.im));
+        }
+        let ell = if n > preview_n { ", …" } else { "" };
+        write!(
+            f,
+            "Spectrum(N={}, fs={:.3}Hz): [{}{}]",
+            n,
+            fs,
+            parts.join(", "),
+            ell
+        )
     }
 }

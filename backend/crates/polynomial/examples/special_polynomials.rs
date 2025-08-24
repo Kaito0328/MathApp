@@ -10,9 +10,10 @@ fn main() {
     let h3 = hermite_physicists::<f64>(3); // 8x^3 - 12x
     let l3 = laguerre::<f64>(3); // (1/6)(-x^3 + 9x^2 - 18x + 6)
 
-    println!("T4 coeffs:   {:?}", t4.coeffs);
-    println!("U3 coeffs:   {:?}", u3.coeffs);
-    println!("P3 coeffs:   {:?}", p3.coeffs);
-    println!("H3 coeffs:   {:?}", h3.coeffs);
-    println!("L3 coeffs:   {:?}", l3.coeffs);
+    // 可読表示（上付き指数ON）
+    println!("T4(x) = {}", t4.display_with("x").unicode_superscript(true));
+    println!("U3(x) = {}", u3.display_with("x").unicode_superscript(true));
+    println!("P3(x) = {}", p3.display_with("x").unicode_superscript(true));
+    println!("H3(x) = {}", h3.display_with("x").unicode_superscript(true));
+    println!("L3(x) = {}", l3.display_with("x").unicode_superscript(true));
 }
