@@ -1,0 +1,15 @@
+[package]
+name = "statistics"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "statistics"
+path = "src/lib.rs"
+
+[dependencies]
+num-traits = "0.2"
+num-complex = "0.4"
+rand = "0.8"
+
+[dev-dependencies]
