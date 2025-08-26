@@ -33,6 +33,8 @@ impl Field for f32 {}
 impl Scalar for i32 {}
 impl Ring for i32 {}
 
+impl Scalar for u64 {}
+
 impl Scalar for Complex<f64> {}
 impl Ring for Complex<f64> {}
 impl Field for Complex<f64> {}

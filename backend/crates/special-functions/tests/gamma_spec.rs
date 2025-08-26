@@ -1,5 +1,5 @@
-use statistics::gamma::gamma;
-use statistics::gamma::regularized_gamma;
+use special_functions::gamma::gamma;
+use special_functions::gamma::regularized_gamma;
 
 fn approx(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-12

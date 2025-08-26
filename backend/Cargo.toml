@@ -14,7 +14,8 @@ members = [
     "crates/number-theory",
     "crates/utils",
     "crates/signal_processing",
-    "crates/statistics"
+    "crates/statistics",
+    "crates/special-functions"
 ]
 resolver = "2"
 

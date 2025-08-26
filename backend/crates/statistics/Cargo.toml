@@ -11,5 +11,6 @@ path = "src/lib.rs"
 num-traits = "0.2"
 num-complex = "0.4"
 rand = "0.8"
-
+special-functions = {path = "../special-functions" }
+linalg = { path = "../linalg" }
 [dev-dependencies]

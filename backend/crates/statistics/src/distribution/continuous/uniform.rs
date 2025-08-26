@@ -1,19 +1,28 @@
 use rand::Rng;
 
-use crate::distribution::core::Distribution;
+use crate::{
+    distribution::continuous::core::Distribution,
+    error::{Result, StatisticsError},
+};
 pub struct Uniform {
     min: f64,
     max: f64,
 }
 
 impl Uniform {
-    pub fn new(min: f64, max: f64) -> Self {
-        assert!(min < max, "Invalid uniform distribution parameters");
-        Self { min, max }
+    pub fn new(min: f64, max: f64) -> Result<Self> {
+        if !(min.is_finite() && max.is_finite() && (min < max)) {
+            return Err(StatisticsError::InvalidParameter {
+                what: "Uniform::(min,max)",
+                value: format!("({min},{max})"),
+            });
+        }
+        Ok(Self { min, max })
     }
 }
 
 impl Distribution for Uniform {
+    type Item = f64;
     fn mean(&self) -> f64 {
         (self.min + self.max) / 2.0
     }
@@ -23,11 +32,11 @@ impl Distribution for Uniform {
         range * range / 12.0
     }
 
-    fn mode(&self) -> Option<f64> {
-        None
+    fn mode(&self) -> Vec<f64> {
+        vec![]
     }
 
-    fn pdf(&self, x: f64) -> f64 {
+    fn pdf(&self, x: Self::Item) -> f64 {
         if x < self.min || x > self.max {
             0.0
         } else {
@@ -35,7 +44,7 @@ impl Distribution for Uniform {
         }
     }
 
-    fn cdf(&self, x: f64) -> f64 {
+    fn cdf(&self, x: Self::Item) -> f64 {
         if x < self.min {
             0.0
         } else if x > self.max {
@@ -45,15 +54,15 @@ impl Distribution for Uniform {
         }
     }
 
-    fn quantile(&self, p: f64) -> f64 {
+    fn quantile(&self, p: f64) -> Self::Item {
         self.min + p * (self.max - self.min)
     }
 
-    fn sample<R: Rng + ?Sized>(&mut self, rng: &mut R) -> f64 {
+    fn sample<R: Rng + ?Sized>(&mut self, rng: &mut R) -> Self::Item {
         rng.gen_range(0.0..1.0) * (self.max - self.min) + self.min
     }
 
-    fn log_pdf(&self, x: f64) -> f64 {
+    fn log_pdf(&self, x: Self::Item) -> f64 {
         self.pdf(x).ln()
     }
 

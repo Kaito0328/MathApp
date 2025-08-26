@@ -1,3 +1,4 @@
+pub mod cholesky;
 pub mod eigen;
 pub mod exp;
 pub mod lu;
@@ -8,6 +9,7 @@ mod helpers;
 
 // --- トレイトを短いパスで使えるように再エクスポートする ---
 // これを書いておくと `use crate::matrix::numerical::Svd;` のように書ける
+pub use cholesky::CholeskyDecomposition;
 pub use eigen::EigenDecomposition;
 pub use exp::MatrixExponential;
 pub use lu::LuDecomposition;

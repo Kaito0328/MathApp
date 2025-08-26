@@ -2,8 +2,8 @@ use std::f64::consts::PI;
 
 use rand::Rng;
 
-use crate::distribution::core::Distribution;
-use crate::erf::{calc_quantile_acklam, erf};
+use crate::{distribution::continuous::core::Distribution, error::{Result, StatisticsError}};
+use special_functions::erf::{calc_quantile_acklam, erf};
 
 pub struct Normal {
     mu: f64,
@@ -12,17 +12,16 @@ pub struct Normal {
 }
 
 impl Normal {
-    pub fn new(mu: f64, sigma: f64) -> Self {
-        assert!(sigma > 0.0, "Standard deviation must be positive.");
-        Self {
-            mu,
-            sigma,
-            sample_cache: None,
+    pub fn new(mu: f64, sigma: f64) -> Result<Self> {
+        if !(mu.is_finite() && sigma.is_finite()) || sigma <= 0.0 {
+            return Err(StatisticsError::InvalidParameter { what: "Normal::sigma", value: sigma.to_string() });
         }
+        Ok(Self { mu, sigma, sample_cache: None })
     }
 }
 
 impl Distribution for Normal {
+    type Item = f64;
     fn mean(&self) -> f64 {
         self.mu
     }
@@ -31,26 +30,26 @@ impl Distribution for Normal {
         self.sigma * self.sigma
     }
 
-    fn mode(&self) -> Option<f64> {
-        Some(self.mu)
+    fn mode(&self) -> Vec<Self::Item> {
+        vec![self.mu]
     }
 
-    fn pdf(&self, x: f64) -> f64 {
+    fn pdf(&self, x: Self::Item) -> f64 {
         let coeff = 1.0 / (self.sigma * (2.0 * PI).sqrt());
         let exponent = -0.5 * ((x - self.mu) * (x - self.mu) / (self.sigma * self.sigma));
         coeff * exponent.exp()
     }
 
-    fn cdf(&self, x: f64) -> f64 {
+    fn cdf(&self, x: Self::Item) -> f64 {
         let z = (x - self.mu) / self.sigma;
         0.5 * (1.0 + erf(z / 2.0_f64.sqrt()))
     }
 
-    fn quantile(&self, p: f64) -> f64 {
+    fn quantile(&self, p: f64) -> Self::Item {
         calc_quantile_acklam(p) * self.sigma + self.mu
     }
 
-    fn sample<R: Rng + ?Sized>(&mut self, rng: &mut R) -> f64 {
+    fn sample<R: Rng + ?Sized>(&mut self, rng: &mut R) -> Self::Item {
         if let Some(z1) = self.sample_cache.take() {
             return z1 * self.sigma + self.mu;
         }
@@ -76,7 +75,7 @@ impl Distribution for Normal {
         z0 * self.sigma + self.mu
     }
 
-    fn log_pdf(&self, x: f64) -> f64 {
+    fn log_pdf(&self, x: Self::Item) -> f64 {
         let coeff = -0.5 * ((2.0 * PI * self.sigma * self.sigma).ln());
         let exponent = -0.5 * ((x - self.mu) * (x - self.mu) / (self.sigma * self.sigma));
         coeff + exponent

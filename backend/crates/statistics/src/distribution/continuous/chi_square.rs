@@ -1,5 +1,8 @@
 use crate::{
-    distribution::{core::Distribution, normal::Normal},
+    distribution::continuous::{core::Distribution, normal::Normal, utils::calc_quantile_newton},
+    error::{Result, StatisticsError},
+};
+use special_functions::{
     erf::calc_quantile_acklam,
     gamma::{log_gamma, regularized_gamma},
 };
@@ -9,13 +12,14 @@ pub struct ChiSquare {
 }
 
 impl ChiSquare {
-    pub fn new(k: usize) -> Self {
-        assert!(k > 0, "Invalid degrees of freedom parameter");
-        Self { k }
+    pub fn new(k: usize) -> Result<Self> {
+        if k == 0 { return Err(StatisticsError::InvalidParameter { what: "ChiSquare::k", value: k.to_string() }); }
+        Ok(Self { k })
     }
 }
 
 impl Distribution for ChiSquare {
+    type Item = f64;
     fn mean(&self) -> f64 {
         self.k as f64
     }
@@ -24,53 +28,31 @@ impl Distribution for ChiSquare {
         2.0 * self.k as f64
     }
 
-    fn mode(&self) -> Option<f64> {
+    fn mode(&self) -> Vec<Self::Item> {
         if self.k > 2 {
-            Some((self.k - 2) as f64)
+            vec![(self.k - 2) as f64]
         } else {
-            Some(0.0)
+            vec![0.0]
         }
     }
 
-    fn pdf(&self, x: f64) -> f64 {
+    fn pdf(&self, x: Self::Item) -> f64 {
         self.log_pdf(x).exp()
     }
 
-    fn cdf(&self, x: f64) -> f64 {
+    fn cdf(&self, x: Self::Item) -> f64 {
         regularized_gamma(self.k as f64 / 2.0, x / 2.0)
     }
 
-    fn quantile(&self, p: f64) -> f64 {
+    fn quantile(&self, p: f64) -> Self::Item {
         let z = calc_quantile_acklam(p);
         let x_guess = self.k as f64
             * (1.0 - 2.0 / (9.0 * self.k as f64) + z * (2.0 / (9.0 * self.k as f64)).sqrt())
                 .powi(3);
-
-        const MAX_ITER: usize = 100;
-        const TOL: f64 = 1e-10;
-
-        let mut x = x_guess.max(0.0);
-
-        for _ in 0..MAX_ITER {
-            let fx = self.cdf(x) - p;
-            // 終了条件1: 元の関数の値がほぼゼロ
-            if fx.abs() < TOL {
-                break;
-            }
-            let dfx = self.pdf(x);
-            // ...
-            let step = fx / dfx;
-            x -= step;
-            // 終了条件2: 更新量が非常に小さい
-            if step.abs() < TOL {
-                break;
-            }
-        }
-
-        x
+        calc_quantile_newton(x_guess, p, self)
     }
 
-    fn log_pdf(&self, x: f64) -> f64 {
+    fn log_pdf(&self, x: Self::Item) -> f64 {
         if x < 0.0 {
             f64::NEG_INFINITY
         } else {
@@ -79,8 +61,8 @@ impl Distribution for ChiSquare {
         }
     }
 
-    fn sample<R: rand::Rng + ?Sized>(&mut self, rng: &mut R) -> f64 {
-        let mut normal = Normal::new(0.0, 1.0);
+    fn sample<R: rand::Rng + ?Sized>(&mut self, rng: &mut R) -> Self::Item {
+    let mut normal = Normal::new(0.0, 1.0).unwrap();
 
         (0..self.k).map(|_| normal.sample(rng).powi(2)).sum()
     }

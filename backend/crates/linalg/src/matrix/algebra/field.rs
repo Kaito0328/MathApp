@@ -1,4 +1,4 @@
-use crate::{Field, LinalgError, Matrix, Result};
+use crate::{Field, LinalgError, Matrix, Result, Vector};
 // --- Level 3: Fieldに対する実装 (除算を必要とする操作) ---
 impl<T: Field> Matrix<T> {
     fn _gauss_elimination(&self) -> Result<(Self, T)> {
@@ -106,5 +106,65 @@ impl<T: Field> Matrix<T> {
         }
 
         Some(rref.submatrix(0, self.rows, self.cols, self.cols * 2))
+    }
+
+    pub fn forward_substitution(&self, b: &Vector<T>) -> Result<Vector<T>> {
+        if self.rows != self.cols {
+            return Err(LinalgError::DimensionMismatch {
+                expected: "square matrix".to_string(),
+                found: format!("{}x{}", self.rows, self.cols),
+            });
+        }
+        if self.rows != b.len() {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{}-dimensional vector", self.rows),
+                found: format!("{}-dimensional vector", b.len()),
+            });
+        }
+
+        let mut x: Vector<T> = Vector::zeros(self.rows);
+        for i in 0..self.rows {
+            let mut sum = b[i].clone();
+            for j in 0..i {
+                sum = sum - self[(i, j)].clone() * x[j].clone();
+            }
+            let diag = self[(i, i)].clone();
+            if diag.is_zero() {
+                // num_traits::Zero を利用
+                return Err(LinalgError::SingularMatrix); // 専用のエラーを返す
+            }
+            x[i] = sum / diag;
+        }
+        Ok(x)
+    }
+
+    pub fn backward_substitution(&self, b: &Vector<T>) -> Result<Vector<T>> {
+        if self.rows != self.cols {
+            return Err(LinalgError::DimensionMismatch {
+                expected: "square matrix".to_string(),
+                found: format!("{}x{}", self.rows, self.cols),
+            });
+        }
+        if self.rows != b.len() {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{}-dimensional vector", self.rows),
+                found: format!("{}-dimensional vector", b.len()),
+            });
+        }
+
+        let mut x: Vector<T> = Vector::zeros(self.rows);
+        for i in (0..self.rows).rev() {
+            let mut sum = b[i].clone();
+            for j in (i + 1)..self.rows {
+                sum = sum - self[(i, j)].clone() * x[j].clone();
+            }
+            let diag = self[(i, i)].clone();
+            if diag.is_zero() {
+                // num_traits::Zero を利用
+                return Err(LinalgError::SingularMatrix); // 専用のエラーを返す
+            }
+            x[i] = sum / diag;
+        }
+        Ok(x)
     }
 }
