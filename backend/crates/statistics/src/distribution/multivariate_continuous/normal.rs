@@ -2,6 +2,7 @@ use std::f64::consts::PI;
 
 use linalg::{matrix::numerical::CholeskyDecomposition, Matrix, Vector};
 use rand::Rng;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use crate::distribution::{
     continuous::{core::Distribution, normal::Normal},
@@ -24,8 +25,9 @@ impl MultivariateNormal {
             );
         }
 
-        match covariance.cholesky() {
-            Ok(l) => {
+        let chol_attempt = catch_unwind(AssertUnwindSafe(|| covariance.cholesky()));
+        match chol_attempt {
+            Ok(Ok(l)) => {
                 // 対角成分の積からlog(|Σ|)を計算
                 let log_det_cov = 2.0 * (0..dim).map(|i| l[(i, i)].ln()).sum::<f64>();
                 Ok(Self {
@@ -34,7 +36,7 @@ impl MultivariateNormal {
                     log_det_cov,
                 })
             }
-            Err(_) => Err("Covariance matrix must be positive-definite.".to_string()),
+            Ok(Err(_)) | Err(_) => Err("Covariance matrix must be positive-definite.".to_string()),
         }
     }
 }

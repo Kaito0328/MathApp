@@ -13,10 +13,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Exponential(lambda=1)
     let e = Exponential::new(1.0)?;
     // Showcase options: custom bg and x-range
-    let mut opts = SvgOptions::default();
-    opts.bg = "#ffffff"; // opaque white
-    opts.x_range = Some((0.0, 6.0));
-    opts.samples = 300;
+    let opts = SvgOptions {
+        bg: "#ffffff",
+        x_range: Some((0.0, 6.0)),
+        samples: 300,
+        ..Default::default()
+    };
     let svg_e = svg_continuous_pdf_with(&e, 480, 240, &opts);
     std::fs::write("statistics/plot/exponential_pdf.svg", svg_e)?;
     println!("saved: statistics/plot/exponential_pdf.svg");

@@ -46,8 +46,10 @@ where
     D: ContDist<Item = f64>,
 {
     // Delegate to options-based version with defaults
-    let mut opts = SvgOptions::default();
-    opts.samples = samples;
+    let opts = SvgOptions {
+        samples,
+        ..Default::default()
+    };
     svg_continuous_pdf_with(dist, width, height, &opts)
 }
 
@@ -104,9 +106,9 @@ where
         let sx = ml + (x - x_lo) / (x_hi - x_lo) * iw;
         let sy = mt + (1.0 - (y / y_max)) * ih;
         if i == 0 {
-            d.push_str(&format!("M{:.2},{:.2}", sx, sy));
+            d.push_str(&format!("M{sx:.2},{sy:.2}"));
         } else {
-            d.push_str(&format!(" L{:.2},{:.2}", sx, sy));
+            d.push_str(&format!(" L{sx:.2},{sy:.2}"));
         }
     }
 
@@ -278,7 +280,6 @@ where
     }
 
     format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\">{}{}{}{}\n</svg>",
-        width, height, bg, grid, rects, axes_labels
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\">{bg}{grid}{rects}{axes_labels}\n</svg>",
     )
 }

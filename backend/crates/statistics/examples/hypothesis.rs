@@ -7,7 +7,7 @@ use statistics::hypothesis::{
 fn main() {
     println!("== 一標本t検定 (母平均=0 を検定) ==");
     let xs = [2.0, 3.0, 4.0, 5.0, 6.0];
-    println!("サンプル: {:?}", xs);
+    println!("サンプル: {xs:?}");
     let t1 = one_sample_t(&xs, 0.0, Tail::TwoSided, Some(0.05)).unwrap();
     println!(
         "{}: t={:.3}, p={:.4}, df={:?}, CI={:?}",
@@ -17,8 +17,8 @@ fn main() {
     println!("\n== 二標本t検定（等分散仮定）: 群A > 群B を検定 ==");
     let a = [10.0, 11.0, 9.5, 10.5, 10.2];
     let b = [8.0, 7.8, 8.5, 8.2, 7.9];
-    println!("群A: {:?}", a);
-    println!("群B: {:?}", b);
+    println!("群A: {a:?}");
+    println!("群B: {b:?}");
     let t2 = two_sample_t_pooled(&a, &b, Tail::Greater, Some(0.05)).unwrap();
     println!(
         "{}: t={:.3}, p={:.4}, df={:?}, CI={:?}",
@@ -58,8 +58,8 @@ fn main() {
     println!("\n== カイ二乗適合度検定 ==");
     let obs = [25.0, 30.0, 45.0];
     let exp = [33.3, 33.3, 33.3];
-    println!("観測度数: {:?}", obs);
-    println!("期待度数: {:?}", exp);
+    println!("観測度数: {obs:?}");
+    println!("期待度数: {exp:?}");
     let cg = chisq_gof(&obs, &exp, Tail::Greater).unwrap();
     println!(
         "{}: X^2={:.3}, p={:.4}, df={:?}",
@@ -68,7 +68,7 @@ fn main() {
 
     println!("\n== カイ二乗独立性検定（2x3表） ==");
     let table: [&[u64]; 2] = [&[10, 20, 30], &[20, 10, 20]];
-    println!("表: {:?}", table);
+    println!("表: {table:?}");
     let ci = chisq_independence(&table, Tail::Greater).unwrap();
     println!(
         "{}: X^2={:.3}, p={:.4}, df={:?}",

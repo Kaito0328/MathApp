@@ -320,8 +320,8 @@ pub fn chisq_independence(table: &[&[u64]], tail: Tail) -> Result<TestResult> {
     // 統計量
     let mut stat = 0.0;
     for i in 0..r {
-        for j in 0..c {
-            let e = row_sum[i] * col_sum[j] / grand;
+        for (j, &col) in col_sum.iter().enumerate().take(c) {
+            let e = row_sum[i] * col / grand;
             if e <= 0.0 {
                 return Err(StatisticsError::DomainError {
                     what: "chisq_independence",
