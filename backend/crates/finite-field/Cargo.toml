@@ -1,0 +1,14 @@
+[package]
+name = "finite-field"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "finite_field"
+path = "src/lib.rs"
+
+[dependencies]
+linalg = { path = "../linalg" }
+num-traits = "0.2"
+serde = { version = "1", features = ["derive"] }
+poly = { path = "../polynomial" }

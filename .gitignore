@@ -2,6 +2,7 @@
 *.log
 *.tmp
 *.swp
+*.lock
 
 # VS Code - チームで共有したい設定ファイルは除外する
 .vscode/*

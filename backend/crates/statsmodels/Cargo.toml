@@ -1,0 +1,16 @@
+[package]
+name = "statsmodels"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "statsmodels"
+path = "src/lib.rs"
+
+[dependencies]
+num-traits = "0.2"
+num-complex = "0.4"
+rand = "0.8"
+linalg = { path = "../linalg" }
+statistics = { path = "../statistics" }
+[dev-dependencies]

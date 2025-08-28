@@ -1,0 +1,35 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'>
+<rect x='0' y='0' width='400' height='300' fill='#ffffff' />
+<text x='200.0' y='16' font-size='14' fill='#333' text-anchor='middle'>Nyquist (Continuous)</text>
+<g transform='translate(56,28)'>
+<rect x='0' y='0' width='324' height='246' fill='none' stroke='#888' stroke-width='1.5' />
+<line x1='0' y1='246.0' x2='324.0' y2='246.0' stroke='#eee' />
+<text x='-6' y='246.0' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>-0.450</text>
+<line x1='0' y1='184.5' x2='324.0' y2='184.5' stroke='#eee' />
+<text x='-6' y='184.5' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>-0.354</text>
+<line x1='0' y1='123.0' x2='324.0' y2='123.0' stroke='#eee' />
+<text x='-6' y='123.0' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>-0.257</text>
+<line x1='0' y1='61.5' x2='324.0' y2='61.5' stroke='#eee' />
+<text x='-6' y='61.5' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>-0.160</text>
+<line x1='0' y1='0.0' x2='324.0' y2='0.0' stroke='#eee' />
+<text x='-6' y='0.0' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>-0.063</text>
+<line x1='0.0' y1='0' x2='0.0' y2='246.0' stroke='#eee' />
+<text x='0.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>0.025</text>
+<line x1='81.0' y1='0' x2='81.0' y2='246.0' stroke='#eee' />
+<text x='81.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>0.268</text>
+<line x1='162.0' y1='0' x2='162.0' y2='246.0' stroke='#eee' />
+<text x='162.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>0.510</text>
+<line x1='243.0' y1='0' x2='243.0' y2='246.0' stroke='#eee' />
+<text x='243.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>0.753</text>
+<line x1='324.0' y1='0' x2='324.0' y2='246.0' stroke='#eee' />
+<text x='324.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>0.996</text>
+<polyline fill='none' stroke='#1f77b4' stroke-width='1.4' points='324.00,0.00 312.64,81.53 230.90,246.00 59.17,214.98 0.00,58.75 ' />
+<g transform='translate(250,6)'>
+<rect x='0' y='0' width='68.0' height='32.0' fill='#ffffffcc' stroke='#666' />
+<line x1='8.0' y1='16.0' x2='24.0' y2='16.0' stroke='#1f77b4' stroke-width='2' />
+<text x='30.0' y='16.0' font-size='11' fill='#222' dominant-baseline='middle'>G(s)</text>
+</g>
+<text x='162.0' y='274.0' font-size='11' fill='#333' text-anchor='middle'>Re</text>
+<text x='0.0' y='-8' font-size='11' fill='#333' text-anchor='start'>Im</text>
+</g>
+</svg>

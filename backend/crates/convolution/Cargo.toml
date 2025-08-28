@@ -1,0 +1,12 @@
+[package]
+name = "convolution"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "convolution"
+path = "src/lib.rs"
+
+[dependencies]
+num-complex = "0.4"
+fft-core = { path = "../fft-core" }

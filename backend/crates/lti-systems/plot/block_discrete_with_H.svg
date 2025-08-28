@@ -1,0 +1,31 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='800' height='360' viewBox='0 0 800 360'>
+<defs><style>
+    .bg { fill:#ffffff; }
+        .blk { fill:#ffffff; stroke:#222; stroke-width:1.5; }
+        .sum { fill:#fff; stroke:#222; stroke-width:1.5; }
+        .arrow { stroke:#222; stroke-width:1.5; fill:none; marker-end:url(#arrow); }
+        .wire { stroke:#222; stroke-width:1.5; fill:none; }
+        .text { font-family: 'DejaVu Sans', Arial, sans-serif; font-size:12px; fill:#222; }
+    </style>
+    <marker id='arrow' markerWidth='10' markerHeight='8' refX='10' refY='4' orient='auto'>
+      <path d='M 0 0 L 10 4 L 0 8 z' fill='#222'/>
+    </marker></defs>
+<rect class='bg' x='0' y='0' width='800' height='360' />
+<line class='arrow' x1='20' y1='180' x2='80' y2='180' />
+<text class='text' x='22.0' y='180.0' text-anchor='start' dy='-6'>r</text>
+<circle class='sum' cx='80' cy='180' r='12' />
+<text class='text' x='80.0' y='164.0' text-anchor='middle'>+</text>
+<text class='text' x='102.0' y='204.0' text-anchor='middle'>-</text>
+<line class='arrow' x1='92.0' y1='180.0' x2='120.0' y2='180.0' />
+<rect class='blk' x='120' y='150' width='360' height='60' rx='6' ry='6' />
+<text class='text' x='300.0' y='174.0' text-anchor='middle' dominant-baseline='middle'>-z + 1</text>
+<line class='arrow' x1='480.0' y1='180.0' x2='520.0' y2='180.0' />
+<text class='text' x='522.0' y='180.0' text-anchor='start' dy='-6'>y</text>
+<path class='wire' d='M 520.0 180.0 V 260.0' />
+<line class='wire' x1='520.0' y1='260.0' x2='420.0' y2='260.0' />
+<rect class='blk' x='420' y='237' width='120' height='46' rx='6' ry='6' />
+<text class='text' x='480.0' y='254.0' text-anchor='middle' dominant-baseline='middle'>H(z)</text>
+<line class='wire' x1='540.0' y1='260.0' x2='80.0' y2='260.0' />
+<path class='wire' d='M 80.0 260.0 V 192.0' />
+<line class='arrow' x1='80.0' y1='192.0' x2='80.0' y2='181.0' />
+</svg>

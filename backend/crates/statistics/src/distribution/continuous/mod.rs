@@ -1,0 +1,9 @@
+pub mod chi_square;
+pub mod core;
+pub mod exponential;
+pub mod f;
+pub mod gamma;
+pub mod normal;
+pub mod t;
+pub mod uniform;
+pub mod utils;

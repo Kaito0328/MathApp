@@ -1,0 +1,16 @@
+[package]
+name = "concrete-math"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "concrete_math"
+path = "src/lib.rs"
+
+[dependencies]
+num-traits = "0.2"
+num-complex = "0.4"
+serde = { version = "1", features = ["derive"] }
+linalg = { path = "../linalg" }
+utils = { path = "../utils" }
+poly = { path = "../polynomial" }

@@ -4,7 +4,21 @@
 # このワークスペースに含まれるクレートのパスを指定する
 members = [
     "crates/linalg",
+    "crates/coding",
+    "crates/polynomial",
+    "crates/lti-systems",
+    "crates/concrete-math",
+    "crates/fft-core",
+    "crates/finite-field",
+    "crates/convolution",
+    "crates/number-theory",
+    "crates/utils",
+    "crates/signal_processing",
+    "crates/statistics",
+    "crates/special-functions",
+    "crates/statsmodels"
 ]
+resolver = "2"
 
 # リリースビルドの最適化設定などをここに集約できる
 [profile.release]

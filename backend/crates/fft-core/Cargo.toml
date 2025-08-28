@@ -1,0 +1,11 @@
+[package]
+name = "fft-core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "fft_core"
+path = "src/lib.rs"
+
+[dependencies]
+num-complex = "0.4"

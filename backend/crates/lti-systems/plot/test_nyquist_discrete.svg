@@ -1,0 +1,31 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'>
+<rect x='0' y='0' width='400' height='300' fill='#ffffff' />
+<text x='200.0' y='16' font-size='14' fill='#333' text-anchor='middle'>Nyquist (Discrete)</text>
+<g transform='translate(56,28)'>
+<rect x='0' y='0' width='324' height='246' fill='none' stroke='#888' stroke-width='1.5' />
+<line x1='0' y1='246.0' x2='324.0' y2='246.0' stroke='#eee' />
+<text x='-6' y='246.0' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>-0.667</text>
+<line x1='0' y1='184.5' x2='324.0' y2='184.5' stroke='#eee' />
+<text x='-6' y='184.5' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>-0.333</text>
+<line x1='0' y1='123.0' x2='324.0' y2='123.0' stroke='#eee' />
+<text x='-6' y='123.0' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>0.000</text>
+<line x1='0' y1='61.5' x2='324.0' y2='61.5' stroke='#eee' />
+<text x='-6' y='61.5' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>0.333</text>
+<line x1='0' y1='0.0' x2='324.0' y2='0.0' stroke='#eee' />
+<text x='-6' y='0.0' font-size='10' fill='#333' text-anchor='end' dominant-baseline='middle'>0.667</text>
+<line x1='0.0' y1='0' x2='0.0' y2='246.0' stroke='#eee' />
+<text x='0.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>0.667</text>
+<line x1='81.0' y1='0' x2='81.0' y2='246.0' stroke='#eee' />
+<text x='81.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>0.998</text>
+<line x1='162.0' y1='0' x2='162.0' y2='246.0' stroke='#eee' />
+<text x='162.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>1.330</text>
+<line x1='243.0' y1='0' x2='243.0' y2='246.0' stroke='#eee' />
+<text x='243.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>1.661</text>
+<line x1='324.0' y1='0' x2='324.0' y2='246.0' stroke='#eee' />
+<text x='324.0' y='246.0' dy='14' font-size='10' fill='#333' text-anchor='middle'>1.993</text>
+<line x1='0' y1='123.0' x2='324.0' y2='123.0' stroke='#bbb' />
+<polyline fill='none' stroke='#1f77b4' stroke-width='1.4' points='0.00,123.00 0.09,127.09 0.36,131.20 0.82,135.33 1.47,139.50 2.33,143.73 3.41,148.03 4.73,152.41 6.31,156.90 8.18,161.50 10.39,166.23 12.98,171.11 16.00,176.16 19.53,181.39 23.64,186.82 28.45,192.44 34.07,198.28 40.68,204.32 48.46,210.53 57.65,216.88 68.53,223.26 81.45,229.52 96.81,235.42 115.03,240.57 136.53,244.38 161.62,246.00 190.26,244.26 221.81,237.68 254.58,224.68 285.47,204.03 310.14,175.65 324.00,141.30 324.00,104.70 310.14,70.35 285.47,41.97 254.58,21.32 221.81,8.32 190.26,1.74 161.62,0.00 136.53,1.62 115.03,5.43 96.81,10.58 81.45,16.48 68.53,22.74 57.65,29.12 48.46,35.47 40.68,41.68 34.07,47.72 28.45,53.56 23.64,59.18 19.53,64.61 16.00,69.84 12.98,74.89 10.39,79.77 8.18,84.50 6.31,89.10 4.73,93.59 3.41,97.97 2.33,102.27 1.47,106.50 0.82,110.67 0.36,114.80 0.09,118.91 0.00,123.00 ' />
+<text x='162.0' y='274.0' font-size='11' fill='#333' text-anchor='middle'>Re</text>
+<text x='0.0' y='-8' font-size='11' fill='#333' text-anchor='start'>Im</text>
+</g>
+</svg>
