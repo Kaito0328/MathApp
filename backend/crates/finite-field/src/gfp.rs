@@ -80,10 +80,7 @@ impl<const P: u16> Div for GFp<P> {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
         // rhs.inv() を明示的に計算し、内部表現で乗算→剰余化して返す
-        let inv = rhs
-            .inv()
-            .expect("GFp division by zero")
-            .0 as i64;
+        let inv = rhs.inv().expect("GFp division by zero").0 as i64;
         GFp::<P>::mul_i64(self.0 as i64, inv)
     }
 }
@@ -137,8 +134,3 @@ impl<const P: u16> linalg::matrix::DisplayElement for GFp<P> {
         self.to_string()
     }
 }
-
-// linalg トレイト
-impl<const P: u16> linalg::Scalar for GFp<P> {}
-impl<const P: u16> linalg::Ring for GFp<P> {}
-impl<const P: u16> linalg::Field for GFp<P> {}

@@ -15,7 +15,8 @@ members = [
     "crates/utils",
     "crates/signal_processing",
     "crates/statistics",
-    "crates/special-functions"
+    "crates/special-functions",
+    "crates/statsmodels"
 ]
 resolver = "2"
 

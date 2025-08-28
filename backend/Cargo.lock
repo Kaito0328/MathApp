@@ -442,6 +442,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "statsmodels"
+version = "0.1.0"
+dependencies = [
+ "linalg",
+ "num-complex",
+ "num-traits",
+ "rand",
+ "statistics",
+]
+
+[[package]]
 name = "syn"
 version = "2.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"

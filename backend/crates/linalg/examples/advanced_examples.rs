@@ -1,12 +1,11 @@
-use linalg::matrix::numerical::{EigenDecomposition, LuDecomposition};
+use linalg::matrix::numerical::EigenDecomposition;
 use linalg::Matrix;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== 線形代数の高度な操作例 ===");
 
     // 正方行列の作成
-    let square_matrix =
-        Matrix::new(3, 3, vec![2.0, -1.0, 0.0, -1.0, 2.0, -1.0, 0.0, -1.0, 2.0])?;
+    let square_matrix = Matrix::new(3, 3, vec![2.0, -1.0, 0.0, -1.0, 2.0, -1.0, 0.0, -1.0, 2.0])?;
 
     println!("正方行列 A:");
     print_matrix(&square_matrix);
@@ -33,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // LU分解（f64専用メソッド）
-    match square_matrix.lu_decomposition() {
+    match square_matrix.lu_decompose() {
         Ok(lu) => {
             println!("\nLU分解 - L行列:");
             print_matrix(&lu.l);

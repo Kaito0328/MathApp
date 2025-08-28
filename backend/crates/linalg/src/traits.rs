@@ -1,5 +1,4 @@
-use num_complex::Complex;
-use num_traits::{One, Zero};
+use num_traits::{One, Signed, Zero};
 use std::fmt::Debug;
 use std::iter::Sum;
 use std::ops::{Add, Div, Mul, Neg, Sub}; // Negを追加
@@ -20,24 +19,36 @@ pub trait Ring:
 
 pub trait Field: Ring + Div<Output = Self> {}
 
-// f64はFieldの全ての条件を満たす
-impl Scalar for f64 {}
-impl Ring for f64 {}
-impl Field for f64 {}
+impl<T> Scalar for T where T: Clone + Debug {}
 
-impl Scalar for f32 {}
-impl Ring for f32 {}
-impl Field for f32 {}
+impl<T> Ring for T where
+    T: Scalar
+        + Zero
+        + One
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Neg<Output = T>
+        + Sum<T>
+{
+}
 
-// i32はRingの条件を満たすが、Fieldではない
-impl Scalar for i32 {}
-impl Ring for i32 {}
+// Ringであり、かつDiv<Output=T>を持つ型は、自動的にFieldトレイトを実装する
+impl<T: Ring + Div<Output = T>> Field for T {}
 
-impl Scalar for u64 {}
+pub trait LinalgField: Field + Signed + PartialOrd {
+    // 必要に応じて、epsilon()のような小さな値を返すメソッドを定義
+    fn epsilon() -> Self;
+}
 
-impl Scalar for Complex<f64> {}
-impl Ring for Complex<f64> {}
-impl Field for Complex<f64> {}
+impl LinalgField for f64 {
+    fn epsilon() -> Self {
+        1e-12
+    }
+}
 
-// StringはCloneとDebugを持つので、最低限のScalarにはなれる
-impl Scalar for String {}
+impl LinalgField for f32 {
+    fn epsilon() -> Self {
+        1e-6
+    }
+}

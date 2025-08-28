@@ -163,3 +163,44 @@ fn field_rref_rank_det_inverse() {
     let eye = Matrix::identity(3);
     assert_matrix_approx_eq(&id, &eye, 1e-8);
 }
+
+#[test]
+fn field_solve_generic_and_matrix_basic_upper_triangular() {
+    // 上三角で対角が非ゼロ -> ピボット不要
+    // A = [[2, 1, -1], [0, 3, 1], [0, 0, 4]]
+    let a = Matrix::new(
+        3,
+        3,
+        vec![
+            2.0, 1.0, -1.0, // row0
+            0.0, 3.0, 1.0, // row1
+            0.0, 0.0, 4.0, // row2
+        ],
+    )
+    .unwrap();
+
+    // A x = b の既知解
+    // x = [1, 2, 3]^T
+    // b = A*x を構成
+    let x_true = Vector::new(vec![1.0, 2.0, 3.0]);
+    let b = &a * &x_true;
+    let x = a.solve_generic(&b).unwrap();
+    assert!(approx(x[0], 1.0, 1e-10));
+    assert!(approx(x[1], 2.0, 1e-10));
+    assert!(approx(x[2], 3.0, 1e-10));
+
+    // 行列右辺
+    let x2 = Matrix::new(
+        3,
+        2,
+        vec![
+            1.0, 0.0, // col0
+            2.0, 1.0, // col1
+            3.0, -1.0,
+        ],
+    )
+    .unwrap();
+    let b2 = &a * &x2;
+    let solved = a.solve_matrix_generic(&b2).unwrap();
+    assert_matrix_approx_eq(&solved, &x2, 1e-10);
+}

@@ -1,6 +1,50 @@
 use crate::{Field, LinalgError, Matrix, Result, Vector};
+
+// 簡易LU分解（ピボットなし、Doolittle法）: 任意の Field で動作
+pub struct BasicLU<T: Field> {
+    pub l: Matrix<T>,
+    pub u: Matrix<T>,
+}
 // --- Level 3: Fieldに対する実装 (除算を必要とする操作) ---
 impl<T: Field> Matrix<T> {
+    /// ピボットなしの簡易LU分解（Doolittle）。
+    /// 失敗時（ゼロピボット）の場合は SingularMatrix を返す。
+    pub fn lu_decompose_basic(&self) -> Result<BasicLU<T>> {
+        if !self.is_square() {
+            return Err(LinalgError::NotSquareMatrix);
+        }
+        let n = self.rows;
+        let mut l: Matrix<T> = Matrix::identity(n);
+        let mut u: Matrix<T> = Matrix::zeros(n, n);
+
+        for i in 0..n {
+            // U の i 行を計算（列 j は i..n-1）
+            for j in i..n {
+                let mut sum = T::zero();
+                for k in 0..i {
+                    sum = sum + l[(i, k)].clone() * u[(k, j)].clone();
+                }
+                u[(i, j)] = self[(i, j)].clone() - sum;
+            }
+
+            // ピボット（u[i,i]）がゼロなら失敗
+            if u[(i, i)].clone().is_zero() {
+                return Err(LinalgError::SingularMatrix);
+            }
+
+            // L の i 列を計算（行 k は i+1..n-1）
+            for k in (i + 1)..n {
+                let mut sum = T::zero();
+                for s in 0..i {
+                    sum = sum + l[(k, s)].clone() * u[(s, i)].clone();
+                }
+                l[(k, i)] = (self[(k, i)].clone() - sum) / u[(i, i)].clone();
+            }
+        }
+
+        Ok(BasicLU { l, u })
+    }
+
     fn _gauss_elimination(&self) -> Result<(Self, T)> {
         let mut pivot_row = 0;
         let mut det_factor = T::one();
@@ -166,5 +210,57 @@ impl<T: Field> Matrix<T> {
             x[i] = sum / diag;
         }
         Ok(x)
+    }
+
+    /// BasicLU（無ピボットLU）を使って A x = b を解く
+    pub fn solve_with_basic_lu(&self, lu: &BasicLU<T>, b: &Vector<T>) -> Result<Vector<T>> {
+        if !self.is_square() {
+            return Err(LinalgError::NotSquareMatrix);
+        }
+        if self.rows != b.len() {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{}-dimensional vector", self.rows),
+                found: format!("{}-dimensional vector", b.len()),
+            });
+        }
+        // ピボットが無いので P*b は不要
+        let y = lu.l.forward_substitution(b)?;
+        let x = lu.u.backward_substitution(&y)?;
+        Ok(x)
+    }
+
+    /// BasicLU（無ピボットLU）を使って A X = B を解く
+    pub fn solve_matrix_with_basic_lu(&self, lu: &BasicLU<T>, b: &Matrix<T>) -> Result<Matrix<T>> {
+        if !self.is_square() {
+            return Err(LinalgError::NotSquareMatrix);
+        }
+        if self.rows != b.rows {
+            return Err(LinalgError::DimensionMismatch {
+                expected: format!("{}x? (rows match)", self.rows),
+                found: format!("{}x{}", b.rows, b.cols),
+            });
+        }
+        let n = self.rows;
+        let m = b.cols;
+        let mut x = Matrix::zeros(n, m);
+        for j in 0..m {
+            let bj = b.col(j)?;
+            let y = lu.l.forward_substitution(&bj)?;
+            let xj = lu.u.backward_substitution(&y)?;
+            x.set_col(j, &xj)?;
+        }
+        Ok(x)
+    }
+
+    /// A x = b を Field 上で解く（ピボットなしLU使用）
+    pub fn solve_generic(&self, b: &Vector<T>) -> Result<Vector<T>> {
+        let lu = self.lu_decompose_basic()?;
+        self.solve_with_basic_lu(&lu, b)
+    }
+
+    /// A X = B を Field 上で解く（Bは複数右辺）。X を返す。
+    pub fn solve_matrix_generic(&self, b: &Matrix<T>) -> Result<Matrix<T>> {
+        let lu = self.lu_decompose_basic()?;
+        self.solve_matrix_with_basic_lu(&lu, b)
     }
 }

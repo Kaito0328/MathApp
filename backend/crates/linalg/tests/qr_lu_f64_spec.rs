@@ -1,4 +1,4 @@
-use linalg::matrix::numerical::{lu::LuDecomposition, QrDecomposition};
+use linalg::matrix::numerical::QrDecomposition;
 use linalg::Matrix;
 
 fn approx(a: f64, b: f64, tol: f64) -> bool {
@@ -50,7 +50,7 @@ fn lu_reconstruction() {
         ],
     )
     .expect("Matrix::new");
-    let lu = a.lu_decomposition().expect("lu failed");
+    let lu = a.lu_decompose().expect("lu failed");
     // LU 実装は P*A = L*U を満たす想定
     let lhs = &lu.p * &a;
     let rhs = &lu.l * &lu.u;

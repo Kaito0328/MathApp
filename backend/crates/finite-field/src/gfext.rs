@@ -430,9 +430,6 @@ impl<F: Field + Clone + PartialEq + Zero + One> One for GFExt<F> {
 }
 
 // linalg トレイト
-impl<F: Field + Clone + PartialEq + Zero> linalg::Scalar for GFExt<F> {}
-impl<F: Field + Clone + PartialEq + Zero> linalg::Ring for GFExt<F> {}
-impl<F: Field + Clone + PartialEq + Zero> linalg::Field for GFExt<F> {}
 
 // 補助: GF(2^m) 用（u8 との相互変換, AES 多項式など）
 impl GFExt<GFp<2>> {
