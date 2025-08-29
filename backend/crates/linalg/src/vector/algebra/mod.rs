@@ -190,10 +190,10 @@ impl Vector<f64> {
         let mut h_pad: Vec<Complex<f64>> = h.iter().map(|&v| Complex::new(v, 0.0)).collect();
         x_pad.resize(n, Complex::new(0.0, 0.0));
         h_pad.resize(n, Complex::new(0.0, 0.0));
-    let x_fft = fft_core::dft(&x_pad).map_err(|e| crate::error::LinalgError::InvalidArgument { text: format!("DFT failed: {e}") })?;
-    let h_fft = fft_core::dft(&h_pad).map_err(|e| crate::error::LinalgError::InvalidArgument { text: format!("DFT failed: {e}") })?;
+    let x_fft = fft_core::dft(&x_pad);
+    let h_fft = fft_core::dft(&h_pad);
         let y_fft: Vec<Complex<f64>> = x_fft.into_iter().zip(h_fft).map(|(a, b)| a * b).collect();
-    let y = fft_core::ift(&y_fft).map_err(|e| crate::error::LinalgError::InvalidArgument { text: format!("IFT failed: {e}") })?;
+    let y = fft_core::ift(&y_fft);
     Ok(Vector::new(y.into_iter().map(|c| c.re).collect()))
     }
 

@@ -1,0 +1,52 @@
+{
+  "name": "Rust + Frontend Monorepo",
+
+  // 1. Docker Composeファイルを指定
+  // "build"の代わりに、どのdocker-compose.ymlを使うかを教える
+  "dockerComposeFile": "docker-compose.yml",
+
+  // 2. VS Codeが接続するメインのコンテナを指定
+  // docker-compose.ymlで定義したサービス名（frontend）を指定
+  "service": "frontend",
+
+  // 3. VS Codeで開くワークスペースのパス
+  // これにより、backendとfrontendの両方のフォルダが見えるようになる
+  "workspaceFolder": "/workspaces",
+
+  // 4. VS Codeのカスタマイズ (設定と拡張機能)
+  "customizations": {
+    "vscode": {
+      "settings": {
+        // --- 既存のRust用設定 ---
+        "files.watcherExclude": { "**/target/**": true },
+        "[rust]": {
+          "editor.formatOnSave": true
+        },
+        "rust-analyzer.checkOnSave": true,
+        "rust-analyzer.check.command": "clippy",
+        
+        // --- フロントエンド用の設定を追加 (例) ---
+        "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": true
+        },
+        "[typescriptreact]": {
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+        }
+      },
+      "extensions": [
+        // --- 既存のRust用拡張機能 ---
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml",
+
+        // --- フロントエンド用の拡張機能を追加 ---
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+
+        // --- 共通で便利な拡張機能 ---
+        "eamodio.gitlens",
+        "GitHub.copilot"
+      ]
+    }
+  }
+}

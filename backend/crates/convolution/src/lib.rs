@@ -23,16 +23,10 @@ pub fn convolve_fft_f64(x: &[f64], h: &[f64]) -> prelude::ConvolutionResult<Vec<
     let mut h_pad: Vec<Complex<f64>> = h.iter().map(|&v| Complex::new(v, 0.0)).collect();
     x_pad.resize(n, Complex::new(0.0, 0.0));
     h_pad.resize(n, Complex::new(0.0, 0.0));
-    let x_fft = dft(&x_pad).map_err(|e| prelude::ConvolutionError::FftFailed {
-        text: e.to_string(),
-    })?;
-    let h_fft = dft(&h_pad).map_err(|e| prelude::ConvolutionError::FftFailed {
-        text: e.to_string(),
-    })?;
+    let x_fft = dft(&x_pad);
+    let h_fft = dft(&h_pad);
     let y_fft: Vec<Complex<f64>> = x_fft.into_iter().zip(h_fft).map(|(a, b)| a * b).collect();
-    let y = ift(&y_fft).map_err(|e| prelude::ConvolutionError::FftFailed {
-        text: e.to_string(),
-    })?;
+    let y = ift(&y_fft);
     Ok(y.into_iter().map(|c| c.re).collect())
 }
 
