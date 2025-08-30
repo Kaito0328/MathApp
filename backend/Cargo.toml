@@ -16,9 +16,29 @@ members = [
     "crates/signal_processing",
     "crates/statistics",
     "crates/special-functions",
-    "crates/statsmodels"
+    "crates/statsmodels",
+    "crates/wasm"
 ]
 resolver = "2"
+
+# デフォルトのビルド対象からは wasm を外す（必要時に個別ビルド）
+[workspace.package]
+default-members = [
+    "crates/linalg",
+    "crates/coding",
+    "crates/polynomial",
+    "crates/lti-systems",
+    "crates/concrete-math",
+    "crates/fft-core",
+    "crates/finite-field",
+    "crates/convolution",
+    "crates/number-theory",
+    "crates/utils",
+    "crates/signal_processing",
+    "crates/statistics",
+    "crates/special-functions",
+    "crates/statsmodels"
+]
 
 # リリースビルドの最適化設定などをここに集約できる
 [profile.release]

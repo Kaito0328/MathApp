@@ -55,12 +55,8 @@ pub fn ift_simple(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
 }
 
 // 公開API: 実体は fft-core に委譲
-pub fn dft(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
-    fftc::dft(x)
-}
-pub fn ift(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
-    fftc::ift(x)
-}
+pub fn dft(x: &[Complex<f64>]) -> Vec<Complex<f64>> { fftc::dft(x) }
+pub fn ift(x: &[Complex<f64>]) -> Vec<Complex<f64>> { fftc::ift(x) }
 
 // ===== Signal/Spectrum フレンドリーAPI（内部アルゴリズムは既存関数を使用） =====
 

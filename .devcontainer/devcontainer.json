@@ -1,5 +1,5 @@
 {
-  "name": "Rust + Frontend Monorepo",
+  "name": "MathApp",
 
   // 1. Docker Composeファイルを指定
   // "build"の代わりに、どのdocker-compose.ymlを使うかを教える
