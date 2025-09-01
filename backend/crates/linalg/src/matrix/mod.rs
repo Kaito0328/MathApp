@@ -1,12 +1,14 @@
 use crate::{LinalgError, Result, Scalar};
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct Matrix<T: Scalar = f64> {
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Matrix<T> {
     pub rows: usize,
     pub cols: usize,
     pub data: Vec<T>,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Direction {
     Left,
     Right,

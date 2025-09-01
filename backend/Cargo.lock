@@ -241,6 +241,7 @@ dependencies = [
  "fft-core",
  "num-complex",
  "num-traits",
+ "serde",
  "utils",
 ]
 
@@ -565,11 +566,15 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "fft-core",
+ "finite-field",
+ "linalg",
  "num-complex",
+ "num-traits",
  "serde",
  "serde-wasm-bindgen",
  "signal_processing",
  "wasm-bindgen",
+ "wasm-macros",
  "wee_alloc",
 ]
 
@@ -629,6 +634,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a05d73b933a847d6cccdda8f838a22ff101ad9bf93e33684f39c1f5f0eece3d"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "wasm-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

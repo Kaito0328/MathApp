@@ -1,7 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export function add(a: number, b: number): number;
-export function init(): void;
+// Type definitions for wasm-pack output (generated)
 export function dft_real(input: Float64Array): Float64Array;
 export function ift_real(real_im_pairs: Float64Array, sample_rate: number): Float64Array;
 export function conv_real(x: Float64Array, h: Float64Array): Float64Array;

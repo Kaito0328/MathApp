@@ -17,7 +17,8 @@ members = [
     "crates/statistics",
     "crates/special-functions",
     "crates/statsmodels",
-    "crates/wasm"
+    "crates/wasm",
+    "crates/wasm-macros"
 ]
 resolver = "2"
 

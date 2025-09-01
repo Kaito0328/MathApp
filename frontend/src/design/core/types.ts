@@ -1,6 +1,5 @@
 import {
   ColorTextStyleKit,
-  ColorValueStyleKit,
   ColorViewStyleKit,
   FontWeightKey,
   RoundKey,

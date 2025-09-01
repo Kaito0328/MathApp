@@ -1,6 +1,7 @@
 use crate::{LinalgError, Matrix, Result, Ring, Scalar};
 
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Vector<T: Scalar = f64> {
     pub data: Vec<T>,
 }

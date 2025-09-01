@@ -5,7 +5,6 @@ export async function initWasm() {
   await init()
   return mod as unknown as {
     add(a: number, b: number): number
-    dft_real_obj(input: number[], sample_rate: number): import('../types').DftResult
-    dft_real(input: number[]): number[]
+    dft_real(input: Float64Array): Float64Array
   }
 }

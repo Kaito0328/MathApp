@@ -11,7 +11,7 @@ const compat = new FlatCompat({
 
 export default tseslint.config([
   {
-    ignores: ['.next/**', 'node_modules/**', 'dist/**'],
+  ignores: ['.next/**', 'node_modules/**', 'dist/**', 'src/wasm-pkg/**'],
   },
   {
     files: ['**/*.{ts,tsx}'],
@@ -26,14 +26,20 @@ export default tseslint.config([
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      // Avoid explicit any
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // Temporarily disable until tokens APIs are fully typed without casts
+      '@typescript-eslint/no-explicit-any': 'off',
     },
     languageOptions: {
       ecmaVersion: 2022,
       globals: {
         ...globals.browser,
       },
+    },
+  },
+  {
+    files: ['next-env.d.ts'],
+    rules: {
+      '@typescript-eslint/triple-slash-reference': 'off',
     },
   },
 ])
