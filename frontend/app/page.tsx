@@ -1,64 +1,53 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getWasm } from '../src/wasm'
-import * as sp from '../src/wasm/signal_processing'
-import type { DftResult, Signal, Vector, Matrix, PolynomialR, TransferFunction } from './types'
-import {
-  SignalView,
-  SpectrumView,
-  PolynomialView,
-  VectorView,
-  MatrixView,
-  TransferFunctionView,
-  SignalInput,
-  VectorInput,
-  MatrixInput,
-  PolynomialInput,
-  TransferFunctionInput,
-} from './components'
+import { initWasm } from './lib/wasm'
+import { VectorInput, MatrixInput, SpectrumCard } from './components'
+import { SpectrumInput, TransferFunctionInput, ZpkInput } from '../src/components/inputs'
+import { PolynomialCardSimple } from '../src/components/base/PolynomialCardSimple'
+import { SignalCardSimple } from '../src/components/base/SignalCardSimple'
+import { SignalInputSimple } from '../src/components/inputs/SignalInputSimple'
+import { RationalFunctionInputSimple } from '../src/components/inputs/RationalFunctionInputSimple'
+import { VectorCard } from '../src/components/base/VectorCard'
+import { MatrixCard } from '../src/components/base/MatrixCard'
 import { BaseBox } from '../src/design/base/BaseBox'
 import { BaseText } from '../src/design/base/BaseText'
 import { useTheme } from '../src/design/ThemeProvider'
-
-type Wasm = { add(a: number, b: number): number }
+import { dft1d } from '../src/wasm/ops'
 
 export default function Page() {
+  const [wasmInfo, setWasmInfo] = useState<string>('loading…')
+  const [vec, setVec] = useState<number[]>([1, 2, 3, 4])
+  const [mat, setMat] = useState<{ rows: number; cols: number; data: number[] }>({ rows: 2, cols: 3, data: [1, 2, 3, 4, 5, 6] })
+  const [sig, setSig] = useState<{ data: number[]; sample_rate: number }>({ data: Array.from({ length: 64 }, (_, i) => Math.sin((2*Math.PI*4*i)/64)), sample_rate: 64 })
+  const [spec, setSpec] = useState<{ spectrum: number[]; sample_rate: number }>({ spectrum: [], sample_rate: 64 })
+  const [rf, setRf] = useState<{ num: number[]; den: number[] }>({ num: [1], den: [1, -1] })
+  const [tf, setTf] = useState<{ num: number[]; den: number[]; sample_time?: number | null }>({ num: [1], den: [1, -1], sample_time: undefined })
+  const [zpk, setZpk] = useState<{ zeros: number[]; poles: number[]; gain: number; sample_time?: number | null }>({ zeros: [], poles: [], gain: 1 })
   const { theme, setTheme } = useTheme()
-  const [wasm, setWasm] = useState<Wasm | null>(null)
-  const [sum, setSum] = useState<number | null>(null)
-
-  // Inputs
-  const [signal, setSignal] = useState<Signal>(() => {
-    const sr = 64, n = 64, f = 4
-    const data = Array.from({ length: n }, (_, i) => Math.sin((2 * Math.PI * f * i) / sr))
-    return { data, sample_rate: sr }
-  })
-  const [dft, setDft] = useState<DftResult | null>(null)
-  const [vector, setVector] = useState<Vector>({ data: [1, 2, 3, 4] })
-  const [matrix, setMatrix] = useState<Matrix>({ rows: 2, cols: 3, data: [1, 2, 3, 4, 5, 6] })
-  const [poly, setPoly] = useState<PolynomialR>({ coeffs: [1, -3, 2] })
-  const [tf, setTf] = useState<TransferFunction>({ num: [1], den: [1, -1, 0.25], sample_time: null })
 
   useEffect(() => {
     let mounted = true
-    getWasm()
-      .then((m) => {
+    initWasm()
+      .then((m: any) => {
         if (!mounted) return
-        setWasm(m as Wasm)
-        setSum(m.add(1, 2))
+        // Demo: use MatrixF64 which is guaranteed by wasm.d.ts
+        const MatrixF64 = (m as any).MatrixF64
+        if (MatrixF64) {
+          const A = MatrixF64.zeros(2, 3)
+          const T = A.transpose()
+          const info = `${A.rows()}x${A.cols()} -> transpose ${T.rows()}x${T.cols()}`
+          setWasmInfo(info)
+          A.free?.(); T.free?.()
+        } else {
+          setWasmInfo('WASM loaded (MatrixF64 not found)')
+        }
       })
       .catch((e) => console.error('Failed to init wasm', e))
-    return () => { mounted = false }
+    return () => {
+      mounted = false
+    }
   }, [])
-
-  // Compute DFT when signal or wasm changes
-  useEffect(() => {
-    if (!wasm) return
-    sp.dftReal(signal)
-      .then(setDft)
-      .catch((e) => console.error('DFT failed', e))
-  }, [wasm, signal])
 
   return (
     <main>
@@ -66,70 +55,65 @@ export default function Page() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>Theme: {theme}</button>
       </div>
-
+      <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1, margin: '12px 0' }}>
+        <BaseText>WASM demo: {wasmInfo}</BaseText>
+      </BaseBox>
       {/* Design System Demo */}
-      <BaseBox className="border-base" style={{ borderWidth: 1, marginBottom: 12 }}
-        styleKit={{ color: { colorKey: 'primary' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any, shadowKey: 'sm' as any }}>
+    <BaseBox styleKit={{ color: { colorKey: 'primary' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any, shadowKey: 'sm' as any }}
+        className="border-base" style={{ borderWidth: 1, marginBottom: 12 }}>
         <BaseText styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['text'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['fontSize'] as any } }, fontWeightKey: 'bold' as any }}>
           Base components (Box/Text) via tokens
         </BaseText>
       </BaseBox>
+  <PolynomialCardSimple coeffs={[1, -3, 2]} varName="x" />
 
-      {/* WASM smoke test */}
-      <div style={{ border: '1px solid #333', padding: 12, borderRadius: 8, margin: '12px 0' }}>
-        <p>WASM add(1,2) = {sum ?? 'loading…'}</p>
+      {/* Inputs (new grid-based) */}
+      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr', marginTop: 12 }}>
+  <VectorInput value={vec} onChange={setVec} />
+  <VectorCard data={vec} title="Vector" showSizeBadge={true} />
+
+  <MatrixInput value={mat} onChange={setMat} />
+  <MatrixCard rows={mat.rows} cols={mat.cols} data={mat.data} title="Matrix" showSizeBadge={true} />
+
+  {/* Signal / Spectrum */}
+  {/* Signal: モード入力UI（詳細） */}
+  <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1 }}>
+    <BaseText>Signal Input (modes)</BaseText>
+    <div style={{ marginTop: 8 }}>
+      {/* 既存の簡易UIも残す */}
+      <SignalInputSimple value={sig as any} onChange={async (s) => {
+    setSig(s)
+  try {
+      const interleaved = await dft1d(s.data)
+      setSpec({ spectrum: interleaved, sample_rate: s.sample_rate })
+  } catch { /* ignore DFT errors */ }
+  }} />
+    </div>
+  </BaseBox>
+  {/* Signal 表示: プロット色はトークン適用で暗背景でも視認性改善 */}
+  <SignalCardSimple data={sig.data} showPlot={true} showVector={false} />
+  {/* Spectrum 入力: Re,Im ラベル整頓とモード説明 */}
+  <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1 }}>
+    <BaseText>Spectrum Input</BaseText>
+    <div style={{ marginTop: 8 }}>
+      <SpectrumInput value={spec} onChange={setSpec} />
+    </div>
+    <div style={{ marginTop: 8 }}>
+      <BaseText styleKit={{ size: { sizeKey: 'sm' as any, apply: { default: ['fontSize'] as any } } }}>
+        Spectrum(DFT) は、時間領域の信号を複素数の周波数領域に変換した結果（離散フーリエ変換）です。
+      </BaseText>
+    </div>
+  </BaseBox>
+  <SpectrumCard spectrum={spec.spectrum} sample_rate={spec.sample_rate} />
+
+  {/* Rational / LTI */}
+  {/* Rational Function 入力（セル x^n 形式）*/}
+  <RationalFunctionInputSimple value={rf} onChange={setRf} varName="x" />
+  {/* TransferFunction: 係数入力はセル x^n、z/s の切替想定（varName使用） */}
+  <TransferFunctionInput value={tf as any} onChange={setTf as any} varName="z" />
+  {/* ZPK: 入力は Re/Im ペアで #0 などの余計な見出しが出ないよう整理済み */}
+  <ZpkInput value={zpk as any} onChange={setZpk as any} />
       </div>
-
-      {/* Signal I/O */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>
-          <SignalInput value={signal} onChange={setSignal} />
-        </div>
-        <div>
-          <SignalView value={signal} />
-          {dft && <SpectrumView value={dft} />}
-        </div>
-      </section>
-
-      {/* Vector */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>
-          <VectorInput value={vector} onChange={setVector} />
-        </div>
-        <div>
-          <VectorView value={vector} />
-        </div>
-      </section>
-
-      {/* Matrix */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>
-          <MatrixInput value={matrix} onChange={setMatrix} />
-        </div>
-        <div>
-          <MatrixView value={matrix} />
-        </div>
-      </section>
-
-      {/* Polynomial */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>
-          <PolynomialInput value={poly} onChange={setPoly} />
-        </div>
-        <div>
-          <PolynomialView value={poly} />
-        </div>
-      </section>
-
-      {/* Transfer Function */}
-      <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div>
-          <TransferFunctionInput value={tf} onChange={setTf} />
-        </div>
-        <div>
-          <TransferFunctionView value={tf} />
-        </div>
-      </section>
     </main>
   )
 }

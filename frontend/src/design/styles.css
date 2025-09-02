@@ -1,48 +1,56 @@
 /* Theme variables */
 :root {
-  --c-base-bg: #ffffff;
-  --c-base-text: #212121;
-  --c-base-border: #bdbdbd;
-  --c-base-icon: #757575;
+  /* Base (light) */
+  --c-base-bg: #ffffff;          /* white */
+  --c-base-text: #0f172a;        /* slate-900 */
+  --c-base-border: #cbd5e1;      /* slate-300 */
+  --c-base-icon: #64748b;        /* slate-500 */
 
-  --c-primary-bg: #a5d6a7;
-  --c-primary-text: #1b5e20;
-  --c-primary-border: #81c784;
+  /* Primary: deep indigo/violet accent for light mode */
+  --c-primary-bg: #e0e7ff;       /* indigo-100 */
+  --c-primary-text: #4338ca;     /* indigo-700 */
+  --c-primary-border: #a5b4fc;   /* indigo-300 */
 
-  --c-secondary-bg: #c8e6c9;
-  --c-secondary-text: #757575;
-  --c-secondary-border: #a5d6a7;
+  /* Secondary: violet tint */
+  --c-secondary-bg: #ede9fe;     /* violet-100 */
+  --c-secondary-text: #6b7280;   /* gray-500 */
+  --c-secondary-border: #c4b5fd; /* violet-300 */
 
-  --c-danger-bg: #ef5350;
-  --c-danger-text: #d32f2f;
-  --c-danger-border: #e53935;
+  /* Semantic colors (light) */
+  --c-danger-bg: #fee2e2;        /* red-100 */
+  --c-danger-text: #b91c1c;      /* red-700 */
+  --c-danger-border: #fca5a5;    /* red-300 */
 
-  --c-success-bg: #66bb6a;
-  --c-success-text: #388e3c;
-  --c-success-border: #4caf50;
+  --c-success-bg: #dcfce7;       /* green-100 */
+  --c-success-text: #166534;     /* green-800 */
+  --c-success-border: #86efac;   /* green-300 */
 }
 
 [data-theme="dark"] {
-  --c-base-bg: #1b231c;
-  --c-base-text: #fafafa;
-  --c-base-border: #424242;
-  --c-base-icon: #bdbdbd;
+  /* Base (dark) */
+  --c-base-bg: #0f172a;          /* slate-900 */
+  --c-base-text: #e5e7eb;        /* gray-200 (white-ish) */
+  --c-base-border: #334155;      /* slate-700 */
+  --c-base-icon: #cbd5e1;        /* slate-300 */
 
-  --c-primary-bg: #386641;
-  --c-primary-text: #c8e6c9;
-  --c-primary-border: #4caf50;
+  /* Primary: deep indigo suitable for dark bg */
+  --c-primary-bg: #1e1b4b;       /* indigo-950 */
+  --c-primary-text: #c7d2fe;     /* indigo-200 */
+  --c-primary-border: #3730a3;   /* indigo-800 */
 
-  --c-secondary-bg: #435244;
-  --c-secondary-text: #bdbdbd;
-  --c-secondary-border: #546e7a;
+  /* Secondary: deep violet with brighter text for readability */
+  --c-secondary-bg: #2e1065;     /* violet-950 */
+  --c-secondary-text: #f5f3ff;   /* near-white violet tint for readability */
+  --c-secondary-border: #6d28d9; /* violet-700 */
 
-  --c-danger-bg: #f44336;
-  --c-danger-text: #ef9a9a;
-  --c-danger-border: #f44336;
+  /* Semantic colors (dark) */
+  --c-danger-bg: #7f1d1d;        /* red-900 */
+  --c-danger-text: #fecaca;      /* red-200 */
+  --c-danger-border: #b91c1c;    /* red-700 */
 
-  --c-success-bg: #4caf50;
-  --c-success-text: #a5d6a7;
-  --c-success-border: #4caf50;
+  --c-success-bg: #14532d;       /* green-900 */
+  --c-success-text: #bbf7d0;     /* green-200 */
+  --c-success-border: #166534;   /* green-800 */
 }
 
 /* Color utilities */
@@ -108,3 +116,34 @@
 .fw-normal { font-weight: 400; }
 .fw-medium { font-weight: 500; }
 .fw-bold { font-weight: 700; }
+
+/* Form elements default styling via tokens for readability (incl. dark mode) */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  color: var(--c-base-text);
+  background-color: var(--c-base-bg);
+  border: 1px solid var(--c-base-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+select,
+button {
+  color: var(--c-base-text);
+}
+
+button {
+  background-color: var(--c-primary-bg);
+  border: 1px solid var(--c-primary-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: var(--c-secondary-text);
+}

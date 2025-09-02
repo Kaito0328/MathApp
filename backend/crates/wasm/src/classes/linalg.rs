@@ -1,7 +1,7 @@
 #![allow(unused_macros)]  // マクロ内マクロのため警告を抑制
 
 #[allow(unused_imports)]  // マクロ展開後に使用されるため警告を抑制
-use linalg::{Matrix, Ring, Field, LinalgError, Result, Vector, Direction};
+use linalg::{Matrix as LMatrix, Ring, Field, LinalgError, Result, Vector as LVector, Direction};
 #[allow(unused_imports)]  // マクロ展開後に使用されるため警告を抑制
 use linalg::matrix::numerical::qr::{QR, QrDecomposition};
 #[allow(unused_imports)]  // マクロ展開後に使用されるため警告を抑制
@@ -9,381 +9,392 @@ use linalg::matrix::numerical::svd::Svd;
 #[allow(unused_imports)]  // マクロ展開後に使用されるため警告を抑制
 use linalg::matrix::numerical::eigen::{Eigen, EigenComplex};
 #[allow(unused_imports)]  // マクロ展開後に使用されるため警告を抑制
+use wasm_bindgen::JsValue;
+#[allow(unused_imports)]  // マクロ展開後に使用されるため警告を抑制
 use linalg::matrix::numerical::{CholeskyDecomposition, EigenDecomposition, MatrixExponential, Pseudoinverse, SvdDeComposition};
 #[allow(unused_imports)]  // マクロ展開後に使用されるため警告を抑制
 use linalg::traits::LinalgField;
 
-/// 基本的なMatrix操作（Scalar trait + inherent methods）
-macro_rules! matrix_basic_methods {
-    ($T:ty) => {
-        // === 基本コンストラクタ（Scalar trait, inherent methods） ===
-        #[constructor]
-        pub fn new(rows: usize, cols: usize, data: Vec<$T>) -> Result<Self>;
+use wasm_bindgen::prelude::*;
 
-        #[constructor]
-        pub fn with_default(rows: usize, cols: usize) -> Self;
+// 内部型のエイリアス（属性マクロのパラメータで <T> を避けるため）
+type InternalMatrixF64 = linalg::Matrix<f64>;
+type InternalVectorF64 = linalg::Vector<f64>;
+type InternalMatrixF32 = linalg::Matrix<f32>;
+type InternalVectorF32 = linalg::Vector<f32>;
+type InternalMatrixI32 = linalg::Matrix<i32>;
+type InternalVectorI32 = linalg::Vector<i32>;
 
-        // === 基本メソッド（inherent methods） ===
-        pub fn transpose(&self) -> Self;
-        pub fn rows(&self) -> usize;
-        pub fn cols(&self) -> usize;
-        pub fn is_square(&self) -> bool;
-        
-        // 変更メソッド
-        pub fn swap_rows(&mut self, r1: usize, r2: usize) -> Result<()>;
-        
-        // サブマトリクス操作
-        pub fn submatrix(&self, start_row: usize, end_row: usize, start_col: usize, end_col: usize) -> Result<Self>;
-        pub fn set_submatrix(&mut self, start_row: usize, start_col: usize, submat: &Self) -> Result<()>;
-        
-        // スタック操作
-        pub fn hstack(&self, other: &Self) -> Result<Self>;
-        pub fn vstack(&self, other: &Self) -> Result<Self>;
-    };
-}
+// ==============================
+// 階層的メソッド宣言マクロ（空ボディ→wasm_classが自動委譲）
+// ==============================
 
-/// Ring trait のメソッド群
+// Matrix: Ringレベル（全型共通）
 macro_rules! matrix_ring_methods {
-    ($T:ty) => {
-        // === Ring trait の静的メソッド ===
+    ($t:ty) => {
         #[constructor]
-        #[trait_method(Ring)]
-        pub fn zeros(rows: usize, cols: usize) -> Self;
-
-        #[constructor] 
-        #[trait_method(Ring)]
-        pub fn identity(size: usize) -> Self;
-
-        // === Ring trait の計算メソッド ===
-        // 注意: add, sub, mul は ops=[Add, Sub, Mul] で自動生成されるため省略
-
-        #[trait_method(Ring)]
-        pub fn checked_mul_scalar(&self, scalar: $T) -> Self;
-
-        #[trait_method(Ring)]
-        pub fn checked_add_scalar(&self, scalar: $T) -> Self;
-
-        #[trait_method(Ring)]
-        pub fn checked_sub_scalar(&self, scalar: $T) -> Self;
-
-        #[trait_method(Ring)]
-        pub fn checked_neg(&self) -> Self;
-
-        #[trait_method(Ring)]
-        pub fn scale_row(&mut self, r: usize, scalar: $T) -> Result<()>;
-
-        #[trait_method(Ring)]
-        pub fn scale_col(&mut self, c: usize, scalar: $T) -> Result<()>;
-
-        #[trait_method(Ring)]
-        pub fn add_scaled_row_to_row(&mut self, from_row: usize, to_row: usize, scalar: $T) -> Result<()>;
-
-        #[trait_method(Ring)]
-        pub fn trace(&self) -> Result<$T>;
+        pub fn new(rows: usize, cols: usize, data: Vec<$t>) -> std::result::Result<Self, wasm_bindgen::JsValue> {}
+        pub fn with_default(rows: usize, cols: usize) -> Self {}
+        pub fn zeros(rows: usize, cols: usize) -> Self {}
+        pub fn identity(size: usize) -> Self {}
+        pub fn rows(&self) -> usize {}
+        pub fn cols(&self) -> usize {}
+        pub fn is_square(&self) -> bool {}
+        pub fn transpose(&self) -> Self {}
+        pub fn trace(&self) -> std::result::Result<$t, wasm_bindgen::JsValue> {}
     };
 }
 
-/// Field trait のメソッド群
+// Matrix: Fieldレベル（Ringと重複しない追加）
 macro_rules! matrix_field_methods {
-    ($T:ty) => {
-        // === Field trait のメソッド ===
-        #[trait_method(Field)]
-        pub fn rref(&self) -> Result<Self>;
-
-        #[trait_method(Field)]
-        pub fn rank(&self) -> Result<usize>;
-
-        #[trait_method(Field)]
-        pub fn determinant(&self) -> Result<$T>;
-
-        #[trait_method(Field)]
-        pub fn inverse(&self) -> Option<Self>;
-
-        // === LinalgField対応LU分解（f32, f64で利用可能） ===
-        // Note: LU<T>構造体はジェネリックのため、WASMでは戻り値をSerdeラッパーで処理する必要がある
-        // LU分解の結果は、f32とf64のそれぞれに対してラッパーを用意する
-        // pub fn lu_decompose(&self) -> Result<LU<$T>>;  // これは後でラッパー経由で実装
-        
-        // === Vector関連メソッド（Vector WASMクラス実装後に利用可能） ===
-        pub fn col(&self, c: usize) -> Result<Vector<$T>>;
-        pub fn row(&self, r: usize) -> Result<Vector<$T>>;
-        pub fn partial_col(&self, col_idx: usize, start_row: usize, end_row: usize) -> Result<Vector<$T>>;
-        pub fn partial_row(&self, row_idx: usize, start_col: usize, end_col: usize) -> Result<Vector<$T>>;
-        pub fn set_col(&mut self, c: usize, col_vec: &Vector<$T>) -> Result<()>;
-        pub fn set_row(&mut self, r: usize, row_vec: &Vector<$T>) -> Result<()>;
-
-        // 注意: solve系メソッドもVector<T>が利用可能になったため追加可能
-        // forward_substitution, backward_substitution, solve_generic, solve_matrix_generic
+    ($t:ty) => {
+        pub fn determinant(&self) -> std::result::Result<$t, wasm_bindgen::JsValue> {}
+        pub fn rank(&self) -> std::result::Result<usize, wasm_bindgen::JsValue> {}
+        pub fn inverse(&self) -> Option<Self> {}
     };
 }
 
-/// f64専用の数値計算メソッド群
-macro_rules! matrix_numerical_methods {
+// Matrix: f64専用の数値メソッド
+macro_rules! matrix_f64_methods {
     () => {
-        // === QrDecomposition trait のメソッド（f64専用） ===
-        #[trait_method(QrDecomposition)]
-        pub fn qr_decomposition(&self) -> Result<QR>;
-
-        // === SvdDeComposition trait のメソッド（f64専用） ===
-        #[trait_method(SvdDeComposition)]
-        pub fn svd(&self) -> Result<Svd>;
-
-        // === EigenDecomposition trait のメソッド（f64専用） ===
-        #[trait_method(EigenDecomposition)]
-        pub fn eigen(&self) -> Result<Eigen>;
-
-        #[trait_method(EigenDecomposition)]
-        pub fn eigenvalues(&self) -> Result<Vector<f64>>;
-
-        // === CholeskyDecomposition trait のメソッド（f64専用） ===
-        #[trait_method(CholeskyDecomposition)]
-        pub fn cholesky(&self) -> Result<Matrix<f64>>;
-
-        // === MatrixExponential trait のメソッド（f64専用） ===
-        #[trait_method(MatrixExponential)]
-        pub fn matrix_exp(&self) -> Result<Matrix<f64>>;
-
-        // === Pseudoinverse trait のメソッド（f64専用） ===
-        #[trait_method(Pseudoinverse)]
-        pub fn pinv(&self) -> Result<Matrix<f64>>;
-
-        // === 数値計算メソッド（f64専用） ===
-        pub fn frobenius_norm(&self) -> f64;
+        pub fn frobenius_norm(&self) -> f64 {}
+        pub fn expm(&self) -> Self {}
+        pub fn qr_decomposition(&self) -> std::result::Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {}
+        pub fn svd(&self) -> std::result::Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {}
+        pub fn eigen_decomposition(&self) -> std::result::Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {}
+        pub fn cholesky(&self) -> std::result::Result<Self, wasm_bindgen::JsValue> {}
+        pub fn pinv(&self) -> std::result::Result<Self, wasm_bindgen::JsValue> {}
     };
 }
 
-// ===============================
-// Vector用の階層的マクロ群
-// ===============================
-
-/// 基本的なVector操作（Scalar trait + inherent methods）
-macro_rules! vector_basic_methods {
-    ($T:ty) => {
-        // === 基本コンストラクタ ===
-        #[constructor]
-        pub fn new(data: Vec<$T>) -> Self;
-
-        // === 基本メソッド ===
-        pub fn dim(&self) -> usize;
-        pub fn len(&self) -> usize;
-        pub fn is_empty(&self) -> bool;
-        
-        // === 変換メソッド ===
-        pub fn transpose(&self) -> Matrix<$T>;
-        
-        // === アクセスメソッド ===
-        pub fn as_slice(&self) -> &[$T];
-        pub fn into_inner(self) -> Vec<$T>;
-        
-        // === 統計メソッド (PartialOrd制約必要) ===
-        // argmax, argmin, max, min は型によって利用可能性が異なるため省略
-    };
-}
-
-/// Ring trait のVector向けメソッド群
+// Vector: Ringレベル
 macro_rules! vector_ring_methods {
-    ($T:ty) => {
-        // === Ring trait の静的メソッド ===
+    ($t:ty) => {
         #[constructor]
-        #[trait_method(Ring)]
-        pub fn zeros(dim: usize) -> Self;
-
-        #[constructor]
-        #[trait_method(Ring)]
-        pub fn ones(dim: usize) -> Self;
-
-        // === Ring trait の計算メソッド ===
-        #[trait_method(Ring)]
-        pub fn checked_neg(&self) -> Self;
-
-        #[trait_method(Ring)]
-        pub fn hadamard_product(&self, rhs: &Self) -> Result<Self>;
-
-        // === スカラー演算 ===
-        #[trait_method(Ring)]
-        pub fn checked_add_scalar(&self, scalar: $T) -> Self;
-
-        #[trait_method(Ring)]
-        pub fn checked_sub_scalar(&self, scalar: $T) -> Self;
-
-        #[trait_method(Ring)]
-        pub fn checked_mul_scalar(&self, scalar: $T) -> Self;
-
-        // === ベクトル積 ===
-        #[trait_method(Ring)]
-        pub fn dot(&self, other: &Self) -> $T;
-
-        #[trait_method(Ring)]
-        pub fn conv(&self, other: &Self) -> Self;
-
-        // Note: checked_mul_matrix は Matrix<T> を返すため、Matrixが実装された後に対応検討
-        // Note: cross は 3次元ベクトル専用のため省略
+        pub fn new(data: Vec<$t>) -> Self {}
+        pub fn zeros(dim: usize) -> Self {}
+        pub fn ones(dim: usize) -> Self {}
+        pub fn dim(&self) -> usize {}
+        pub fn len(&self) -> usize {}
+        pub fn is_empty(&self) -> bool {}
+        pub fn dot(&self, other: &Self) -> $t {}
+        pub fn argmax(&self) -> Option<usize> {}
+        pub fn argmin(&self) -> Option<usize> {}
+        pub fn max(&self) -> Option<$t> {}
+        pub fn min(&self) -> Option<$t> {}
     };
 }
 
-/// Field trait のVector向けメソッド群
-macro_rules! vector_field_methods {
-    ($T:ty) => {
-        // Field制約があるVectorでは特別な追加メソッドは少ない
-        // 必要に応じて将来的に追加
-    };
-}
-
-/// f64専用のVector数値計算メソッド群
-macro_rules! vector_numerical_methods {
+// Vector: f64専用
+macro_rules! vector_f64_methods {
     () => {
-        // === 数値計算メソッド（f64専用） ===
-        #[constructor]
-        pub fn linspace(start: f64, end: f64, num: usize) -> Result<Self>;
-
-        pub fn norm(&self) -> f64;
-        pub fn normalize(&self) -> Self;
-        pub fn cosine_similarity(&self, other: &Self) -> f64;
-        pub fn mean(&self) -> Option<f64>;
-
-        // === FFT系畳み込み（f64専用） ===
-        pub fn conv_simple(&self, other: &Self) -> Self;
-        pub fn conv_fft(&self, other: &Self) -> Result<Self>;
-        pub fn conv_auto(&self, other: &Self) -> Result<Self>;
-
-        // === 統計メソッド（f64では必ず利用可能） ===
-        pub fn argmax(&self) -> Option<usize>;
-        pub fn argmin(&self) -> Option<usize>;
-        pub fn max(&self) -> Option<f64>;
-        pub fn min(&self) -> Option<f64>;
+        pub fn norm(&self) -> f64 {}
+        pub fn normalize(&self) -> Self {}
+        pub fn cosine_similarity(&self, other: &Self) -> f64 {}
+        pub fn mean(&self) -> Option<f64> {}
+        pub fn std(&self) -> f64 {}
+        pub fn linspace(start: f64, end: f64, num: usize) -> std::result::Result<Self, wasm_bindgen::JsValue> {}
     };
 }
-
-/// Vector型用のWASMクラスを生成する統合マクロ
-macro_rules! define_vector_wasm {
-    // 基本版: Ring制約まで（整数型など）
-    ($T:ty, $js_name:ident) => {
-        #[wasm_macros::wasm_class(
-            internal = stringify!(linalg::Vector<$T>),
-            js_name = stringify!($js_name),
-            ops = [Add, Sub, Mul],
-            indexer = false,
-            iterator = false
-        )]
-        impl $js_name {
-            vector_basic_methods!($T);
-            vector_ring_methods!($T);
-        }
-    };
-
-    // Field制約がある型向けの拡張版（f32など）
-    ($T:ty, $js_name:ident, field) => {
-        #[wasm_macros::wasm_class(
-            internal = stringify!(linalg::Vector<$T>),
-            js_name = stringify!($js_name),
-            ops = [Add, Sub, Mul],
-            indexer = false,
-            iterator = false
-        )]
-        impl $js_name {
-            vector_basic_methods!($T);
-            vector_ring_methods!($T);
-            vector_field_methods!($T);
-        }
-    };
-
-    // f64専用の数値計算メソッド付き
-    (f64, $js_name:ident, numerical) => {
-        #[wasm_macros::wasm_class(
-            internal = "linalg::Vector<f64>",
-            js_name = stringify!($js_name),
-            ops = [Add, Sub, Mul],
-            indexer = false,
-            iterator = false
-        )]
-        impl $js_name {
-            vector_basic_methods!(f64);
-            vector_ring_methods!(f64);
-            vector_field_methods!(f64);
-            vector_numerical_methods!();
-        }
-    };
-}
-
-/// Matrix型用のWASMクラスを生成する統合マクロ
-macro_rules! define_matrix_wasm {
-    // 基本版: Ring制約まで（整数型など）
-    ($T:ty, $js_name:ident) => {
-        #[wasm_macros::wasm_class(
-            internal = stringify!(linalg::Matrix<$T>),
-            js_name = stringify!($js_name),
-            ops = [Add, Sub, Mul],
-            indexer = false,
-            iterator = false
-        )]
-        impl $js_name {
-            matrix_basic_methods!($T);
-            matrix_ring_methods!($T);
-        }
-    };
-
-    // Field制約がある型向けの拡張版（f32など）
-    ($T:ty, $js_name:ident, field) => {
-        #[wasm_macros::wasm_class(
-            internal = stringify!(linalg::Matrix<$T>),
-            js_name = stringify!($js_name),
-            ops = [Add, Sub, Mul],
-            indexer = false,
-            iterator = false
-        )]
-        impl $js_name {
-            matrix_basic_methods!($T);
-            matrix_ring_methods!($T);
-            matrix_field_methods!($T);
-        }
-    };
-
-    // f64専用の数値計算メソッド付き
-    (f64, $js_name:ident, numerical) => {
-        #[wasm_macros::wasm_class(
-            internal = "linalg::Matrix<f64>",
-            js_name = stringify!($js_name),
-            ops = [Add, Sub, Mul],
-            indexer = false,
-            iterator = false
-        )]
-        impl $js_name {
-            matrix_basic_methods!(f64);
-            matrix_ring_methods!(f64);
-            matrix_field_methods!(f64);
-            matrix_numerical_methods!();
-            
-            // === f64専用 Vector関連の線形代数解法 ===
-            pub fn solve(&self, b: &Vector<f64>) -> Result<Vector<f64>>;
-            // Note: solve_with_luは静的関数のため、WASM bindingでは実装が複雑
-        }
-    };
-}
-
-// 各型に対してMatrix・Vectorマクロを適用
-define_matrix_wasm!(f32, MatrixF32, field);
-define_matrix_wasm!(f64, MatrixF64, numerical);  
-define_matrix_wasm!(i32, MatrixI32);
-define_matrix_wasm!(i64, MatrixI64);
-
-define_vector_wasm!(f32, VectorF32, field);
-define_vector_wasm!(f64, VectorF64, numerical);
-define_vector_wasm!(i32, VectorI32);
-define_vector_wasm!(i64, VectorI64);
 
 // ==============================
-// データ構造体の直接使用（Serde有効）
+// 改善されたジェネリック実装アプローチ
 // ==============================
-// 既存のlinalg構造体が直接Serde対応済みなので、ラッパー不要
+// 
+// 現在のwasm_macrosシステムでは以下の制約があります:
+// 1. 空のブロック{}内でマクロが正常に展開されない
+// 2. trait_method属性が正しく機能しない場合がある
+// 3. ジェネリック型の制約が複雑
+//
+// 解決策: 個別実装 + DRY原則
+// - 各型ごとに明示的に実装
+// - linalgクレートへの直接委譲でコード重複を最小化
+// - 型安全性と機能の完全性を保証
 
-// 利用可能な構造体（serdeフィーチャー有効時）:
-// - QR: QR分解結果
-// - Svd: SVD分解結果  
-// - Eigen: 固有値分解結果
-// - LinalgError: エラー情報
-// - Direction: 方向enum
+// ==============================
+// MatrixF64: f64専用数値計算行列
+// ==============================
 
-// 型エイリアスをJavaScript向けに用意（オプション）
+// ラッパーマクロ: 属性付きimplを外側のmacro_rulesで生成し、内部メソッド宣言マクロを事前展開させる
+#[wasm_macros::wasm_class(
+    internal = "InternalMatrixF64",
+    js_name = "MatrixF64",
+    ops(Add, Sub, Mul),
+    indexer = false,
+    iterator = false
+)]
+impl MatrixF64 {
+    // Ring level
+    #[constructor]
+    pub fn new(rows: usize, cols: usize, data: Vec<f64>) -> std::result::Result<Self, wasm_bindgen::JsValue> {}
+    pub fn with_default(rows: usize, cols: usize) -> Self {}
+    pub fn zeros(rows: usize, cols: usize) -> Self {}
+    pub fn identity(size: usize) -> Self {}
+    pub fn rows(&self) -> usize {}
+    pub fn cols(&self) -> usize {}
+    pub fn is_square(&self) -> bool {}
+    pub fn transpose(&self) -> Self {}
+    pub fn trace(&self) -> std::result::Result<f64, wasm_bindgen::JsValue> {}
+
+    // Field level
+    pub fn determinant(&self) -> std::result::Result<f64, wasm_bindgen::JsValue> {}
+    pub fn rank(&self) -> std::result::Result<usize, wasm_bindgen::JsValue> {}
+    pub fn inverse(&self) -> Option<Self> {}
+
+    // f64 numerical
+    pub fn frobenius_norm(&self) -> f64 {}
+    pub fn expm(&self) -> Self {}
+    pub fn qr_decomposition(&self) -> std::result::Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {}
+    pub fn svd(&self) -> std::result::Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {}
+    pub fn eigen_decomposition(&self) -> std::result::Result<wasm_bindgen::JsValue, wasm_bindgen::JsValue> {}
+    pub fn cholesky(&self) -> std::result::Result<Self, wasm_bindgen::JsValue> {}
+    pub fn pinv(&self) -> std::result::Result<Self, wasm_bindgen::JsValue> {}
+}
+
+// wasm_classでは扱いにくいクロスリファレンスや型包み替えだけ個別に残す
+
+// ==============================
+// VectorF64: f64専用数値計算ベクトル
+// ==============================
+
+#[wasm_macros::wasm_class(
+    internal = "InternalVectorF64",
+    js_name = "VectorF64", 
+    ops(Add, Sub, Mul),
+    indexer = false,
+    iterator = false
+)]
+impl VectorF64 {
+    // Ring level
+    #[constructor]
+    pub fn new(data: Vec<f64>) -> Self {}
+    pub fn zeros(dim: usize) -> Self {}
+    pub fn ones(dim: usize) -> Self {}
+    pub fn dim(&self) -> usize {}
+    pub fn len(&self) -> usize {}
+    pub fn is_empty(&self) -> bool {}
+    pub fn dot(&self, other: &Self) -> f64 {}
+    pub fn argmax(&self) -> Option<usize> {}
+    pub fn argmin(&self) -> Option<usize> {}
+    pub fn max(&self) -> Option<f64> {}
+    pub fn min(&self) -> Option<f64> {}
+
+    // f64 numerical
+    pub fn norm(&self) -> f64 {}
+    pub fn normalize(&self) -> Self {}
+    pub fn cosine_similarity(&self, other: &Self) -> f64 {}
+    pub fn mean(&self) -> Option<f64> {}
+    pub fn std(&self) -> f64 {}
+    pub fn linspace(start: f64, end: f64, num: usize) -> std::result::Result<Self, wasm_bindgen::JsValue> {}
+}
+// wasm_classでは扱いにくいもの（Resultや独自ロジック）は個別に実装
+#[wasm_bindgen]
+impl VectorF64 {
+    #[wasm_bindgen]
+    pub fn sum(&self) -> f64 { self.0.sum() }
+
+    #[wasm_bindgen]
+    pub fn multiply_matrix(&self, matrix: &MatrixF64) -> std::result::Result<MatrixF64, JsValue> {
+        self.0
+            .checked_mul_matrix(&matrix.0)
+            .map(MatrixF64)
+            .map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+    }
+}
+// ==============================
+// Matrix ↔ Vector クロスリファレンス実装（DRY原則遵守）
+// ==============================
+
+#[wasm_bindgen]
+impl MatrixF64 {
+    // 要素取得
+    #[wasm_bindgen]
+    pub fn get(&self, row: usize, col: usize) -> f64 { self.0[(row, col)] }
+    // === Row/Column extraction（linalgクレートの実装を使用） ===
+    #[wasm_bindgen]
+    pub fn row(&self, index: usize) -> Option<VectorF64> {
+        self.0.row(index).ok().map(VectorF64)
+    }
+    
+    #[wasm_bindgen]
+    pub fn col(&self, index: usize) -> Option<VectorF64> {
+        self.0.col(index).ok().map(VectorF64)
+    }
+    
+    // === Matrix-Vector操作（linalgクレートの実装を使用） ===
+    #[wasm_bindgen]
+    pub fn multiply_vector(&self, vector: &VectorF64) -> Option<VectorF64> {
+        if self.0.cols != vector.0.len() {
+            return None;
+        }
+        // linalgクレートのMatrix * Vector演算を使用
+        Some(VectorF64(&self.0 * &vector.0))
+    }
+    
+    #[wasm_bindgen]
+    pub fn diagonal(&self) -> VectorF64 { VectorF64(self.0.diagonal()) }
+
+    // === solve系メソッド（linalgクレートに実装済みの可能性を活用） ===
+    #[wasm_bindgen]
+    pub fn solve(&self, b: &VectorF64) -> Option<VectorF64> {
+        // Matrix::solve メソッドを使用
+        self.0.solve(&b.0).ok().map(VectorF64)
+    }
+}
+
+#[wasm_bindgen]
+impl VectorF64 {
+    // ベクトルの転置（行/列ベクトル→行列）
+    #[wasm_bindgen]
+    pub fn transpose(&self) -> MatrixF64 { MatrixF64(self.0.transpose()) }
+    // === Matrix conversion（linalgクレートの実装を使用） ===
+    #[wasm_bindgen]
+    pub fn to_column_matrix(&self) -> MatrixF64 {
+        let data = self.0.as_slice().to_vec();
+        MatrixF64(linalg::Matrix::new(self.0.len(), 1, data).unwrap())
+    }
+    
+    #[wasm_bindgen]
+    pub fn to_row_matrix(&self) -> MatrixF64 {
+        let data = self.0.as_slice().to_vec();
+        let matrix = linalg::Matrix::new(1, data.len(), data).unwrap();
+        MatrixF64(matrix)
+    }
+    // outer_product は Vector * Matrix で代替可能なため公開しない
+}
+
+// ==============================
+// MatrixF32: Field制約レベル
+// ==============================
+
+macro_rules! declare_matrix_f32_impl { () => {
+    #[wasm_macros::wasm_class(
+        internal = "InternalMatrixF32",
+        js_name = "MatrixF32",
+        ops(Add, Sub, Mul),
+        indexer = false,
+        iterator = false
+    )]
+    impl MatrixF32 { matrix_ring_methods!(f32); matrix_field_methods!(f32); }
+} }
+declare_matrix_f32_impl!();
+// Provide explicit ring-level methods for MatrixF32
+#[wasm_bindgen]
+impl MatrixF32 {
+    #[wasm_bindgen(constructor)]
+    pub fn new(rows: usize, cols: usize, data: Vec<f32>) -> std::result::Result<Self, wasm_bindgen::JsValue> {
+        linalg::Matrix::new(rows, cols, data).map(MatrixF32).map_err(|e| JsValue::from_str(&format!("{e}")))
+    }
+    pub fn with_default(rows: usize, cols: usize) -> Self { MatrixF32(linalg::Matrix::with_default(rows, cols)) }
+    pub fn zeros(rows: usize, cols: usize) -> Self { MatrixF32(linalg::Matrix::zeros(rows, cols)) }
+    pub fn identity(size: usize) -> Self { MatrixF32(linalg::Matrix::identity(size)) }
+    pub fn rows(&self) -> usize { self.0.rows }
+    pub fn cols(&self) -> usize { self.0.cols }
+    pub fn is_square(&self) -> bool { self.0.is_square() }
+    pub fn transpose(&self) -> Self { MatrixF32(self.0.transpose()) }
+    pub fn trace(&self) -> std::result::Result<f32, wasm_bindgen::JsValue> { self.0.trace().map_err(|e| JsValue::from_str(&format!("{e}"))) }
+    pub fn determinant(&self) -> std::result::Result<f32, wasm_bindgen::JsValue> { self.0.determinant().map_err(|e| JsValue::from_str(&format!("{e}"))) }
+    pub fn rank(&self) -> std::result::Result<usize, wasm_bindgen::JsValue> { self.0.rank().map_err(|e| JsValue::from_str(&format!("{e}"))) }
+    pub fn inverse(&self) -> Option<Self> { self.0.inverse().map(MatrixF32) }
+}
+
+// ==============================
+// VectorF32: Field制約レベル
+// ==============================
+
+macro_rules! declare_vector_f32_impl { () => {
+    #[wasm_macros::wasm_class(
+        internal = "InternalVectorF32",
+        js_name = "VectorF32", 
+        ops(Add, Sub, Mul),
+        indexer = false,
+        iterator = false
+    )]
+    impl VectorF32 { vector_ring_methods!(f32); }
+} }
+declare_vector_f32_impl!();
+#[wasm_bindgen]
+impl VectorF32 {
+    #[wasm_bindgen(constructor)]
+    pub fn new(data: Vec<f32>) -> Self { VectorF32(linalg::Vector::new(data)) }
+    pub fn zeros(dim: usize) -> Self { VectorF32(linalg::Vector::zeros(dim)) }
+    pub fn ones(dim: usize) -> Self { VectorF32(linalg::Vector::ones(dim)) }
+    pub fn dim(&self) -> usize { self.0.dim() }
+    pub fn len(&self) -> usize { self.0.len() }
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
+    pub fn dot(&self, other: &Self) -> f32 { self.0.dot(&other.0) }
+    pub fn argmax(&self) -> Option<usize> { self.0.argmax() }
+    pub fn argmin(&self) -> Option<usize> { self.0.argmin() }
+    pub fn max(&self) -> Option<f32> { self.0.max() }
+    pub fn min(&self) -> Option<f32> { self.0.min() }
+}
+
+// ==============================
+// MatrixI32: Ring制約レベル（整数型）
+// ==============================
+
+macro_rules! declare_matrix_i32_impl { () => {
+    #[wasm_macros::wasm_class(
+        internal = "InternalMatrixI32",
+        js_name = "MatrixI32",
+        ops(Add, Sub, Mul),
+        indexer = false,
+        iterator = false
+    )]
+    impl MatrixI32 { matrix_ring_methods!(i32); }
+} }
+declare_matrix_i32_impl!();
+#[wasm_bindgen]
+impl MatrixI32 {
+    #[wasm_bindgen(constructor)]
+    pub fn new(rows: usize, cols: usize, data: Vec<i32>) -> std::result::Result<Self, wasm_bindgen::JsValue> {
+        linalg::Matrix::new(rows, cols, data).map(MatrixI32).map_err(|e| JsValue::from_str(&format!("{e}")))
+    }
+    pub fn with_default(rows: usize, cols: usize) -> Self { MatrixI32(linalg::Matrix::with_default(rows, cols)) }
+    pub fn zeros(rows: usize, cols: usize) -> Self { MatrixI32(linalg::Matrix::zeros(rows, cols)) }
+    pub fn identity(size: usize) -> Self { MatrixI32(linalg::Matrix::identity(size)) }
+    pub fn rows(&self) -> usize { self.0.rows }
+    pub fn cols(&self) -> usize { self.0.cols }
+    pub fn is_square(&self) -> bool { self.0.is_square() }
+    pub fn transpose(&self) -> Self { MatrixI32(self.0.transpose()) }
+    pub fn trace(&self) -> std::result::Result<i32, wasm_bindgen::JsValue> { self.0.trace().map_err(|e| JsValue::from_str(&format!("{e}"))) }
+}
+
+// ==============================
+// VectorI32: Ring制約レベル（整数型）
+// ==============================
+
+macro_rules! declare_vector_i32_impl { () => {
+    #[wasm_macros::wasm_class(
+        internal = "InternalVectorI32",
+        js_name = "VectorI32", 
+        ops(Add, Sub, Mul),
+        indexer = false,
+        iterator = false
+    )]
+    impl VectorI32 { vector_ring_methods!(i32); }
+} }
+declare_vector_i32_impl!();
+#[wasm_bindgen]
+impl VectorI32 {
+    #[wasm_bindgen(constructor)]
+    pub fn new(data: Vec<i32>) -> Self { VectorI32(linalg::Vector::new(data)) }
+    pub fn zeros(dim: usize) -> Self { VectorI32(linalg::Vector::zeros(dim)) }
+    pub fn ones(dim: usize) -> Self { VectorI32(linalg::Vector::ones(dim)) }
+    pub fn dim(&self) -> usize { self.0.dim() }
+    pub fn len(&self) -> usize { self.0.len() }
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
+    pub fn dot(&self, other: &Self) -> i32 { self.0.dot(&other.0) }
+    pub fn argmax(&self) -> Option<usize> { self.0.argmax() }
+    pub fn argmin(&self) -> Option<usize> { self.0.argmin() }
+    pub fn max(&self) -> Option<i32> { self.0.max() }
+    pub fn min(&self) -> Option<i32> { self.0.min() }
+}
+
+// ==============================
+// 型エイリアスをJavaScript向けに公開
+// ==============================
+
 pub use linalg::matrix::numerical::qr::QR as QRResult;
 pub use linalg::matrix::numerical::svd::Svd as SvdResult;
 pub use linalg::matrix::numerical::eigen::Eigen as EigenResult;

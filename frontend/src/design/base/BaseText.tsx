@@ -1,6 +1,6 @@
 import React from 'react';
 import type { TextStyleKit } from '../tokens';
-import { CoreColorKey, SizeKey, StyleState, ColorTextProperty, SizeTextProperty, FontWeightKey } from '../tokens';
+import { CoreColorKey, SizeKey, FontWeightKey, ColorTextProperty, SizeTextProperty } from '../tokens';
 import { baseTextMaps } from '../maps/base';
 import { useTextClasses, resolveClass, StateFlags } from '../core/resolvers';
 
@@ -11,8 +11,8 @@ export type BaseTextProps = React.HTMLAttributes<HTMLElement> & {
 };
 
 const DEFAULT_TEXT_KIT: TextStyleKit = {
-  color: { colorKey: CoreColorKey.Base, apply: { [StyleState.Default]: [ColorTextProperty.Text], [StyleState.Disabled]: [ColorTextProperty.Text] } },
-  size: { sizeKey: SizeKey.MD, apply: { [StyleState.Default]: [SizeTextProperty.FontSize] } },
+  color: { colorKey: CoreColorKey.Base, apply: { default: [ColorTextProperty.Text], disabled: [ColorTextProperty.Text] } },
+  size: { sizeKey: SizeKey.MD, apply: { default: [SizeTextProperty.FontSize] } },
   fontWeightKey: FontWeightKey.Normal,
 };
 
@@ -25,9 +25,9 @@ export const BaseText: React.FC<BaseTextProps> = ({ as = 'span', styleKit, disab
   } as TextStyleKit;
 
   const classes = useTextClasses(finalKit, baseTextMaps);
-  const flags: StateFlags = { [StyleState.Disabled]: !!disabled };
+  const flags: StateFlags = { Disabled: !!disabled } as any;
   const cls = resolveClass(classes, flags);
 
-  const Comp = as as keyof HTMLElementTagNameMap;
-  return <Comp className={[cls, className].filter(Boolean).join(' ')} {...props as any} />;
+  const Comp: any = as;
+  return <Comp className={[cls, className].filter(Boolean).join(' ')} {...props} />;
 };

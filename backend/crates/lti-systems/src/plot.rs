@@ -232,6 +232,18 @@ fn save_block_feedback_svg(
     feedback_label: Option<&str>,
 ) -> Result<()> {
     let mut f = File::create(path)?;
+    write_block_feedback_svg(g_label, &mut f, width, height, negative_feedback, feedback_label)
+}
+
+/// 単一ループ（前向き G、後向き H(任意)）のブロック図を SVG へ書き出し（任意のライター）
+fn write_block_feedback_svg(
+    g_label: &str,
+    out: &mut dyn Write,
+    width: u32,
+    height: u32,
+    negative_feedback: bool,
+    feedback_label: Option<&str>,
+) -> Result<()> {
     let w = width as f64;
     let h = height as f64;
     let mid_y = h * 0.5;
@@ -250,9 +262,12 @@ fn save_block_feedback_svg(
     let sign_down = if negative_feedback { "-" } else { "+" };
 
     // SVG ヘッダ
-    writeln!(f, "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>")?;
     writeln!(
-        f,
+        out,
+        "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>",
+    )?;
+    writeln!(
+        out,
         "<defs><style>
     .bg {{ fill:#ffffff; }}
         .blk {{ fill:#ffffff; stroke:#222; stroke-width:1.5; }}
@@ -267,18 +282,18 @@ fn save_block_feedback_svg(
     )?;
     // 背景（白）
     writeln!(
-        f,
+        out,
         "<rect class='bg' x='0' y='0' width='{width}' height='{height}' />"
     )?;
 
     // 入力 r → サマ
     let in_x = margin;
     writeln!(
-        f,
+        out,
         "<line class='arrow' x1='{in_x}' y1='{mid_y}' x2='{sum_x}' y2='{mid_y}' />"
     )?;
     writeln!(
-        f,
+        out,
         "<text class='text' x='{:.1}' y='{:.1}' text-anchor='start' dy='-6'>r</text>",
         in_x + 2.0,
         mid_y
@@ -286,7 +301,7 @@ fn save_block_feedback_svg(
 
     // サマ（記号は円の外側に）
     writeln!(
-        f,
+        out,
         "<circle class='sum' cx='{sum_x}' cy='{mid_y}' r='{sum_r}' />"
     )?;
     let y_up = mid_y - sum_r - 4.0;
@@ -294,14 +309,14 @@ fn save_block_feedback_svg(
     // 下側記号はフィードバックの縦配線と重なりやすいので、少し右へずらす
     let x_down = sum_x + sum_r + 10.0;
     writeln!(
-        f,
+        out,
         "<text class='text' x='{sum_x:.1}' y='{y_up:.1}' text-anchor='middle'>{sign_up}</text>"
     )?;
-    writeln!(f, "<text class='text' x='{x_down:.1}' y='{y_down:.1}' text-anchor='middle'>{sign_down}</text>")?;
+    writeln!(out, "<text class='text' x='{x_down:.1}' y='{y_down:.1}' text-anchor='middle'>{sign_down}</text>")?;
 
     // サマ → G ブロック
     writeln!(
-        f,
+        out,
         "<line class='arrow' x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' />",
         sum_x + sum_r,
         mid_y,
@@ -310,13 +325,13 @@ fn save_block_feedback_svg(
     )?;
 
     // G ブロック
-    writeln!(f, "<rect class='blk' x='{block_x}' y='{block_y}' width='{block_w}' height='{block_h}' rx='6' ry='6' />")?;
+    writeln!(out, "<rect class='blk' x='{block_x}' y='{block_y}' width='{block_w}' height='{block_h}' rx='6' ry='6' />")?;
     let gtxt = xml_escape(g_label);
-    writeln!(f, "<text class='text' x='{:.1}' y='{:.1}' text-anchor='middle' dominant-baseline='middle'>{}</text>", block_x + block_w / 2.0, mid_y - 6.0, gtxt)?;
+    writeln!(out, "<text class='text' x='{:.1}' y='{:.1}' text-anchor='middle' dominant-baseline='middle'>{}</text>", block_x + block_w / 2.0, mid_y - 6.0, gtxt)?;
 
     // 出力 → y
     writeln!(
-        f,
+        out,
         "<line class='arrow' x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' />",
         block_x + block_w,
         mid_y,
@@ -324,7 +339,7 @@ fn save_block_feedback_svg(
         mid_y
     )?;
     writeln!(
-        f,
+        out,
         "<text class='text' x='{:.1}' y='{:.1}' text-anchor='start' dy='-6'>y</text>",
         out_x + 2.0,
         mid_y
@@ -334,7 +349,7 @@ fn save_block_feedback_svg(
     let fb_y = mid_y + 80.0;
     // 出力ノードから下
     writeln!(
-        f,
+        out,
         "<path class='wire' d='M {out_x:.1} {mid_y:.1} V {fb_y:.1}' />"
     )?;
     // 右から左へ（H ブロック領域考慮）
@@ -347,38 +362,38 @@ fn save_block_feedback_svg(
         let h_y = fb_y - h_h / 2.0;
         // 横線: 出力下から H 左端まで
         writeln!(
-            f,
+            out,
             "<line class='wire' x1='{out_x:.1}' y1='{fb_y:.1}' x2='{h_x:.1}' y2='{fb_y:.1}' />"
         )?;
         // H ブロック
         writeln!(
-            f,
+            out,
             "<rect class='blk' x='{h_x}' y='{h_y}' width='{h_w}' height='{h_h}' rx='6' ry='6' />"
         )?;
         let htxt = xml_escape(h_label);
-        writeln!(f, "<text class='text' x='{:.1}' y='{:.1}' text-anchor='middle' dominant-baseline='middle'>{}</text>", h_x + h_w / 2.0, fb_y - 6.0, htxt)?;
+        writeln!(out, "<text class='text' x='{:.1}' y='{:.1}' text-anchor='middle' dominant-baseline='middle'>{}</text>", h_x + h_w / 2.0, fb_y - 6.0, htxt)?;
         // H 右から左配線
         let hx2 = h_x + h_w;
         writeln!(
-            f,
+            out,
             "<line class='wire' x1='{hx2:.1}' y1='{fb_y:.1}' x2='{fb_left_x:.1}' y2='{fb_y:.1}' />"
         )?;
     } else {
         // ユニティ: そのまま左へ
-        writeln!(f, "<line class='wire' x1='{out_x:.1}' y1='{fb_y:.1}' x2='{fb_left_x:.1}' y2='{fb_y:.1}' />")?;
+        writeln!(out, "<line class='wire' x1='{out_x:.1}' y1='{fb_y:.1}' x2='{fb_left_x:.1}' y2='{fb_y:.1}' />")?;
     }
     // 上に戻る
     let mid_y_sr = mid_y + sum_r;
     writeln!(
-        f,
+        out,
         "<path class='wire' d='M {fb_left_x:.1} {fb_y:.1} V {mid_y_sr:.1}' />"
     )?;
     // サマへ矢印
     let mid_y_p = mid_y + 1.0;
-    writeln!(f, "<line class='arrow' x1='{fb_left_x:.1}' y1='{mid_y_sr:.1}' x2='{fb_left_x:.1}' y2='{mid_y_p:.1}' />")?;
+    writeln!(out, "<line class='arrow' x1='{fb_left_x:.1}' y1='{mid_y_sr:.1}' x2='{fb_left_x:.1}' y2='{mid_y_p:.1}' />")?;
 
     // 終了
-    writeln!(f, "</svg>")?;
+    writeln!(out, "</svg>")?;
     Ok(())
 }
 
@@ -611,7 +626,7 @@ pub(crate) fn save_bode_svg_continuous(
 
 #[allow(clippy::too_many_arguments)]
 fn draw_logx_series_multi(
-    f: &mut File,
+    f: &mut dyn Write,
     x0: f64,
     y0: f64,
     w: f64,
@@ -733,7 +748,7 @@ fn draw_logx_series_multi(
             let y_pix = (1.0 - ty) * plot_h;
             write!(f, "{x_pix:.2},{y_pix:.2} ")?;
         }
-        writeln!(f, "' />")?;
+    writeln!(f, "' />")?;
     }
 
     // legend (optional, top-right)
@@ -750,7 +765,7 @@ fn draw_logx_series_multi(
                 (*label, color)
             })
             .collect();
-        draw_legend(f, plot_w, 0.0, &items)?;
+    draw_legend(f, plot_w, 0.0, &items)?;
     }
 
     // labels
@@ -767,7 +782,7 @@ fn draw_logx_series_multi(
 
 #[allow(clippy::too_many_arguments)]
 fn draw_linearx_series_multi(
-    f: &mut File,
+    f: &mut dyn Write,
     x0: f64,
     y0: f64,
     w: f64,
@@ -849,7 +864,7 @@ fn draw_linearx_series_multi(
         let t = i as f64 / (n_ticks - 1) as f64;
         let vx = min_x * (1.0 - t) + max_x * t;
         let x_pix = (vx - min_x) / (max_x - min_x) * plot_w;
-        writeln!(f, "<line x1='{x_pix:.1}' y1='0' x2='{x_pix:.1}' y2='{plot_h:.1}' stroke='{grid_color}' />")?;
+    writeln!(f, "<line x1='{x_pix:.1}' y1='0' x2='{x_pix:.1}' y2='{plot_h:.1}' stroke='{grid_color}' />")?;
         writeln!(f, "<text x='{x_pix:.1}' y='{plot_h:.1}' dy='14' font-size='10' fill='{text_color}' text-anchor='middle'>{vx:.3}</text>")?;
     }
 
@@ -876,7 +891,7 @@ fn draw_linearx_series_multi(
             let y_pix = (1.0 - ty) * plot_h;
             write!(f, "{x_pix:.2},{y_pix:.2} ")?;
         }
-        writeln!(f, "' />")?;
+    writeln!(f, "' />")?;
     }
 
     if show_legend && !series.is_empty() {
@@ -892,7 +907,7 @@ fn draw_linearx_series_multi(
                 (*label, color)
             })
             .collect();
-        draw_legend(f, plot_w, 0.0, &items)?;
+    draw_legend(f, plot_w, 0.0, &items)?;
     }
 
     // labels
@@ -909,7 +924,7 @@ fn draw_linearx_series_multi(
 
 #[allow(clippy::too_many_arguments)]
 fn draw_complex_series_multi(
-    f: &mut File,
+    f: &mut dyn Write,
     x0: f64,
     y0: f64,
     w: f64,
@@ -1019,7 +1034,7 @@ fn draw_complex_series_multi(
             let y_pix = (1.0 - ty) * plot_h;
             write!(f, "{x_pix:.2},{y_pix:.2} ")?;
         }
-        writeln!(f, "' />")?;
+    writeln!(f, "' />")?;
     }
 
     // -1+0j mark
@@ -1044,7 +1059,7 @@ fn draw_complex_series_multi(
                 (*label, color)
             })
             .collect();
-        draw_legend(f, plot_w, 0.0, &items)?;
+    draw_legend(f, plot_w, 0.0, &items)?;
     }
 
     // labels
@@ -1059,7 +1074,7 @@ fn draw_complex_series_multi(
     Ok(())
 }
 
-fn draw_legend(f: &mut File, plot_w: f64, y_top: f64, items: &[(&str, &str)]) -> Result<()> {
+fn draw_legend(f: &mut dyn Write, plot_w: f64, y_top: f64, items: &[(&str, &str)]) -> Result<()> {
     if items.is_empty() {
         return Ok(());
     }
@@ -1077,8 +1092,8 @@ fn draw_legend(f: &mut File, plot_w: f64, y_top: f64, items: &[(&str, &str)]) ->
     writeln!(f, "<rect x='0' y='0' width='{legend_w:.1}' height='{legend_h:.1}' fill='#ffffffcc' stroke='#666' />")?;
     for (i, (label, color)) in items.iter().enumerate() {
         let yy = pad + i as f64 * item_h + item_h * 0.5;
-        writeln!(f, "<line x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' stroke='{color}' stroke-width='2' />", pad, yy, pad + swatch_w, yy)?;
-        writeln!(f, "<text x='{:.1}' y='{:.1}' font-size='11' fill='#222' dominant-baseline='middle'>{}</text>", pad + swatch_w + 6.0, yy, label)?;
+    writeln!(f, "<line x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' stroke='{color}' stroke-width='2' />", pad, yy, pad + swatch_w, yy)?;
+    writeln!(f, "<text x='{:.1}' y='{:.1}' font-size='11' fill='#222' dominant-baseline='middle'>{}</text>", pad + swatch_w + 6.0, yy, label)?;
     }
     writeln!(f, "</g>")?;
     Ok(())
@@ -1092,12 +1107,23 @@ pub(crate) fn save_bode_svg_discrete_multi(
     height: u32,
     opts: &DiscreteBodeOptions,
 ) -> Result<()> {
+    let mut f = File::create(path)?;
+    write_bode_svg_discrete_multi(series, &mut f, width, height, opts)
+}
+
+/// Bode（離散）複数系列を任意のライターへ出力
+pub(crate) fn write_bode_svg_discrete_multi(
+    series: &[(&DiscreteTransferFunction, &str)],
+    f: &mut dyn Write,
+    width: u32,
+    height: u32,
+    opts: &DiscreteBodeOptions,
+) -> Result<()> {
     assert!(opts.n_points >= 2, "n_points must be >= 2");
     let w_all = width as f64;
     let h_all = height as f64;
     let h_each = (h_all / 2.0).floor();
 
-    let mut f = File::create(path)?;
     writeln!(f, "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>")?;
     writeln!(f, "<rect width='100%' height='100%' fill='white' />")?;
 
@@ -1184,7 +1210,7 @@ pub(crate) fn save_bode_svg_discrete_multi(
                 .map(|(i, (ys, (_tf, label)))| (ys.as_slice(), *label, COLORS[i % COLORS.len()]))
                 .collect();
             draw_logx_series_multi(
-                &mut f,
+                f,
                 0.0,
                 0.0,
                 w_all,
@@ -1210,7 +1236,7 @@ pub(crate) fn save_bode_svg_discrete_multi(
                 .map(|(i, (ys, (_tf, label)))| (ys.as_slice(), *label, COLORS[i % COLORS.len()]))
                 .collect();
             draw_linearx_series_multi(
-                &mut f,
+                f,
                 0.0,
                 0.0,
                 w_all,
@@ -1235,7 +1261,7 @@ pub(crate) fn save_bode_svg_discrete_multi(
                 .map(|(i, (ys, (_tf, label)))| (ys.as_slice(), *label, COLORS[i % COLORS.len()]))
                 .collect();
             draw_logx_series_multi(
-                &mut f,
+                f,
                 0.0,
                 h_each,
                 w_all,
@@ -1261,7 +1287,7 @@ pub(crate) fn save_bode_svg_discrete_multi(
                 .map(|(i, (ys, (_tf, label)))| (ys.as_slice(), *label, COLORS[i % COLORS.len()]))
                 .collect();
             draw_linearx_series_multi(
-                &mut f,
+                f,
                 0.0,
                 h_each,
                 w_all,
@@ -1284,6 +1310,18 @@ pub(crate) fn save_bode_svg_discrete_multi(
 pub(crate) fn save_bode_svg_continuous_multi(
     series: &[(&ContinuousTransferFunction, &str)],
     path: &str,
+    width: u32,
+    height: u32,
+    opts: &ContinuousBodeOptions,
+) -> Result<()> {
+    let mut f = File::create(path)?;
+    write_bode_svg_continuous_multi(series, &mut f, width, height, opts)
+}
+
+/// Bode（連続）複数系列を任意のライターへ出力
+pub(crate) fn write_bode_svg_continuous_multi(
+    series: &[(&ContinuousTransferFunction, &str)],
+    f: &mut dyn Write,
     width: u32,
     height: u32,
     opts: &ContinuousBodeOptions,
@@ -1323,7 +1361,6 @@ pub(crate) fn save_bode_svg_continuous_multi(
     let h_all = height as f64;
     let h_each = (h_all / 2.0).floor();
 
-    let mut f = File::create(path)?;
     writeln!(f, "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>")?;
     writeln!(f, "<rect width='100%' height='100%' fill='white' />")?;
 
@@ -1335,7 +1372,7 @@ pub(crate) fn save_bode_svg_continuous_multi(
         .map(|(i, (ys, (_tf, label)))| (ys.as_slice(), *label, COLORS[i % COLORS.len()]))
         .collect();
     draw_logx_series_multi(
-        &mut f,
+        f,
         0.0,
         0.0,
         w_all,
@@ -1356,7 +1393,7 @@ pub(crate) fn save_bode_svg_continuous_multi(
         .map(|(i, (ys, (_tf, label)))| (ys.as_slice(), *label, COLORS[i % COLORS.len()]))
         .collect();
     draw_logx_series_multi(
-        &mut f,
+        f,
         0.0,
         h_each,
         w_all,
@@ -1382,15 +1419,20 @@ pub(crate) fn save_nyquist_svg_discrete_multi(
     opts: &crate::plot::DiscreteNyquistOptions,
 ) -> Result<()> {
     let mut file = File::create(path)?;
-    writeln!(
-        file,
-        "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>"
-    )?;
+    write_nyquist_svg_discrete_multi(series, &mut file, width, height, opts)
+}
+
+/// Nyquist（離散）複数系列を任意のライターへ出力
+pub(crate) fn write_nyquist_svg_discrete_multi(
+    series: &[(&DiscreteTransferFunction, &str)],
+    file: &mut dyn Write,
+    width: u32,
+    height: u32,
+    opts: &crate::plot::DiscreteNyquistOptions,
+) -> Result<()> {
+    writeln!(file, "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>")?;
     // background
-    writeln!(
-        file,
-        "<rect x='0' y='0' width='{width}' height='{height}' fill='#ffffff' />"
-    )?;
+    writeln!(file, "<rect x='0' y='0' width='{width}' height='{height}' fill='#ffffff' />")?;
     if let Some(title) = &opts.title {
         let cx = (width as f64) / 2.0;
         writeln!(file, "<text x='{cx:.1}' y='16' font-size='14' fill='#333' text-anchor='middle'>{title}</text>")?;
@@ -1431,7 +1473,7 @@ pub(crate) fn save_nyquist_svg_discrete_multi(
     let x_label = opts.x_label.as_deref().unwrap_or("Re");
     let y_label = opts.y_label.as_deref().unwrap_or("Im");
     draw_complex_series_multi(
-        &mut file,
+        file,
         0.0,
         if opts.title.is_some() { 10.0 } else { 0.0 },
         width as f64,
@@ -1458,15 +1500,20 @@ pub(crate) fn save_nyquist_svg_continuous_multi(
     opts: &crate::plot::ContinuousNyquistOptions,
 ) -> Result<()> {
     let mut file = File::create(path)?;
-    writeln!(
-        file,
-        "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>"
-    )?;
+    write_nyquist_svg_continuous_multi(series, &mut file, width, height, opts)
+}
+
+/// Nyquist（連続）複数系列を任意のライターへ出力
+pub(crate) fn write_nyquist_svg_continuous_multi(
+    series: &[(&ContinuousTransferFunction, &str)],
+    file: &mut dyn Write,
+    width: u32,
+    height: u32,
+    opts: &crate::plot::ContinuousNyquistOptions,
+) -> Result<()> {
+    writeln!(file, "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}'>")?;
     // background
-    writeln!(
-        file,
-        "<rect x='0' y='0' width='{width}' height='{height}' fill='#ffffff' />"
-    )?;
+    writeln!(file, "<rect x='0' y='0' width='{width}' height='{height}' fill='#ffffff' />")?;
     if let Some(title) = &opts.title {
         let cx = (width as f64) / 2.0;
         writeln!(file, "<text x='{cx:.1}' y='16' font-size='14' fill='#333' text-anchor='middle'>{title}</text>")?;
@@ -1518,7 +1565,7 @@ pub(crate) fn save_nyquist_svg_continuous_multi(
     let x_label = opts.x_label.as_deref().unwrap_or("Re");
     let y_label = opts.y_label.as_deref().unwrap_or("Im");
     draw_complex_series_multi(
-        &mut file,
+        file,
         0.0,
         if opts.title.is_some() { 10.0 } else { 0.0 },
         width as f64,
@@ -1534,4 +1581,170 @@ pub(crate) fn save_nyquist_svg_continuous_multi(
 
     writeln!(file, "</svg>")?;
     Ok(())
+}
+
+// ===== SVG を String で取得する高レベル API =====
+
+impl DiscreteTransferFunction {
+    /// Bode（離散）SVG を文字列で返す（単系列）
+    pub fn bode_svg_string(
+        &self,
+        width: u32,
+        height: u32,
+        opts: &crate::plot::DiscreteBodeOptions,
+    ) -> String {
+        let mut buf: Vec<u8> = Vec::with_capacity(32 * 1024);
+        let _ = write_bode_svg_discrete_multi(&[(self, "H(z)")], &mut buf, width, height, opts);
+        String::from_utf8(buf).unwrap_or_default()
+    }
+
+    /// Bode（離散）簡易設定 SVG を文字列で返す
+    pub fn bode_svg_simple_string(
+        &self,
+        width: u32,
+        height: u32,
+        n_points: usize,
+    ) -> String {
+        let opts = crate::plot::DiscreteBodeOptions {
+            n_points: n_points.max(2),
+            legend: false,
+            x_axis: crate::plot::DiscreteXAxis::Hz,
+            ..Default::default()
+        };
+        self.bode_svg_string(width, height, &opts)
+    }
+
+    /// Nyquist（離散）SVG を文字列で返す（単系列）
+    pub fn nyquist_svg_string(
+        &self,
+        width: u32,
+        height: u32,
+        opts: &crate::plot::DiscreteNyquistOptions,
+    ) -> String {
+        let mut buf: Vec<u8> = Vec::with_capacity(32 * 1024);
+        let _ = write_nyquist_svg_discrete_multi(&[(self, "H(z)")], &mut buf, width, height, opts);
+        String::from_utf8(buf).unwrap_or_default()
+    }
+
+    /// Nyquist（離散）簡易設定 SVG を文字列で返す
+    pub fn nyquist_svg_simple_string(
+        &self,
+        width: u32,
+        height: u32,
+        n_points: usize,
+    ) -> String {
+        let opts = crate::plot::DiscreteNyquistOptions {
+            n_points: n_points.max(2),
+            legend: false,
+            ..Default::default()
+        };
+        self.nyquist_svg_string(width, height, &opts)
+    }
+
+    /// ブロック図（離散）SVG を文字列で返す
+    pub fn block_feedback_svg_string(
+        &self,
+        width: u32,
+        height: u32,
+        negative_feedback: bool,
+        feedback_label: Option<&str>,
+    ) -> String {
+        let mut buf: Vec<u8> = Vec::with_capacity(8 * 1024);
+        let g_label = format!("{}", self.display());
+        let _ = write_block_feedback_svg(
+            &g_label,
+            &mut buf,
+            width,
+            height,
+            negative_feedback,
+            feedback_label,
+        );
+        String::from_utf8(buf).unwrap_or_default()
+    }
+}
+
+impl ContinuousTransferFunction {
+    /// Bode（連続）SVG を文字列で返す（単系列）
+    pub fn bode_svg_string(
+        &self,
+        width: u32,
+        height: u32,
+        opts: &crate::plot::ContinuousBodeOptions,
+    ) -> String {
+        let mut buf: Vec<u8> = Vec::with_capacity(32 * 1024);
+        let _ = write_bode_svg_continuous_multi(&[(self, "G(s)")], &mut buf, width, height, opts);
+        String::from_utf8(buf).unwrap_or_default()
+    }
+
+    /// Bode（連続）簡易設定 SVG を文字列で返す
+    pub fn bode_svg_simple_string(
+        &self,
+        width: u32,
+        height: u32,
+        f_min_hz: f64,
+        f_max_hz: f64,
+        n_points: usize,
+    ) -> String {
+        let opts = crate::plot::ContinuousBodeOptions {
+            n_points: n_points.max(2),
+            f_min_hz,
+            f_max_hz,
+            legend: false,
+            ..Default::default()
+        };
+        self.bode_svg_string(width, height, &opts)
+    }
+
+    /// Nyquist（連続）SVG を文字列で返す（単系列）
+    pub fn nyquist_svg_string(
+        &self,
+        width: u32,
+        height: u32,
+        opts: &crate::plot::ContinuousNyquistOptions,
+    ) -> String {
+        let mut buf: Vec<u8> = Vec::with_capacity(32 * 1024);
+        let _ = write_nyquist_svg_continuous_multi(&[(self, "G(s)")], &mut buf, width, height, opts);
+        String::from_utf8(buf).unwrap_or_default()
+    }
+
+    /// Nyquist（連続）簡易設定 SVG を文字列で返す
+    pub fn nyquist_svg_simple_string(
+        &self,
+        width: u32,
+        height: u32,
+        f_min_hz: f64,
+        f_max_hz: f64,
+        n_points: usize,
+    ) -> String {
+        let opts = crate::plot::ContinuousNyquistOptions {
+            n_points: n_points.max(2),
+            f_min_hz,
+            f_max_hz,
+            legend: false,
+            log_freq: true,
+            ..Default::default()
+        };
+        self.nyquist_svg_string(width, height, &opts)
+    }
+
+    /// ブロック図（連続）SVG を文字列で返す
+    pub fn block_feedback_svg_string(
+        &self,
+        width: u32,
+        height: u32,
+        negative_feedback: bool,
+        feedback_label: Option<&str>,
+    ) -> String {
+        let mut buf: Vec<u8> = Vec::with_capacity(8 * 1024);
+        let g_label = format!("{}", self.display());
+        let _ = write_block_feedback_svg(
+            &g_label,
+            &mut buf,
+            width,
+            height,
+            negative_feedback,
+            feedback_label,
+        );
+        String::from_utf8(buf).unwrap_or_default()
+    }
 }

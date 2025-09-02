@@ -88,6 +88,13 @@ impl<T: Scalar> Matrix<T> {
         Ok(Vector::new(row_data))
     }
 
+    /// 対角成分をベクトルとして返す（min(rows, cols)長）
+    pub fn diagonal(&self) -> Vector<T> {
+        let n = self.rows.min(self.cols);
+        let data = (0..n).map(|i| self[(i, i)].clone()).collect();
+        Vector::new(data)
+    }
+
     pub fn partial_row(
         &self,
         row_idx: usize,

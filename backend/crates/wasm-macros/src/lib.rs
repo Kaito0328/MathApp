@@ -81,18 +81,17 @@ pub fn wasm_json(attr: TokenStream, item: TokenStream) -> TokenStream {
         let f0 = &field_idents[0];
         let helper_ident = format_ident!("__{}_args", fn_name);
         quote! {
-            // まずは単一値としてデコード
-            if let Ok(v) = serde_wasm_bindgen::from_value::<#ty0>(input.clone()) {
-                let #l0 = v;
+            let #l0: #ty0 = if let Ok(v) = serde_wasm_bindgen::from_value::<#ty0>(input.clone()) {
+                v
             } else if let Ok(tuple0) = serde_wasm_bindgen::from_value::<(#ty0,)>(input.clone()) {
-                let (#l0,) = tuple0;
+                let (v,) = tuple0; v
             } else {
                 #[derive(serde::Deserialize)]
                 struct #helper_ident { pub #f0: #ty0 }
                 let args: #helper_ident = serde_wasm_bindgen::from_value(input)
                     .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("serde from_value error: {}", e)))?;
-                let #l0 = args.#f0;
-            }
+                args.#f0
+            };
         }
     } else {
         // 複数引数: タプル→オブジェクト順に試す
@@ -100,15 +99,15 @@ pub fn wasm_json(attr: TokenStream, item: TokenStream) -> TokenStream {
         let tuple_pat = quote! { ( #(#local_idents),* ) };
         let helper_ident = format_ident!("__{}_args", fn_name);
         quote! {
-            if let Ok(tuple_args) = serde_wasm_bindgen::from_value::<#tuple_tys>(input.clone()) {
-                let #tuple_pat = tuple_args;
+            let #tuple_pat : #tuple_tys = if let Ok(tuple_args) = serde_wasm_bindgen::from_value::<#tuple_tys>(input.clone()) {
+                tuple_args
             } else {
                 #[derive(serde::Deserialize)]
                 struct #helper_ident { #(pub #field_idents: #arg_tys),* }
                 let args: #helper_ident = serde_wasm_bindgen::from_value(input)
                     .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("serde from_value error: {}", e)))?;
-                #(let #local_idents = args.#field_idents;)*
-            }
+                ( #(args.#field_idents),* )
+            };
         }
     };
 
@@ -162,7 +161,7 @@ pub fn wasm_fn(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 // 複数のimplを1つのwasmクラスにまとめるためのマクロ引数
-struct WasmClassMergeArgs {
+struct WasmClassArgs {
     internal_ty: Type,
     js_name: String,
     ops: Vec<Ident>,
@@ -170,7 +169,7 @@ struct WasmClassMergeArgs {
     iterator: bool,
 }
 
-impl Parse for WasmClassMergeArgs {
+impl Parse for WasmClassArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut internal_ty = None;
         let mut js_name = None;
@@ -237,7 +236,7 @@ impl Parse for WasmClassMergeArgs {
             }
         }
 
-        Ok(WasmClassMergeArgs {
+        Ok(WasmClassArgs {
             internal_ty: internal_ty
                 .ok_or_else(|| input.error("`internal = \"...\"` attribute is required"))?,
             js_name: js_name
@@ -251,7 +250,7 @@ impl Parse for WasmClassMergeArgs {
 
 #[proc_macro_attribute]
 pub fn wasm_class_merge(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(attr as WasmClassMergeArgs);
+    let args = parse_macro_input!(attr as WasmClassArgs);
     let internal_ty = &args.internal_ty;
     let js_name_str = &args.js_name;
     let wasm_ty = format_ident!("{}", js_name_str);
@@ -304,20 +303,42 @@ pub fn wasm_class_merge(attr: TokenStream, item: TokenStream) -> TokenStream {
                                 quote! { self.0.#method_name(#call_args) }
                             };
 
-                            Some(quote! {
-                                #(#final_attrs)*
-                                pub fn #method_name(#final_sig_args) #output {
-                                    #body
-                                }
-                            })
+                            // 戻り値の isize を i32 に正規化
+                            let ret_ty_str = quote!(#output).to_string();
+                            if ret_ty_str.contains("isize") {
+                                Some(quote! {
+                                    #(#final_attrs)*
+                                    pub fn #method_name(#final_sig_args) -> i32 {
+                                        (#body as i32)
+                                    }
+                                })
+                            } else {
+                                Some(quote! {
+                                    #(#final_attrs)*
+                                    pub fn #method_name(#final_sig_args) #output {
+                                        #body
+                                    }
+                                })
+                            }
                         } else {
-                            Some(quote! {
-                                #(#final_attrs)*
-                                #constructor_attr
-                                pub fn #method_name(#final_sig_args) #output {
-                                    Self(#internal_ty::#method_name(#call_args))
-                                }
-                            })
+                            let ret_ty_str = quote!(#output).to_string();
+                            if ret_ty_str.contains("isize") {
+                                Some(quote! {
+                                    #(#final_attrs)*
+                                    #constructor_attr
+                                    pub fn #method_name(#final_sig_args) -> i32 {
+                                        ( #internal_ty::#method_name(#call_args) as i32 )
+                                    }
+                                })
+                            } else {
+                                Some(quote! {
+                                    #(#final_attrs)*
+                                    #constructor_attr
+                                    pub fn #method_name(#final_sig_args) #output {
+                                        Self(#internal_ty::#method_name(#call_args))
+                                    }
+                                })
+                            }
                         }
                     } else {
                         None
@@ -412,100 +433,6 @@ pub fn wasm_class_merge(attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-// マクロの引数 #[wasm_class(internal = "...", js_name = "...", ...)] をパースするための構造体
-struct WasmClassArgs {
-    internal_ty: Type,
-    js_name: String,
-    ops: Vec<Ident>,
-    indexer: bool,
-    iterator: bool,
-}
-
-// マクロ引数のパーサー
-impl Parse for WasmClassArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let mut internal_ty = None;
-        let mut js_name = None;
-        let mut ops = Vec::new();
-        let mut indexer = false;
-        let mut iterator = false;
-
-        let metas = input.parse_terminated(Meta::parse, Token![,])?;
-        for meta in metas {
-            match meta {
-                Meta::NameValue(nv) => {
-                        if nv.path.is_ident("internal") {
-                            match nv.value {
-                                syn::Expr::Lit(expr_lit) => {
-                                    if let Lit::Str(s) = expr_lit.lit {
-                                        internal_ty = Some(syn::parse_str(&s.value())?);
-                                    }
-                                }
-                                syn::Expr::Macro(expr_mac) => {
-                                    // 例: internal = stringify!(linalg::Matrix<f64>) のような場合
-                                    // マクロ内のトークン列を型としてパースして受け取る
-                                    let tokens = expr_mac.mac.tokens.clone();
-                                    internal_ty = Some(syn::parse2::<Type>(tokens)?);
-                                }
-                                _ => {}
-                            }
-                    } else if nv.path.is_ident("js_name") {
-                            match nv.value {
-                                syn::Expr::Lit(expr_lit) => {
-                                    if let Lit::Str(s) = expr_lit.lit {
-                                        js_name = Some(s.value());
-                                    }
-                                }
-                                syn::Expr::Macro(expr_mac) => {
-                                    // 例: js_name = stringify!(MatrixF64)
-                                    let s = expr_mac.mac.tokens.to_string();
-                                    js_name = Some(s.replace(' ', ""));
-                                }
-                                _ => {}
-                            }
-                    } else if nv.path.is_ident("indexer") {
-                        if let syn::Expr::Lit(expr_lit) = nv.value {
-                            if let Lit::Bool(b) = expr_lit.lit {
-                                indexer = b.value();
-                            }
-                        }
-                    } else if nv.path.is_ident("iterator") {
-                        if let syn::Expr::Lit(expr_lit) = nv.value {
-                            if let Lit::Bool(b) = expr_lit.lit {
-                                iterator = b.value();
-                            }
-                        }
-                    }
-                }
-                Meta::List(ml) => {
-                    if ml.path.is_ident("ops") {
-                        let parser = Punctuated::<Path, Token![,]>::parse_terminated;
-                        let paths = parser.parse(ml.tokens.into())?;
-                        for p in paths {
-                            if let Some(ident) = p.get_ident() {
-                                ops.push(ident.clone());
-                            }
-                        }
-                    } else if ml.path.is_ident("delegate") {
-                        // delegate属性は削除されたため、無視する
-                    }
-                }
-                _ => {} // Meta::Path は無視
-            }
-        }
-
-        Ok(WasmClassArgs {
-            internal_ty: internal_ty
-                .ok_or_else(|| input.error("`internal = \"...\"` attribute is required"))?,
-            js_name: js_name
-                .ok_or_else(|| input.error("`js_name = \"...\"` attribute is required"))?,
-            ops,
-            indexer,
-            iterator,
-        })
-    }
-}
-
 #[proc_macro_attribute]
 pub fn wasm_class(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as WasmClassArgs);
@@ -521,9 +448,12 @@ pub fn wasm_class(attr: TokenStream, item: TokenStream) -> TokenStream {
             let method_name = &sig.ident;
             let output = &sig.output;
             
-            // --- ここからが修正・追加箇所 ---
+            // --- 修正・追加箇所: 属性処理の改善 ---
             let mut is_constructor = false;
             let mut trait_path = None;
+            let mut is_getter = false;
+            let mut getter_name = None;
+            let mut js_name = None;
 
             for attr in &method.attrs {
                 if attr.path().is_ident("constructor") {
@@ -533,58 +463,141 @@ pub fn wasm_class(attr: TokenStream, item: TokenStream) -> TokenStream {
                     if let Ok(path) = attr.parse_args::<Path>() {
                         trait_path = Some(path);
                     }
+                } else if attr.path().is_ident("getter") {
+                    is_getter = true;
+                    // `#[getter = isZero]` の形式をサポート
+                    if let Ok(name) = attr.parse_args::<Ident>() {
+                        getter_name = Some(name.to_string());
+                    }
+                } else if attr.path().is_ident("js_name") {
+                    if let Ok(name) = attr.parse_args::<Ident>() {
+                        js_name = Some(name.to_string());
+                    }
                 }
             }
+            
             // マーカーとして使ったアトリビュートは最終コードから除外
             let final_attrs = method.attrs.iter()
-                .filter(|a| !a.path().is_ident("constructor") && !a.path().is_ident("trait_method"))
+                .filter(|a| !a.path().is_ident("constructor") 
+                        && !a.path().is_ident("trait_method")
+                        && !a.path().is_ident("getter")
+                        && !a.path().is_ident("js_name"))
                 .collect::<Vec<_>>();
             
-            let constructor_attr = if is_constructor { quote! { #[wasm_bindgen(constructor)] } } else { quote! {} };
+            // wasm_bindgen属性の構築
+            let mut wasm_bindgen_attrs = Vec::new();
             
-            let (final_sig_args, call_args) = build_args(sig, &wasm_ty);
-            let is_method = matches!(sig.inputs.first(), Some(syn::FnArg::Receiver(_)));
-
-            // メソッド呼び出し部分を、トレイトの有無で分岐させる
-            let method_call = if let Some(trait_p) = trait_path {
-                // トレイトメソッドの場合 (例: Ring::identity(size))
-                if is_method {
-                    quote! { #trait_p::#method_name(&self.0, #call_args) }
-                } else {
-                    quote! { #trait_p::#method_name(#call_args) }
-                }
-            } else {
-                // Inherent method の場合 (これまでと同じ)
-                if is_method {
-                    quote! { self.0.#method_name(#call_args) }
-                } else {
-                    quote! { #internal_ty::#method_name(#call_args) }
-                }
-            };
-            // --- 修正・追加ここまで ---
-
-            let body = if is_self_return(output) {
-                quote! { Self(#method_call) }
-            } else {
-                quote! { #method_call }
-            };
-
-            if is_method {
-                Some(quote! {
-                    #(#final_attrs)*
-                    pub fn #method_name(#final_sig_args) #output { #body }
-                })
-            } else {
-                Some(quote! {
-                    #(#final_attrs)*
-                    #constructor_attr
-                    pub fn #method_name(#final_sig_args) #output { #body }
-                })
+            if is_constructor {
+                wasm_bindgen_attrs.push(quote! { #[wasm_bindgen(constructor)] });
             }
-        } else { None }
+            
+            if is_getter {
+                if let Some(name) = getter_name {
+                    wasm_bindgen_attrs.push(quote! { #[wasm_bindgen(getter = #name)] });
+                } else {
+                    wasm_bindgen_attrs.push(quote! { #[wasm_bindgen(getter)] });
+                }
+            }
+            
+            if let Some(name) = js_name {
+                wasm_bindgen_attrs.push(quote! { #[wasm_bindgen(js_name = #name)] });
+            }
+            
+            // --- 重要修正: セミコロンメソッドと空ブロックメソッドの両方を宣言として処理 ---
+            // メソッドに実装があるかどうかを確認
+            let user_provided_impl = !method.block.stmts.is_empty();
+            
+            let body = if user_provided_impl {
+                // ユーザーが実装を提供している場合、それをそのまま使用
+                let block = &method.block;
+                quote! { #block }
+            } else {
+                // メソッド宣言のみの場合（空ブロック{}またはセミコロン;）、自動生成ロジックを適用
+                let (_final_sig_args, call_args) = build_args(sig, &wasm_ty);
+                let is_method = matches!(sig.inputs.first(), Some(syn::FnArg::Receiver(_)));
+
+                let method_call = if let Some(trait_p) = trait_path {
+                    // トレイトメソッドの場合 (例: Ring::identity(size))
+                    if is_method {
+                        quote! { #trait_p::#method_name(&self.0, #call_args) }
+                    } else {
+                        quote! { #trait_p::#method_name(#call_args) }
+                    }
+                } else {
+                    // Inherent method の場合
+                    if is_method {
+                        quote! { self.0.#method_name(#call_args) }
+                    } else {
+                        quote! { #internal_ty::#method_name(#call_args) }
+                    }
+                };
+
+                // 戻り値の型に応じた処理
+                match output {
+                    syn::ReturnType::Default => {
+                        // 戻り値がない場合
+                        quote! { #method_call }
+                    }
+                    syn::ReturnType::Type(_, ret_ty) => {
+                        let ret_ty_str = quote!(#ret_ty).to_string();
+                        if ret_ty_str == "Self" {
+                            quote! { Self(#method_call) }
+                        } else if ret_ty_str.contains("Result") && ret_ty_str.contains("Self") && ret_ty_str.contains("JsValue") {
+                            // Result<Self, JsValue> の場合
+                            quote! { 
+                                #method_call
+                                    .map(Self)
+                                    .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{:?}", e)))
+                            }
+                        } else if ret_ty_str.contains("Result") && ret_ty_str.contains("JsValue") && ret_ty_str.matches("JsValue").count() == 2 {
+                            // Result<JsValue, JsValue> の場合（serde変換用）
+                            quote! { 
+                                #method_call
+                                    .map(|result| serde_wasm_bindgen::to_value(&result).unwrap_or_else(|e| wasm_bindgen::JsValue::from_str(&format!("Serialization error: {:?}", e))))
+                                    .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{:?}", e)))
+                            }
+                        } else if ret_ty_str.contains("Result") && ret_ty_str.contains("JsValue") {
+                            // Result<T, JsValue> の場合（T != Self, T != JsValue）
+                            quote! { 
+                                #method_call
+                                    .map_err(|e| wasm_bindgen::JsValue::from_str(&format!("{:?}", e)))
+                            }
+                        } else if ret_ty_str.contains("Option") && ret_ty_str.contains("Self") {
+                            // Option<Self> の場合
+                            quote! { 
+                                #method_call.map(Self)
+                            }
+                        } else if ret_ty_str.contains("isize") {
+                            // isize は i32 に正規化して返す
+                            quote! { (#method_call as i32) }
+                        } else if ret_ty_str.contains("usize") || ret_ty_str.contains("f64") || ret_ty_str.contains("f32") || ret_ty_str.contains("i32") || ret_ty_str.contains("i64") || ret_ty_str.contains("bool") {
+                            // プリミティブ型のフィールドアクセスの場合
+                            if method_name == "rows" || method_name == "cols" {
+                                quote! { self.0.#method_name }
+                            } else {
+                                quote! { #method_call }
+                            }
+                        } else {
+                            quote! { #method_call }
+                        }
+                    }
+                }
+            };
+
+            // シグネチャの準備（本体がある場合も必要）
+            let (final_sig_args, _) = build_args(sig, &wasm_ty);
+
+            Some(quote! {
+                #(#final_attrs)*
+                #(#wasm_bindgen_attrs)*
+                pub fn #method_name(#final_sig_args) #output { #body }
+            })
+        } else { 
+            None 
+        }
     }).collect::<Vec<_>>();
 
-    // ops, indexer, iterator の自動生成ロジック (変更なし)
+    // ops, indexer, iterator の自動生成ロジック
     for op in args.ops {
         let method_name = format_ident!("{}", op.to_string().to_lowercase());
         let op_symbol = match op.to_string().as_str() {
@@ -622,14 +635,13 @@ pub fn wasm_class(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     }
 
-    // 最終的なコードを生成 (変更なし)
+    // 最終的なコードを生成 - wasm_bindgenバインディングを正しく適用
     let expanded = quote! {
-        #[allow(dead_code)]
         #[wasm_bindgen::prelude::wasm_bindgen(js_name = #js_name_str)]
         #[derive(Clone)]
         pub struct #wasm_ty(#internal_ty);
 
-        #[wasm_bindgen::prelude::wasm_bindgen(js_name = #js_name_str)]
+        #[wasm_bindgen::prelude::wasm_bindgen]
         impl #wasm_ty {
             #(#methods)*
         }
@@ -654,10 +666,34 @@ fn build_args(sig: &syn::Signature, wasm_ty: &Ident) -> (proc_macro2::TokenStrea
                 let arg_name = &pi.ident;
                 let arg_ty = &pt.ty;
                 
-                let new_arg_ty = if quote!(#arg_ty).to_string() == "Self" { quote! { & #wasm_ty } } else { quote! { #arg_ty } };
+                // 型の変換処理を改善
+                let arg_ty_str = quote!(#arg_ty).to_string();
+                let arg_ty_norm = arg_ty_str.replace([' ', '\n', '\t'], "");
+                // Wrapper公開用の型（isizeはi32に正規化）
+                let new_arg_ty = if arg_ty_str == "Self" || arg_ty_str == "&Self" {
+                    quote! { &#wasm_ty }
+                } else if arg_ty_str.starts_with("&") && arg_ty_str.contains("Self") {
+                    quote! { &#wasm_ty }
+                } else if arg_ty_norm == "isize" || arg_ty_norm == "&isize" {
+                    // isize は JS 側に安全に出せないため、公開シグネチャでは i32 に固定
+                    quote! { i32 }
+                } else {
+                    quote! { #arg_ty }
+                };
+                
                 fn_args_without_receiver.extend(quote! { #arg_name: #new_arg_ty, });
 
-                if quote!(#arg_ty).to_string() == "Self" { call_args.extend(quote! { &#arg_name.0, }); } else { call_args.extend(quote! { #arg_name, }); }
+                // 呼び出し時の引数変換
+                if arg_ty_str == "Self" || arg_ty_str == "&Self" {
+                    call_args.extend(quote! { &#arg_name.0, });
+                } else if arg_ty_str.starts_with("&") && arg_ty_str.contains("Self") {
+                    call_args.extend(quote! { &#arg_name.0, });
+                } else if arg_ty_norm == "isize" || arg_ty_norm == "&isize" {
+                    // i32 で受け取り、内部呼び出しでは isize にキャスト
+                    call_args.extend(quote! { (#arg_name as isize), });
+                } else {
+                    call_args.extend(quote! { #arg_name, });
+                }
             }
         }
     }

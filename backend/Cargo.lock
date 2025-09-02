@@ -182,8 +182,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "335ff9f135e4384c8150d6f27c6daed433577f86b4750418338c01a1a2528592"
 dependencies = [
  "cfg-if 1.0.3",
+ "js-sys",
  "libc",
  "wasi",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -284,6 +286,7 @@ checksum = "a5e44f723f1133c9deac646763579fdb3ac745e418f2a7af9cd0c431da1f20b9"
 dependencies = [
  "num-integer",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -564,15 +567,27 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 name = "wasm"
 version = "0.1.0"
 dependencies = [
+ "coding",
+ "concrete-math",
  "console_error_panic_hook",
+ "convolution",
  "fft-core",
  "finite-field",
+ "getrandom",
+ "js-sys",
  "linalg",
+ "lti-systems",
+ "num-bigint",
  "num-complex",
  "num-traits",
+ "number-theory",
+ "poly",
  "serde",
  "serde-wasm-bindgen",
  "signal_processing",
+ "special-functions",
+ "statistics",
+ "statsmodels",
  "wasm-bindgen",
  "wasm-macros",
  "wee_alloc",

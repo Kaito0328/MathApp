@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react'
 import type { Signal } from '../../types'
 import { BaseBox } from '../../design/base/BaseBox'
 import { BaseText } from '../../design/base/BaseText'
+import { CoreColorKey, SizeKey, RoundKey, ColorViewProperty, SizeTextProperty, SizeViewProperty, FontWeightKey, ColorTextProperty } from '../../design/tokens'
 
 function parseNumbers(src: string): number[] {
 	return src
@@ -41,9 +42,9 @@ export function SignalInput({ value, onChange }: { value?: Signal; onChange: (s:
 
 	const apply = () => onChange({ data, sample_rate: sr })
 
-	return (
-		<BaseBox styleKit={{ size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} className="border-base" style={{ borderWidth: 1 }}>
-			<BaseText styleKit={{ size: { sizeKey: 'md' as any, apply: { default: ['fontSize'] as any } }, fontWeightKey: 'medium' as any }}>Signal Input</BaseText>
+		return (
+			<BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } }, roundKey: RoundKey.Md }} style={{ borderWidth: 1 }}>
+				<BaseText styleKit={{ size: { sizeKey: SizeKey.MD, apply: { default: [SizeTextProperty.FontSize] } }, fontWeightKey: FontWeightKey.Medium }}>Signal Input</BaseText>
 			<div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
 				<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
 					<label>
@@ -81,7 +82,7 @@ export function SignalInput({ value, onChange }: { value?: Signal; onChange: (s:
 				)}
 				<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
 					<button onClick={apply}>Apply</button>
-					<BaseText>preview length: {data.length}</BaseText>
+					<BaseText styleKit={{ color: { colorKey: CoreColorKey.Secondary, apply: { default: [ColorTextProperty.Text] } } }}>preview length: {data.length}</BaseText>
 				</div>
 			</div>
 		</BaseBox>

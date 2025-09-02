@@ -18,9 +18,21 @@ signal_processing = { path = "../signal_processing" }
 fft-core = { path = "../fft-core" }
 finite-field = { path = "../finite-field" }
 linalg = { path = "../linalg", features = ["serde"] }
+poly = { path = "../polynomial" }
+convolution = { path = "../convolution" }
+coding = { path = "../coding" }
+concrete-math = { path = "../concrete-math" }
+special-functions = { path = "../special-functions" }
+lti-systems = { path = "../lti-systems" }
+number-theory = { path = "../number-theory" }
+statistics = { path = "../statistics" }
+statsmodels = { path = "../statsmodels" }
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 wasm-macros = { path = "../wasm-macros" }
+js-sys = "0.3"
+num-bigint = { version = "0.4", features = ["serde"] }
+getrandom = { version = "0.2", features = ["js"] }
 
 
 [features]

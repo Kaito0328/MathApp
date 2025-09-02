@@ -1,14 +1,6 @@
 import React from 'react';
 import type { ViewStyleKit } from '../tokens';
-import {
-  CoreColorKey,
-  StyleState,
-  ColorViewProperty,
-  SizeKey,
-  SizeViewProperty,
-  RoundKey,
-  ShadowKey,
-} from '../tokens';
+import { CoreColorKey, SizeKey, RoundKey, ShadowKey, ColorViewProperty, SizeViewProperty } from '../tokens';
 import { baseBoxMaps } from '../maps/base';
 import { useViewClasses, resolveClass, StateFlags } from '../core/resolvers';
 
@@ -19,8 +11,8 @@ export type BaseBoxProps = React.HTMLAttributes<HTMLElement> & {
 };
 
 const DEFAULT_KIT: ViewStyleKit = {
-  color: { colorKey: CoreColorKey.Base, apply: { [StyleState.Default]: [ColorViewProperty.Bg] } },
-  size: { sizeKey: SizeKey.MD, apply: { [StyleState.Default]: [SizeViewProperty.Padding] } },
+  color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg] } },
+  size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } },
   roundKey: RoundKey.Md,
   shadowKey: ShadowKey.None,
 };
@@ -34,9 +26,9 @@ export const BaseBox: React.FC<BaseBoxProps> = ({ styleKit, as = 'div', disabled
   } as ViewStyleKit;
 
   const classes = useViewClasses(finalKit, baseBoxMaps);
-  const flags: StateFlags = { [StyleState.Disabled]: !!disabled };
+  const flags: StateFlags = { Disabled: !!disabled } as any;
   const cls = resolveClass(classes, flags);
 
-  const Comp = as as keyof HTMLElementTagNameMap;
-  return <Comp className={[cls, className].filter(Boolean).join(' ')} {...(props as any)} />;
+  const Comp: any = as;
+  return <Comp className={[cls, className].filter(Boolean).join(' ')} {...props} />;
 };

@@ -14,7 +14,7 @@ export function MatrixView({ value, previewRows = 6, previewCols = 6 }: { value:
         {Array.from({ length: pr }).map((_, r) => (
           <div key={r} style={{ display: 'contents' }}>
             {Array.from({ length: pc }).map((__, c) => (
-              <div key={c} style={{ background: '#111', padding: 6, textAlign: 'right', fontFamily: 'ui-monospace, monospace' }}>
+              <div key={c} style={{ padding: 6, textAlign: 'right', fontFamily: 'ui-monospace, monospace' }}>
                 {cell(r, c)?.toFixed?.(3) ?? cell(r, c)}
               </div>
             ))}

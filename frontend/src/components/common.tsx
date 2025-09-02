@@ -1,9 +1,14 @@
 import React from 'react'
+import { BaseText } from '../design/base/BaseText'
+import { BaseBox } from '../design/base/BaseBox'
+import { CoreColorKey, SizeKey, RoundKey, ColorViewProperty, SizeTextProperty, SizeViewProperty, ColorTextProperty } from '../design/tokens'
 
-export function Sparkline({ data, width = 240, height = 48, color = '#0af' }: { data: number[]; width?: number; height?: number; color?: string }) {
-  if (!data || data.length === 0) return <div style={{ width, height, background: '#111' }} />
+export function Sparkline({ data, width = 240, height = 48, colorKey = CoreColorKey.Primary }: { data: number[]; width?: number; height?: number; colorKey?: CoreColorKey }) {
   const w = width
   const h = height
+  if (!data || data.length === 0) return (
+    <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.SM, apply: { default: [] } }, roundKey: RoundKey.Md }} style={{ width: w, height: h, borderWidth: 1 }} />
+  )
   const max = Math.max(...data)
   const min = Math.min(...data)
   const range = max - min || 1
@@ -15,17 +20,20 @@ export function Sparkline({ data, width = 240, height = 48, color = '#0af' }: { 
     })
     .join(' ')
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <rect width={w} height={h} fill="#111" />
-      <polyline fill="none" stroke={color} strokeWidth={1} points={points} />
-    </svg>
+    <BaseText styleKit={{ color: { colorKey, apply: { default: [ColorTextProperty.Text] } }, size: { sizeKey: SizeKey.SM, apply: { default: [] } } }}>
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+        <polyline fill="none" stroke="currentColor" strokeWidth={1} points={points} />
+      </svg>
+    </BaseText>
   )
 }
 
 export function KV({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', gap: 8 }}>
-      <div style={{ width: 140, color: '#999' }}>{label}</div>
+      <div style={{ width: 140 }}>
+  <BaseText styleKit={{ color: { colorKey: CoreColorKey.Secondary, apply: { default: [ColorTextProperty.Text] } }, size: { sizeKey: SizeKey.SM, apply: { default: [SizeTextProperty.FontSize] } } }}>{label}</BaseText>
+      </div>
       <div>{children}</div>
     </div>
   )
@@ -33,9 +41,11 @@ export function KV({ label, children }: { label: string; children: React.ReactNo
 
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={{ border: '1px solid #333', padding: 12, borderRadius: 8, margin: '12px 0' }}>
-      <h3 style={{ margin: '4px 0 8px', fontSize: 16 }}>{title}</h3>
+    <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } }, roundKey: RoundKey.Md }} style={{ borderWidth: 1, margin: '12px 0' }}>
+      <BaseText styleKit={{ size: { sizeKey: SizeKey.MD, apply: { default: [SizeTextProperty.FontSize] } } }}>
+        {title}
+      </BaseText>
       {children}
-    </section>
+    </BaseBox>
   )
 }

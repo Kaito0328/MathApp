@@ -64,6 +64,14 @@ impl<T: Ring> Vector<T> {
         Ok(Vector::new(data))
     }
 
+    /// 要素の総和を返す
+    pub fn sum(&self) -> T {
+        self.data
+            .iter()
+            .cloned()
+            .fold(T::zero(), |acc, x| acc + x)
+    }
+
     // 2つの解釈をサポート:
     // - 外積風: self (m) * rhs (1 x n) -> (m x n)
     // - 行ベクトル×行列: self (1 x m) * rhs (m x n) -> (1 x n)
