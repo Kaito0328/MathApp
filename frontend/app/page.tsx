@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { initWasm } from './lib/wasm'
 import { VectorInput, MatrixInput, SpectrumCard } from './components'
-import { SpectrumInput, TransferFunctionInput, ZpkInput } from '../src/components/inputs'
+import { SpectrumInput, TransferFunctionInput, ZpkInput, PolynomialTermInput } from '../src/components/inputs'
 import { PolynomialCardSimple } from '../src/components/base/PolynomialCardSimple'
 import { SignalCardSimple } from '../src/components/base/SignalCardSimple'
 import { SignalInputSimple } from '../src/components/inputs/SignalInputSimple'
@@ -14,6 +14,11 @@ import { BaseBox } from '../src/design/base/BaseBox'
 import { BaseText } from '../src/design/base/BaseText'
 import { useTheme } from '../src/design/ThemeProvider'
 import { dft1d } from '../src/wasm/ops'
+import { createNormal, createGamma, createBinomial, createPoisson } from '../src/wasm/stats'
+import { ContinuousPdfCard, DiscretePmfCard } from '../src/components/base/DistributionCards'
+import { TransferFunctionCardSimple } from '../src/components/base/LtiCardsSimple'
+import { formatPolynomialMarkdown } from '../src/components/utils/polynomial'
+import { RationalFunctionCard } from '../src/components/base/RationalFunctionCard'
 
 export default function Page() {
   const [wasmInfo, setWasmInfo] = useState<string>('loading…')
@@ -24,7 +29,16 @@ export default function Page() {
   const [rf, setRf] = useState<{ num: number[]; den: number[] }>({ num: [1], den: [1, -1] })
   const [tf, setTf] = useState<{ num: number[]; den: number[]; sample_time?: number | null }>({ num: [1], den: [1, -1], sample_time: undefined })
   const [zpk, setZpk] = useState<{ zeros: number[]; poles: number[]; gain: number; sample_time?: number | null }>({ zeros: [], poles: [], gain: 1 })
+  const [rfMd, setRfMd] = useState<string>('')
+  const [tfMd, setTfMd] = useState<string>('')
+  const [poly, setPoly] = useState<number[]>([1, -3, 2])
+  const [polyMd, setPolyMd] = useState<string>('')
   const { theme, setTheme } = useTheme()
+  // Stats demo states
+  const [normalSvg, setNormalSvg] = useState<string>('')
+  const [gammaSvg, setGammaSvg] = useState<string>('')
+  const [binomSvg, setBinomSvg] = useState<string>('')
+  const [poisSvg, setPoisSvg] = useState<string>('')
 
   useEffect(() => {
     let mounted = true
@@ -65,7 +79,7 @@ export default function Page() {
           Base components (Box/Text) via tokens
         </BaseText>
       </BaseBox>
-  <PolynomialCardSimple coeffs={[1, -3, 2]} varName="x" />
+  <PolynomialCardSimple coeffs={poly} varName="x" />
 
       {/* Inputs (new grid-based) */}
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr', marginTop: 12 }}>
@@ -107,12 +121,69 @@ export default function Page() {
   <SpectrumCard spectrum={spec.spectrum} sample_rate={spec.sample_rate} />
 
   {/* Rational / LTI */}
+  {/* Polynomial Input */}
+  <PolynomialTermInput value={poly} onChange={setPoly} varName="x" label="Polynomial Input" />
+  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+    <button onClick={() => {
+      const md = `P(x) = ${formatPolynomialMarkdown(poly, 'x')}`
+      setPolyMd(md)
+    }}>Process Polynomial</button>
+  </div>
+  {polyMd && (
+    <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1 }}>
+      <BaseText>
+        {`P(x) = ${polyMd.replace(/^P\(x\) =\s*/, '')}`}
+      </BaseText>
+    </BaseBox>
+  )}
   {/* Rational Function 入力（セル x^n 形式）*/}
   <RationalFunctionInputSimple value={rf} onChange={setRf} varName="x" />
+  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+    <button onClick={() => {
+      const md = `R(x) = \\frac{${formatPolynomialMarkdown(rf.num, 'x')}}{${formatPolynomialMarkdown(rf.den, 'x')}}`
+      setRfMd(md)
+    }}>Process Rational</button>
+  </div>
+  {rfMd && <RationalFunctionCard markdown={rfMd} title="Rational (Processed)" />}
+
   {/* TransferFunction: 係数入力はセル x^n、z/s の切替想定（varName使用） */}
   <TransferFunctionInput value={tf as any} onChange={setTf as any} varName="z" />
+  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+    <button onClick={() => {
+      const md = `H(z) = \\frac{${formatPolynomialMarkdown(tf.num, 'z')}}{${formatPolynomialMarkdown(tf.den, 'z')}}`
+      setTfMd(md)
+    }}>Process TF</button>
+  </div>
+  {tfMd && <TransferFunctionCardSimple num={tf.num} den={tf.den} varName="z" title="Transfer Function (Processed)" />}
   {/* ZPK: 入力は Re/Im ペアで #0 などの余計な見出しが出ないよう整理済み */}
   <ZpkInput value={zpk as any} onChange={setZpk as any} />
+
+  {/* Statistics / Distributions (WASM-backed) */}
+  <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1 }}>
+    <BaseText>Distributions (PDF/PMF)</BaseText>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+      <button onClick={async () => {
+        const n = await createNormal(0, 1)
+        setNormalSvg(n.pdfSvg(320, 160))
+      }}>Normal(0,1)</button>
+      <button onClick={async () => {
+        const g = await createGamma(2, 1)
+        setGammaSvg(g.pdfSvg(320, 160))
+      }}>Gamma(k=2, rate=1)</button>
+      <button onClick={async () => {
+        const b = await createBinomial(20, 0.4)
+        setBinomSvg(b.pmfSvg(320, 160))
+      }}>Binomial(n=20,p=0.4)</button>
+      <button onClick={async () => {
+        const p = await createPoisson(5)
+        setPoisSvg(p.pmfSvg(320, 160))
+      }}>Poisson(λ=5)</button>
+    </div>
+  </BaseBox>
+  {normalSvg && <ContinuousPdfCard title="Normal PDF" svg={normalSvg} />}
+  {gammaSvg && <ContinuousPdfCard title="Gamma PDF" svg={gammaSvg} />}
+  {binomSvg && <DiscretePmfCard title="Binomial PMF" svg={binomSvg} />}
+  {poisSvg && <DiscretePmfCard title="Poisson PMF" svg={poisSvg} />}
       </div>
     </main>
   )

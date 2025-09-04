@@ -87,7 +87,7 @@ export function TransferFunctionInput({ value, onChange }: { value?: TransferFun
 
   return (
   <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } }, roundKey: RoundKey.Md }} style={{ borderWidth: 1 }}>
-      <BaseText styleKit={{ size: { sizeKey: SizeKey.MD, apply: { default: [SizeTextProperty.FontSize] } }, fontWeightKey: FontWeightKey.Medium }}>Transfer Function Input</BaseText>
+  <BaseText styleKit={{ size: { sizeKey: SizeKey.MD, apply: { default: [SizeTextProperty.FontSize] } }, fontWeightKey: FontWeightKey.Medium }}>Transfer Function Input</BaseText>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
         <label>
           <BaseText>numerator</BaseText>
@@ -140,10 +140,14 @@ export function TransferFunctionInput({ value, onChange }: { value?: TransferFun
           )}
         </div>
         {bodeSvg && previewMode === 'bode' && (
-          <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: bodeSvg }} />
+          <BaseText>
+            <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: bodeSvg }} />
+          </BaseText>
         )}
         {nyquistSvg && previewMode === 'nyquist' && (
-          <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: nyquistSvg }} />
+          <BaseText>
+            <div style={{ marginTop: 8 }} dangerouslySetInnerHTML={{ __html: nyquistSvg }} />
+          </BaseText>
         )}
       </div>
     </BaseBox>

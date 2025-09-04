@@ -12,9 +12,11 @@ export function RationalFunctionCard({ markdown, title = 'Rational Function' }: 
     <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } }, roundKey: RoundKey.Md }} style={{ borderWidth: 1 }}>
       <BaseText styleKit={{ size: { sizeKey: SizeKey.MD, apply: { default: [SizeTextProperty.FontSize] } }, fontWeightKey: FontWeightKey.Medium }}>{title}</BaseText>
       <div style={{ marginTop: 8 }}>
-        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-          {`$${markdown}$`}
-        </ReactMarkdown>
+        <BaseText>
+          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+            {`$${markdown}$`}
+          </ReactMarkdown>
+        </BaseText>
       </div>
     </BaseBox>
   )

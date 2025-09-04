@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { BaseBox } from '../../design/base/BaseBox'
 import { BaseText } from '../../design/base/BaseText'
-import { SizeKey, SizeTextProperty, FontWeightKey, SizeViewProperty, RoundKey } from '../../design/tokens'
+import { SizeKey, SizeTextProperty, FontWeightKey, SizeViewProperty, RoundKey, CoreColorKey, ColorTextProperty } from '../../design/tokens'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -68,14 +68,19 @@ export function PolynomialTermInput({
           onChange={(e) => setCoeff(idx, Number(e.target.value) || 0)}
           style={{ width: 80 }}
         />
-        {powLabel &&
+        {powLabel && (
+          <BaseText styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorTextProperty.Text] } } }}>
             <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-                {`$${powLabel}$`}
+              {`$${powLabel}$`}
             </ReactMarkdown>
-        }
+          </BaseText>
+        )}
       </div>
     )
-    if (p > 0) terms.push(<BaseText key={`plus-${p}`}>+</BaseText>)
+    if (p > 0)
+      terms.push(
+        <BaseText key={`plus-${p}`} styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorTextProperty.Text] } } }}>+</BaseText>
+      )
   }
 
   return (

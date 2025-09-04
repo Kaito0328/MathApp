@@ -8,15 +8,17 @@ import rehypeKatex from 'rehype-katex'
 import { formatPolynomialMarkdown } from '../utils/polynomial'
 
 export function TransferFunctionCardSimple({ num, den, varName = 'z', title = 'Transfer Function' }: { num: number[]; den: number[]; varName?: 'z' | 's' | string; title?: string }) {
-  const md = `$$H(${varName}) = \\
-  \frac{${formatPolynomialMarkdown(num, varName)}}{${formatPolynomialMarkdown(den, varName)}}$$`
+  // one-line KaTeX to avoid JS string escapes like \f (form feed)
+  const md = `$$H(${varName}) = \\frac{${formatPolynomialMarkdown(num, varName)}}{${formatPolynomialMarkdown(den, varName)}}$$`
   return (
     <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } }, roundKey: RoundKey.Md }} style={{ borderWidth: 1 }}>
       <BaseText styleKit={{ size: { sizeKey: SizeKey.MD, apply: { default: [SizeTextProperty.FontSize] } }, fontWeightKey: FontWeightKey.Medium }}>{title}</BaseText>
       <div style={{ marginTop: 8 }}>
-        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-          {md}
-        </ReactMarkdown>
+        <BaseText>
+          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+            {md}
+          </ReactMarkdown>
+        </BaseText>
       </div>
     </BaseBox>
   )
@@ -34,9 +36,11 @@ export function ZpkCardSimple({ zeros, poles, gain, varName = 'z', title = 'ZPK'
     <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } }, roundKey: RoundKey.Md }} style={{ borderWidth: 1 }}>
       <BaseText styleKit={{ size: { sizeKey: SizeKey.MD, apply: { default: [SizeTextProperty.FontSize] } }, fontWeightKey: FontWeightKey.Medium }}>{title}</BaseText>
       <div style={{ marginTop: 8 }}>
-        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-          {`$$G(${varName}) = ${md}$$`}
-        </ReactMarkdown>
+        <BaseText>
+          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+            {`$$G(${varName}) = ${md}$$`}
+          </ReactMarkdown>
+        </BaseText>
       </div>
     </BaseBox>
   )

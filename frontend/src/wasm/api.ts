@@ -163,3 +163,140 @@ export async function createNormal(mu: number, sigma: number) {
     pdfSvg: (w: number, h: number, samples = 200) => inst.pdf_svg(w, h, samples),
   }
 }
+
+export async function createUniform(a: number, b: number) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmUniform(a, b)
+  return {
+    mean: () => inst.mean(),
+    variance: () => inst.variance(),
+    stdDev: () => inst.std_dev(),
+    pdf: (x: number) => inst.pdf(x),
+    cdf: (x: number) => inst.cdf(x),
+    quantile: (p: number) => inst.quantile(p),
+    pdfSvg: (w: number, h: number, samples = 200) => inst.pdf_svg(w, h, samples),
+  }
+}
+
+export async function createExponential(lambda: number) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmExponential(lambda)
+  return {
+    mean: () => inst.mean(),
+    variance: () => inst.variance(),
+    stdDev: () => inst.std_dev(),
+    pdf: (x: number) => inst.pdf(x),
+    cdf: (x: number) => inst.cdf(x),
+    quantile: (p: number) => inst.quantile(p),
+    pdfSvg: (w: number, h: number, samples = 200) => inst.pdf_svg(w, h, samples),
+  }
+}
+
+export async function createGamma(shape: number, rate: number) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmGamma(shape, rate)
+  return {
+    mean: () => inst.mean(),
+    variance: () => inst.variance(),
+    stdDev: () => inst.std_dev(),
+    pdf: (x: number) => inst.pdf(x),
+    cdf: (x: number) => inst.cdf(x),
+    quantile: (p: number) => inst.quantile(p),
+    pdfSvg: (w: number, h: number, samples = 200) => inst.pdf_svg(w, h, samples),
+  }
+}
+
+export async function createChiSquare(k: number) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmChiSquare(k)
+  return {
+    mean: () => inst.mean(),
+    variance: () => inst.variance(),
+    stdDev: () => inst.std_dev(),
+    pdf: (x: number) => inst.pdf(x),
+    cdf: (x: number) => inst.cdf(x),
+    quantile: (p: number) => inst.quantile(p),
+    pdfSvg: (w: number, h: number, samples = 200) => inst.pdf_svg(w, h, samples),
+  }
+}
+
+export async function createStudentT(df: number) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmStudentT(df)
+  return {
+    mean: () => inst.mean(),
+    variance: () => inst.variance(),
+    stdDev: () => inst.std_dev(),
+    pdf: (x: number) => inst.pdf(x),
+    cdf: (x: number) => inst.cdf(x),
+    quantile: (p: number) => inst.quantile(p),
+    pdfSvg: (w: number, h: number, samples = 200) => inst.pdf_svg(w, h, samples),
+  }
+}
+
+export async function createF(d1: number, d2: number) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmF(d1, d2)
+  return {
+    mean: () => inst.mean(),
+    variance: () => inst.variance(),
+    stdDev: () => inst.std_dev(),
+    pdf: (x: number) => inst.pdf(x),
+    cdf: (x: number) => inst.cdf(x),
+    quantile: (p: number) => inst.quantile(p),
+    pdfSvg: (w: number, h: number, samples = 200) => inst.pdf_svg(w, h, samples),
+  }
+}
+
+export async function createBernoulli(p: number) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmBernoulli(p)
+  return {
+    mean: () => inst.mean(),
+    variance: () => inst.variance(),
+    stdDev: () => inst.std_dev(),
+    pmf: (k: number) => inst.pmf(k),
+    cdf: (k: number) => inst.cdf(k),
+    quantile: (q: number) => inst.quantile(q),
+    pmfSvg: (w: number, h: number) => inst.pmf_svg(w, h),
+  }
+}
+
+export async function createBinomial(n: number, p: number) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmBinomial(n, p)
+  return {
+    mean: () => inst.mean(),
+    variance: () => inst.variance(),
+    stdDev: () => inst.std_dev(),
+    pmf: (k: number) => inst.pmf(k),
+    cdf: (k: number) => inst.cdf(k),
+    quantile: (q: number) => inst.quantile(q),
+    pmfSvg: (w: number, h: number) => inst.pmf_svg(w, h),
+  }
+}
+
+export async function createPoisson(lambda: number) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmPoisson(lambda)
+  return {
+    mean: () => inst.mean(),
+    variance: () => inst.variance(),
+    stdDev: () => inst.std_dev(),
+    pmf: (k: number) => inst.pmf(k),
+    cdf: (k: number) => inst.cdf(k),
+    quantile: (q: number) => inst.quantile(q),
+    pmfSvg: (w: number, h: number) => inst.pmf_svg(w, h),
+  }
+}
+
+export async function createCategorical(probs: number[]) {
+  const wasm = await getWasm() as any
+  const inst = new wasm.WasmCategorical(new Float64Array(probs))
+  return {
+    pmf: (k: number) => inst.pmf(k),
+    cdf: (k: number) => inst.cdf(k),
+    quantile: (q: number) => inst.quantile(q),
+    pmfSvg: (w: number, h: number) => inst.pmf_svg(w, h),
+  }
+}

@@ -44,16 +44,19 @@ export function BaseNumberGrid({
   // Notify parent only on user edits (inside setCell); avoid effect-based echo loops
 
   const setCell = useCallback((r: number, c: number, v: number, notify: boolean = true) => {
+    let snapshot: number[][] | null = null
     setGrid(prev => {
       // normalize prev to current shape to avoid OOB when shape just changed
       const base = normalize(prev as any, rows, cols)
       const next = base.map(row => row.slice())
       next[r][c] = v
-      if (notify) {
-        try { onChange(next) } catch { /* ignore user onChange errors */ }
-      }
+      snapshot = next
       return next
     })
+    if (notify && snapshot) {
+      // Defer to avoid updating parent during child render lifecycle
+  queueMicrotask?.(() => { try { onChange(snapshot as number[][]) } catch { /* no-op */ } })
+    }
   }, [onChange, rows, cols])
 
   const focusCell = useCallback((r: number, c: number) => {
