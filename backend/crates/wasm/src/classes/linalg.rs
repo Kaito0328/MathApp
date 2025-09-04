@@ -191,7 +191,10 @@ impl VectorF64 {
 #[wasm_bindgen]
 impl VectorF64 {
     #[wasm_bindgen]
-    pub fn sum(&self) -> f64 { self.0.sum() }
+    pub fn sum(&self) -> f64 {
+        // linalg::Vector<f64> に sum() はあるが、クロスクレート解決で検出されないケースがあるため安全に手計算
+        self.0.as_slice().iter().copied().sum()
+    }
 
     #[wasm_bindgen]
     pub fn multiply_matrix(&self, matrix: &MatrixF64) -> std::result::Result<MatrixF64, JsValue> {
@@ -232,7 +235,15 @@ impl MatrixF64 {
     }
     
     #[wasm_bindgen]
-    pub fn diagonal(&self) -> VectorF64 { VectorF64(self.0.diagonal()) }
+    pub fn diagonal(&self) -> VectorF64 {
+        // 直接メソッド委譲だと解決できない環境があるため、自前実装
+        let n = self.0.rows.min(self.0.cols);
+        let mut data = Vec::with_capacity(n);
+        for i in 0..n {
+            data.push(self.0.data[i * self.0.cols + i].clone());
+        }
+        VectorF64(linalg::Vector::new(data))
+    }
 
     // === solve系メソッド（linalgクレートに実装済みの可能性を活用） ===
     #[wasm_bindgen]

@@ -45,7 +45,7 @@ frontend/
 
 ```ts
 // frontend/src/main.ts or any component
-import { getWasm } from './wasm/bridge';
+import { getWasm } from './wasm/core/loader';
 
 async function run() {
   const wasm = await getWasm();

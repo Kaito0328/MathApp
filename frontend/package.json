@@ -7,7 +7,7 @@
     "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "wasm:sync": "cp -f ../backend/crates/wasm/pkg/wasm.js src/wasm-pkg/wasm.js && cp -f ../backend/crates/wasm/pkg/wasm_bg.wasm src/wasm-pkg/wasm_bg.wasm && cp -f ../backend/crates/wasm/pkg/wasm.d.ts src/wasm-pkg/wasm.d.ts",
+  "wasm:sync": "cp -f ../backend/crates/wasm/pkg/wasm.js src/wasm-pkg/wasm.js && cp -f ../backend/crates/wasm/pkg/wasm_bg.js src/wasm-pkg/wasm_bg.js && cp -f ../backend/crates/wasm/pkg/wasm_bg.wasm src/wasm-pkg/wasm_bg.wasm && cp -f ../backend/crates/wasm/pkg/wasm.d.ts src/wasm-pkg/wasm.d.ts",
     "wasm:build": "wasm-pack build ../backend/crates/wasm --target web --out-dir ../../frontend/src/wasm-pkg --out-name wasm",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",

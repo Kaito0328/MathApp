@@ -4,7 +4,7 @@ import { BaseBox } from '../../design/base/BaseBox'
 import { BaseText } from '../../design/base/BaseText'
 import { NumberField } from './shared'
 import { ComplexVectorInput } from './ComplexVectorInput'
-import { idft1d } from '../../wasm/ops'
+import { initWasm } from '../../../app/lib/wasm'
 import { CoreColorKey, SizeKey, RoundKey, FontWeightKey, SizeTextProperty, SizeViewProperty, ColorViewProperty, ColorTextProperty } from '../../design/tokens'
 
 
@@ -21,7 +21,8 @@ export function SpectrumInput({ value, onChange, label = 'Spectrum Input' }: {
   useEffect(() => {
     (async () => {
       if (spectrum.length > 0) {
-        const rec = await idft1d(spectrum)
+        const wasm: any = await initWasm()
+        const rec: Float64Array = wasm.iftComplexF64(new Float64Array(spectrum))
         setTimePreview(Array.from(rec))
       } else {
         setTimePreview([])

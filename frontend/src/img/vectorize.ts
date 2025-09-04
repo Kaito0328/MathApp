@@ -1,6 +1,6 @@
 // Image <-> Vector helpers using wasm grayscale converters
 
-import { getWasm } from '../wasm/bridge'
+import { getWasm } from '../wasm/loader'
 import { decodeToRgba, encodeRgbaToPng } from './png'
 
 export interface GrayVector {

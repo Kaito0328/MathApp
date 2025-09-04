@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import type { TransferFunction } from '../../types'
 import { BaseBox } from '../../design/base/BaseBox'
 import { BaseText } from '../../design/base/BaseText'
-import { discreteTfImpulse, discreteTfStep, discreteTfBodeSvg, discreteTfNyquistSvg } from '../../wasm/ops'
+import { initWasm } from '../../../app/lib/wasm'
 import { CoreColorKey, SizeKey, RoundKey, FontWeightKey, SizeTextProperty, SizeViewProperty, ColorViewProperty, ColorTextProperty } from '../../design/tokens'
 
 function parseNumbers(src: string): number[] {
@@ -38,23 +38,24 @@ export function TransferFunctionInput({ value, onChange }: { value?: TransferFun
     onChange(tf)
     try {
       if (tf.sample_time != null) {
+        const wasm: any = await initWasm()
         const dtf = { num: tf.num, den: tf.den, sample_time: tf.sample_time }
-        const [imp, step] = await Promise.all([
-          discreteTfImpulse(dtf, 128),
-          discreteTfStep(dtf, 128),
-        ])
-        setImpulsePreview(imp)
-        setStepPreview(step)
+  const inst = new wasm.DiscreteTF(new Float64Array(dtf.num), new Float64Array(dtf.den), dtf.sample_time)
+  const impFa: Float64Array = inst.impulse_response(128)
+  const stepFa: Float64Array = inst.step_response(128)
+  setImpulsePreview(Array.from(impFa))
+  setStepPreview(Array.from(stepFa))
         setAppliedTf(dtf)
         if (previewMode === 'bode') {
-          const bode = await discreteTfBodeSvg(dtf, 360, 160, 256, true, false)
+          const bode = inst.bode_svg(360, 160, 256, true, false)
           setBodeSvg(bode)
           setNyquistSvg('')
         } else {
-          const nyq = await discreteTfNyquistSvg(dtf, 220, 220, 256, showMinusOne, false)
+          const nyq = inst.nyquist_svg(220, 220, 256, showMinusOne, false)
           setNyquistSvg(nyq)
           setBodeSvg('')
         }
+        inst.free?.()
       } else {
         setImpulsePreview([]); setStepPreview([]); setBodeSvg(''); setNyquistSvg(''); setAppliedTf(null)
       }
@@ -68,15 +69,18 @@ export function TransferFunctionInput({ value, onChange }: { value?: TransferFun
     const run = async () => {
       if (!appliedTf) return
       try {
+        const wasm: any = await initWasm()
+        const inst = new wasm.DiscreteTF(new Float64Array(appliedTf.num), new Float64Array(appliedTf.den), appliedTf.sample_time)
         if (previewMode === 'bode') {
-          const bode = await discreteTfBodeSvg(appliedTf, 360, 160, 256, true, false)
+          const bode = inst.bode_svg(360, 160, 256, true, false)
           setBodeSvg(bode)
           setNyquistSvg('')
         } else {
-          const nyq = await discreteTfNyquistSvg(appliedTf, 220, 220, 256, showMinusOne, false)
+          const nyq = inst.nyquist_svg(220, 220, 256, showMinusOne, false)
           setNyquistSvg(nyq)
           setBodeSvg('')
         }
+        inst.free?.()
       } catch {
         // ignore
       }

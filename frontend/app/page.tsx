@@ -13,8 +13,7 @@ import { MatrixCard } from '../src/components/base/MatrixCard'
 import { BaseBox } from '../src/design/base/BaseBox'
 import { BaseText } from '../src/design/base/BaseText'
 import { useTheme } from '../src/design/ThemeProvider'
-import { dft1d } from '../src/wasm/ops'
-import { createNormal, createGamma, createBinomial, createPoisson } from '../src/wasm/stats'
+
 import { ContinuousPdfCard, DiscretePmfCard } from '../src/components/base/DistributionCards'
 import { TransferFunctionCardSimple } from '../src/components/base/LtiCardsSimple'
 import { formatPolynomialMarkdown } from '../src/components/utils/polynomial'
@@ -57,7 +56,7 @@ export default function Page() {
           setWasmInfo('WASM loaded (MatrixF64 not found)')
         }
       })
-      .catch((e) => console.error('Failed to init wasm', e))
+  .catch((e: unknown) => console.error('Failed to init wasm', e))
     return () => {
       mounted = false
     }
@@ -98,8 +97,9 @@ export default function Page() {
       <SignalInputSimple value={sig as any} onChange={async (s) => {
     setSig(s)
   try {
-      const interleaved = await dft1d(s.data)
-      setSpec({ spectrum: interleaved, sample_rate: s.sample_rate })
+      const wasm: any = await initWasm()
+      const interleavedFa: Float64Array = wasm.dftComplexF64(new Float64Array(s.data))
+      setSpec({ spectrum: Array.from(interleavedFa), sample_rate: s.sample_rate })
   } catch { /* ignore DFT errors */ }
   }} />
     </div>
@@ -163,20 +163,24 @@ export default function Page() {
     <BaseText>Distributions (PDF/PMF)</BaseText>
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
       <button onClick={async () => {
-        const n = await createNormal(0, 1)
-        setNormalSvg(n.pdfSvg(320, 160))
+        const wasm: any = await initWasm()
+        const inst = new wasm.Normal(0, 1)
+        setNormalSvg(inst.pdf_svg(320, 160, 200))
       }}>Normal(0,1)</button>
       <button onClick={async () => {
-        const g = await createGamma(2, 1)
-        setGammaSvg(g.pdfSvg(320, 160))
+        const wasm: any = await initWasm()
+        const inst = new wasm.Gamma(2, 1)
+        setGammaSvg(inst.pdf_svg(320, 160, 200))
       }}>Gamma(k=2, rate=1)</button>
       <button onClick={async () => {
-        const b = await createBinomial(20, 0.4)
-        setBinomSvg(b.pmfSvg(320, 160))
+        const wasm: any = await initWasm()
+        const inst = new wasm.Binomial(20, 0.4)
+        setBinomSvg(inst.pmf_svg(320, 160))
       }}>Binomial(n=20,p=0.4)</button>
       <button onClick={async () => {
-        const p = await createPoisson(5)
-        setPoisSvg(p.pmfSvg(320, 160))
+        const wasm: any = await initWasm()
+        const inst = new wasm.Poisson(5)
+        setPoisSvg(inst.pmf_svg(320, 160))
       }}>Poisson(λ=5)</button>
     </div>
   </BaseBox>

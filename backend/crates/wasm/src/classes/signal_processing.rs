@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 
 use signal_processing as sp;
-use crate::classes::lti_systems::WasmDiscreteTF;
+use crate::classes::lti_systems::DiscreteTF;
 
 #[wasm_bindgen]
 pub struct WasmSignal {
@@ -77,19 +77,18 @@ impl WasmSignal {
 	}
 
 	pub fn save_svg_simple(&self, width: u32, height: u32) -> String {
-		let s = sp::plot::Series { y: &self.data, label: "signal" };
-		let mut buf = Vec::<u8>::new();
-		// use writer-based function
-		let _ = sp::plot::write_svg_time_series_to(&mut buf, width, height, &[s], Some(self.fs));
-		String::from_utf8(buf).unwrap_or_default()
+	let s = sp::plot::Series { y: &self.data, label: "signal" };
+	let path = "/tmp/wasm_signal_simple.svg";
+	let _ = sp::plot::save_svg_time_series(path, width, height, &[s], Some(self.fs));
+	std::fs::read_to_string(path).unwrap_or_default()
 	}
 
 	pub fn save_svg_with_axes(&self, width: u32, height: u32, label: Option<String>) -> String {
 		let lab = label.as_deref().unwrap_or("signal");
-		let s = sp::plot::Series { y: &self.data, label: lab };
-		let mut buf = Vec::<u8>::new();
-		let _ = sp::plot::write_svg_time_series_to(&mut buf, width, height, &[s], Some(self.fs));
-		String::from_utf8(buf).unwrap_or_default()
+	let s = sp::plot::Series { y: &self.data, label: lab };
+	let path = "/tmp/wasm_signal_axes.svg";
+	let _ = sp::plot::save_svg_time_series(path, width, height, &[s], Some(self.fs));
+	std::fs::read_to_string(path).unwrap_or_default()
 	}
 }
 
@@ -131,17 +130,16 @@ impl WasmSpectrum {
 			v.push(Complex::new(di[k], di[k+1]));
 		}
 		let spc = sp::signal::Spectrum::new(v, self.fs);
-	let mut buf = Vec::<u8>::new();
+	let path = "/tmp/wasm_spectrum_mag.svg";
 	let label = label.as_deref().unwrap_or("spectrum");
-	// writerベースのスケールド描画を直接使用
 		let mags: Vec<f64> = spc
 			.data()
 			.iter()
 			.map(|c| { let m = c.norm(); if m>0.0 {20.0*m.log10()} else {-120.0} })
 			.collect();
-		let s2 = sp::plot::Series { y: &mags, label };
-		let _ = sp::plot::write_svg_series_scaled_to(&mut buf, width, height, &[s2], "bin", (self.len().saturating_sub(1)) as f64);
-		String::from_utf8(buf).unwrap_or_default()
+	let s2 = sp::plot::Series { y: &mags, label };
+	let _ = sp::plot::save_svg_series_scaled(path, width, height, &[s2], "bin", (self.len().saturating_sub(1)) as f64);
+	std::fs::read_to_string(path).unwrap_or_default()
 	}
 }
 
@@ -180,49 +178,49 @@ pub fn sp_design_fir_bandstop(num_taps: usize, f1: f64, f2: f64) -> Vec<f64> {
 
 // ==== IIR design helpers (return lti WasmDiscreteTF) ====
 #[wasm_bindgen]
-pub fn sp_design_iir_butter_lowpass(order: usize, fs: f64, fc_hz: f64) -> WasmDiscreteTF {
+pub fn sp_design_iir_butter_lowpass(order: usize, fs: f64, fc_hz: f64) -> DiscreteTF {
 	use sp::iir::{DigitalFilterSpec, IIRFilter};
 	let filt = IIRFilter::design_digital_butterworth(order, fs, DigitalFilterSpec::Lowpass{ fc_hz });
 	let tf = filt.as_transfer();
 	let b = tf.b_coeffs().to_vec();
 	let a = tf.a_coeffs().to_vec();
-	WasmDiscreteTF::new(b, a, tf.sample_rate())
+	DiscreteTF::new(b, a, tf.sample_rate())
 }
 #[wasm_bindgen]
-pub fn sp_design_iir_butter_highpass(order: usize, fs: f64, fc_hz: f64) -> WasmDiscreteTF {
+pub fn sp_design_iir_butter_highpass(order: usize, fs: f64, fc_hz: f64) -> DiscreteTF {
 	use sp::iir::{DigitalFilterSpec, IIRFilter};
 	let filt = IIRFilter::design_digital_butterworth(order, fs, DigitalFilterSpec::Highpass{ fc_hz });
 	let tf = filt.as_transfer();
-	WasmDiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
+	DiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
 }
 #[wasm_bindgen]
-pub fn sp_design_iir_butter_bandpass(order: usize, fs: f64, f1_hz: f64, f2_hz: f64) -> WasmDiscreteTF {
+pub fn sp_design_iir_butter_bandpass(order: usize, fs: f64, f1_hz: f64, f2_hz: f64) -> DiscreteTF {
 	use sp::iir::{DigitalFilterSpec, IIRFilter};
 	let filt = IIRFilter::design_digital_butterworth(order, fs, DigitalFilterSpec::Bandpass{ f1_hz, f2_hz });
 	let tf = filt.as_transfer();
-	WasmDiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
+	DiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
 }
 #[wasm_bindgen]
-pub fn sp_design_iir_butter_bandstop(order: usize, fs: f64, f1_hz: f64, f2_hz: f64) -> WasmDiscreteTF {
+pub fn sp_design_iir_butter_bandstop(order: usize, fs: f64, f1_hz: f64, f2_hz: f64) -> DiscreteTF {
 	use sp::iir::{DigitalFilterSpec, IIRFilter};
 	let filt = IIRFilter::design_digital_butterworth(order, fs, DigitalFilterSpec::Bandstop{ f1_hz, f2_hz });
 	let tf = filt.as_transfer();
-	WasmDiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
+	DiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
 }
 
 #[wasm_bindgen]
-pub fn sp_design_iir_cheby1_lowpass(order: usize, ripple_db: f64, fs: f64, fc_hz: f64) -> WasmDiscreteTF {
+pub fn sp_design_iir_cheby1_lowpass(order: usize, ripple_db: f64, fs: f64, fc_hz: f64) -> DiscreteTF {
 	use sp::iir::{DigitalFilterSpec, IIRFilter};
 	let filt = IIRFilter::design_digital_chebyshev1(order, ripple_db, fs, DigitalFilterSpec::Lowpass{ fc_hz});
 	let tf = filt.as_transfer();
-	WasmDiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
+	DiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
 }
 #[wasm_bindgen]
-pub fn sp_design_iir_cheby2_lowpass(order: usize, stop_atten_db: f64, fs: f64, fc_hz: f64) -> WasmDiscreteTF {
+pub fn sp_design_iir_cheby2_lowpass(order: usize, stop_atten_db: f64, fs: f64, fc_hz: f64) -> DiscreteTF {
 	use sp::iir::{DigitalFilterSpec, IIRFilter};
 	let filt = IIRFilter::design_digital_chebyshev2(order, stop_atten_db, fs, DigitalFilterSpec::Lowpass{ fc_hz});
 	let tf = filt.as_transfer();
-	WasmDiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
+	DiscreteTF::new(tf.b_coeffs().to_vec(), tf.a_coeffs().to_vec(), tf.sample_rate())
 }
 
 // ==== Adaptive filters (LMS / NLMS) ====

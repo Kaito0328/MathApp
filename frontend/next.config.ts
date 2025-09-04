@@ -2,7 +2,14 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // wasm-pack のESMラッパーをクライアントで動的importする想定なので追加設定は最小限
+  // WebAssembly を webpack で解決するための実験フラグを有効化
+  webpack: (config) => {
+    config.experiments = {
+      ...(config.experiments || {}),
+      asyncWebAssembly: true,
+    }
+    return config
+  },
 }
 
 export default nextConfig
