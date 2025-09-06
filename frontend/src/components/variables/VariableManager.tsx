@@ -1,9 +1,10 @@
 "use client"
 import React from 'react'
 import { useVariableStore } from '../../state/VariableStore'
-import { BaseBox } from '../../design/base/BaseBox'
-import { BaseText } from '../../design/base/BaseText'
-import { CoreColorKey, ColorViewProperty, SizeKey, SizeViewProperty } from '../../design/tokens'
+import { View } from '../../baseComponents/foundation/View'
+import { Text } from '../../baseComponents/foundation/Text'
+import { CoreColorKey, SizeKey } from '../../design/tokens'
+import { formatMatrixMarkdown } from '../../utils/format/markdown'
 
 export function VariableManager() {
   const { names, vars, remove, clear, upsert } = useVariableStore()
@@ -37,9 +38,9 @@ export function VariableManager() {
   }
 
   return (
-    <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } } }} style={{ borderWidth: 1 }}>
+    <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1, padding: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <BaseText>変数</BaseText>
+        <Text>変数</Text>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <button onClick={exportAll}>エクスポート</button>
           <button onClick={() => fileRef.current?.click()}>インポート</button>
@@ -52,7 +53,7 @@ export function VariableManager() {
         }} />
       </div>
       <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
-        {names.length === 0 && <BaseText>登録された変数はありません</BaseText>}
+        {names.length === 0 && <Text>登録された変数はありません</Text>}
         {names.map((name) => {
           const v = vars[name] as any
           const label = v?.kind === 'matrix' ? `matrix [${v.rows} x ${v.cols}]` : 'unknown'
@@ -62,22 +63,16 @@ export function VariableManager() {
             ).join(' | ') : ''
           const toMarkdown = () => {
             if (!(v && v.kind === 'matrix')) return ''
-            const lines = [] as string[]
-            for (let r = 0; r < v.rows; r++) {
-              const row = [] as string[]
-              for (let c = 0; c < v.cols; c++) row.push(String(v.data[r * v.cols + c] ?? 0))
-              lines.push(row.join(' & '))
-            }
-            return lines.join(' // ')
+            return formatMatrixMarkdown(v.rows, v.cols, v.data)
           }
           return (
             <div key={name} style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 8 }}>
               <div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <BaseText>{name}</BaseText>
-                  <BaseText style={{ opacity: 0.7 }}>— {label}</BaseText>
+                  <Text>{name}</Text>
+                  <Text style={{ opacity: 0.7 }}>— {label}</Text>
                 </div>
-                {preview && <div style={{ marginTop: 4 }}><BaseText style={{ opacity: 0.8 }}>{preview}</BaseText></div>}
+                {preview && <div style={{ marginTop: 4 }}><Text style={{ opacity: 0.8 }}>{preview}</Text></div>}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => {
@@ -91,6 +86,6 @@ export function VariableManager() {
           )
         })}
       </div>
-    </BaseBox>
+    </View>
   )
 }

@@ -132,6 +132,10 @@ impl JsMatrix {
     pub fn eigen_decomposition(&self) -> Result<JsValue, JsValue> { self.0.eigen_decomposition() }
     pub fn cholesky(&self) -> Result<JsMatrix, JsValue> { self.0.cholesky().map(JsMatrix) }
     pub fn pinv(&self) -> Result<JsMatrix, JsValue> { self.0.pinv().map(JsMatrix) }
+    #[wasm_bindgen]
+    pub fn data(&self) -> Vec<f64> { self.0.data() }
+    #[wasm_bindgen]
+    pub fn columns(&self) -> usize { self.0.cols() }
 }
 
 #[wasm_bindgen(js_name = Vector)]
@@ -161,6 +165,8 @@ impl JsVector {
     pub fn transpose(&self) -> classes::linalg::MatrixF64 { self.0.transpose() }
     pub fn to_column_matrix(&self) -> classes::linalg::MatrixF64 { self.0.to_column_matrix() }
     pub fn to_row_matrix(&self) -> classes::linalg::MatrixF64 { self.0.to_row_matrix() }
+    #[wasm_bindgen]
+    pub fn data(&self) -> Vec<f64> { self.0.data() }
 }
 
 // ---- statsmodels convenience exports (ensure d.ts exposure) ----

@@ -103,6 +103,9 @@ impl PolynomialF64 {
 	pub fn deg(&self) -> i32 { self.0.deg() as i32 }
 	pub fn get(&self, i: usize) -> f64 { self.0.get(i) }
 	pub fn eval(&self, x: f64) -> f64 { self.0.eval(x) }
+	/// 係数ベクトル（低次→高次）を返す
+	#[wasm_bindgen(js_name = coeffs)]
+	pub fn coeffs_js(&self) -> Vec<f64> { self.0.coeffs.clone() }
 }
 
 // GF(2) 係数の多項式: Uint8Array(0/1) から構築し、u8 で値を返却
@@ -122,6 +125,11 @@ impl PolynomialGF2 {
 		let gx = finite_field::gfp::GFp::<2>::new(x as i64);
 		self.0.eval(gx).value() as u8
 	}
+	/// 係数ベクトル（低次→高次, 0/1）を返す
+	#[wasm_bindgen(js_name = coeffs)]
+	pub fn coeffs_js(&self) -> Vec<u8> {
+		self.0.coeffs.iter().map(|c| c.value() as u8).collect()
+	}
 }
 
 // GF(256) 係数の多項式: Uint8Array から構築し、u8 で値を返却
@@ -140,6 +148,11 @@ impl PolynomialGF256 {
 	pub fn eval(&self, x: u8) -> u8 {
 		let gx = finite_field::gf256::gf256_from_u8(x);
 		self.0.eval(gx).to_u8()
+	}
+	/// 係数ベクトル（低次→高次, u8）を返す
+	#[wasm_bindgen(js_name = coeffs)]
+	pub fn coeffs_js(&self) -> Vec<u8> {
+		self.0.coeffs.iter().map(|c| c.to_u8()).collect()
 	}
 }
 
@@ -182,6 +195,20 @@ impl PolynomialGFExtGF2 {
 			.unwrap_or_else(|| std::sync::Arc::new(vec![GFp::<2>::new(1)]));
 		let x = GFExt::new(px, x_coeffs.into_iter().map(|c| GFp::<2>::new(c as i64)).collect());
 		self.0.eval(x).coeffs().iter().map(|c| c.value() as u8).collect()
+	}
+
+	/// 係数ベクトル（各係数は GFExt(GF2) の係数列を Uint8Array として返す）
+	#[wasm_bindgen(js_name = coeffs)]
+	pub fn coeffs_js(&self) -> Vec<Uint8Array> {
+		self
+			.0
+			.coeffs
+			.iter()
+			.map(|e| {
+				let v: Vec<u8> = e.coeffs().iter().map(|c| c.value() as u8).collect();
+				Uint8Array::from(v.as_slice())
+			})
+			.collect()
 	}
 }
 

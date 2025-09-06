@@ -10,21 +10,16 @@ export function getWasm(): Promise<WasmExports> {
   if (!wasmPromise) {
     wasmPromise = (async () => {
       const mod = await import('../wasm-pkg/wasm.js')
-      // Use new init signature: pass a single options object { module }
-  const init = mod.default as unknown as (options?: { module_or_path?: RequestInfo | URL | Response | BufferSource | WebAssembly.Module }) => Promise<unknown>
-      // Browser: pass URL for fetch; Node: read file bytes (no fetch to localhost)
-      const isNode = typeof window === 'undefined'
-      if (isNode) {
-        const { readFile } = await import('node:fs/promises')
-        const { fileURLToPath } = await import('node:url')
-        const wasmFile = fileURLToPath(new URL('../../wasm-pkg/wasm_bg.wasm', import.meta.url))
-        const bytes = await readFile(wasmFile)
-  await init({ module_or_path: bytes })
-      } else {
-        const wasmUrl = new URL('../../wasm-pkg/wasm_bg.wasm', import.meta.url)
-  await init({ module_or_path: wasmUrl })
+      const maybeInit = (mod as any)?.default
+      if (typeof maybeInit === 'function') {
+        try {
+          await maybeInit()
+        } catch {
+          const wasmUrl = new URL('../wasm-pkg/wasm_bg.wasm', import.meta.url)
+          await maybeInit({ module_or_path: wasmUrl })
+        }
       }
-  return mod as unknown as WasmExports
+      return mod as unknown as WasmExports
     })()
   }
   return wasmPromise

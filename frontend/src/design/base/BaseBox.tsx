@@ -1,34 +1,19 @@
 import React from 'react';
-import type { ViewStyleKit } from '../tokens';
-import { CoreColorKey, SizeKey, RoundKey, ShadowKey, ColorViewProperty, SizeViewProperty } from '../tokens';
-import { baseBoxMaps } from '../maps/base';
-import { useViewClasses, resolveClass, StateFlags } from '../core/resolvers';
+import { View as FoundationView } from '../../baseComponents/foundation/View';
+import { CoreColorKey, SizeKey, RoundKey, ShadowKey } from '../tokens';
 
-export type BaseBoxProps = React.HTMLAttributes<HTMLElement> & {
-  styleKit?: Partial<ViewStyleKit> & { color?: Partial<ViewStyleKit['color']>; size?: Partial<ViewStyleKit['size']> };
+// Constrained BaseBox: only styling + semantic tag
+export type BaseBoxProps = {
+  color?: CoreColorKey;
+  size?: SizeKey;
+  round?: RoundKey;
+  shadow?: ShadowKey;
   as?: 'div' | 'section' | 'article' | 'header' | 'footer' | 'main' | 'nav';
   disabled?: boolean;
+  className?: string;
+  children?: React.ReactNode;
 };
 
-const DEFAULT_KIT: ViewStyleKit = {
-  color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg] } },
-  size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } },
-  roundKey: RoundKey.Md,
-  shadowKey: ShadowKey.None,
-};
-
-export const BaseBox: React.FC<BaseBoxProps> = ({ styleKit, as = 'div', disabled, className, ...props }) => {
-  const finalKit: ViewStyleKit = {
-    ...DEFAULT_KIT,
-    ...styleKit,
-    color: { ...DEFAULT_KIT.color, ...(styleKit?.color || {}) },
-    size: { ...DEFAULT_KIT.size, ...(styleKit?.size || {}) },
-  } as ViewStyleKit;
-
-  const classes = useViewClasses(finalKit, baseBoxMaps);
-  const flags: StateFlags = { Disabled: !!disabled } as any;
-  const cls = resolveClass(classes, flags);
-
-  const Comp: any = as;
-  return <Comp className={[cls, className].filter(Boolean).join(' ')} {...props} />;
+export const BaseBox: React.FC<BaseBoxProps> = (props) => {
+  return <FoundationView {...props} />;
 };

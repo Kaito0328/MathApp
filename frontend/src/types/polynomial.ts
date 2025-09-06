@@ -9,29 +9,14 @@ export interface PolynomialR {
   coeffs: number[]
 }
 
-export interface PolynomialC {
-  coeffs: Complex64[]
-}
+// Note: PolynomialC (complex coeffs) is not currently used on the frontend; remove until needed.
 
 export interface RationalFunctionR {
   numerator: PolynomialR
   denominator: PolynomialR
 }
 
-export interface Root {
-  value: Complex64
-  multiplicity: number
-}
-
-export type Pole = Root
-
-export interface PoleTerm {
-  pole: Complex64
-  // C_j のリスト（(s - p)^j の分子係数）
-  coefficients: Complex64[]
-}
-
 export interface PartialFractionExpansion {
   polynomial_part: PolynomialR
-  pole_terms: PoleTerm[]
+  pole_terms: { pole: Complex64; coefficients: Complex64[] }[]
 }

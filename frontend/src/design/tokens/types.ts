@@ -24,7 +24,20 @@ export enum ColorValueProperty {
   Border = 'borderColorOnly',
 }
 
-export type ColorKey = CoreColorKey;
+export enum SurfaceKey {
+  Surface = 'surface',
+  OnSurface = 'onSurface',
+}
+
+export enum OnColorKey {
+  OnBase = 'onBase',
+  OnPrimary = 'onPrimary',
+  OnSecondary = 'onSecondary',
+  OnDanger = 'onDanger',
+  OnSuccess = 'onSuccess',
+}
+
+export type ColorKey = CoreColorKey | SurfaceKey | OnColorKey;
 
 export enum SizeKey {
   SM = 'sm',
@@ -57,6 +70,13 @@ export enum ShadowKey {
   Sm = 'sm',
   Md = 'md',
   Lg = 'lg',
+}
+
+export enum VariantKey {
+  Solid = 'solid',
+  Soft = 'soft',
+  Outline = 'outline',
+  Ghost = 'ghost',
 }
 
 export enum FontWeightKey {
@@ -93,10 +113,12 @@ export type ViewStyleKit = {
   size?: SizeViewKit;
   roundKey?: RoundKey;
   shadowKey?: ShadowKey;
+  variant?: VariantKey;
 };
 
 export type TextStyleKit = {
   color: ColorTextStyleKit;
   size: SizeTextKit;
   fontWeightKey?: FontWeightKey;
+  variant?: VariantKey;
 };

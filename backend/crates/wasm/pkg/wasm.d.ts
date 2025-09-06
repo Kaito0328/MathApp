@@ -1,5 +1,15 @@
 /* tslint:disable */
 /* eslint-disable */
+export function dftComplexF64(x_flat: Float64Array): Float64Array;
+export function iftComplexF64(x_flat: Float64Array): Float64Array;
+export function binom(n: number, k: number): number;
+export function stirling2(n: number, k: number): number;
+export function fallingFactorialPoly(m: number): Float64Array;
+export function risingFactorialPoly(m: number): Float64Array;
+export function shiftPolyXPlusH(coeffs_flat: Float64Array, h: number): Float64Array;
+export function discreteDiff(coeffs_flat: Float64Array): Float64Array;
+export function discreteSum(coeffs_flat: Float64Array): Float64Array;
+export function solveRecurrence(coeffs: Float64Array, nh_polys_flat: Float64Array, nh_offsets: Uint32Array, nh_bases: Float64Array, initial_values: Float64Array): ClosedForm;
 export function window_hann(size: number): Float64Array;
 export function window_hamming(size: number): Float64Array;
 export function window_blackman(size: number): Float64Array;
@@ -43,6 +53,8 @@ export function u8_to_gray_f64(pixels: Uint8Array): Float64Array;
 export function gray_f64_to_u8_clamped(gray: Float64Array): Uint8Array;
 export function img_convolve2d_f32_io(src: Float32Array, width: number, height: number, kernel: Float32Array, kw: number, kh: number, border: WasmBorder): Float32Array;
 export function img_gaussian_blur_f32_io(src: Float32Array, width: number, height: number, sigma: number, radius: number, border: WasmBorder): Float32Array;
+export function nt_factor_u64(n: bigint): BigUint64Array;
+export function nt_factor_bigint_str(n_str: string): string[];
 export function init(): void;
 export function __probe(): number;
 export function solveLinearSystem(rows: number, cols: number, a_data: Float64Array, b: Float64Array): Float64Array;
@@ -55,24 +67,6 @@ export function gmmPredictProba(n_features: number, params: Float64Array, x: Flo
 export function bayesianLinearPosterior(rows: number, cols: number, x_data: Float64Array, y: Float64Array, prior_mean: Float64Array, prior_cov: Float64Array, noise_cov: Float64Array): Float64Array;
 export function kalmanPredict(n: number, f_flat: Float64Array, q_flat: Float64Array, x_flat: Float64Array, p_flat: Float64Array): Float64Array;
 export function kalmanUpdate(n: number, h_flat: Float64Array, r_flat: Float64Array, z_flat: Float64Array, x_flat: Float64Array, p_flat: Float64Array): Float64Array;
-export function convolveNaiveF64(x: Float64Array, h: Float64Array): Float64Array;
-export function convolveFftF64(x: Float64Array, h: Float64Array): Float64Array;
-export function convolveAutoF64(x: Float64Array, h: Float64Array, threshold: number): Float64Array;
-export function defaultConvolutionThreshold(): number;
-export function dftComplexF64(x_flat: Float64Array): Float64Array;
-export function iftComplexF64(x_flat: Float64Array): Float64Array;
-export function binom(n: number, k: number): number;
-export function stirling2(n: number, k: number): number;
-export function fallingFactorialPoly(m: number): Float64Array;
-export function risingFactorialPoly(m: number): Float64Array;
-export function shiftPolyXPlusH(coeffs_flat: Float64Array, h: number): Float64Array;
-export function discreteDiff(coeffs_flat: Float64Array): Float64Array;
-export function discreteSum(coeffs_flat: Float64Array): Float64Array;
-export function solveRecurrence(coeffs: Float64Array, nh_polys_flat: Float64Array, nh_offsets: Uint32Array, nh_bases: Float64Array, initial_values: Float64Array): ClosedForm;
-export function hammingDistanceGF2(a: Uint8Array, b: Uint8Array): number;
-export function weightDistributionGF2(codebook_flat: Uint8Array, n: number): Uint32Array;
-export function nt_factor_u64(n: bigint): BigUint64Array;
-export function nt_factor_bigint_str(n_str: string): string[];
 export function erf(x: number): number;
 export function erfc(x: number): number;
 export function erfInv(y: number): number;
@@ -82,6 +76,12 @@ export function regularizedGamma(s: number, x: number): number;
 export function beta(a: number, b: number): number;
 export function logBeta(a: number, b: number): number;
 export function regularizedBeta(a: number, b: number, x: number): number;
+export function convolveNaiveF64(x: Float64Array, h: Float64Array): Float64Array;
+export function convolveFftF64(x: Float64Array, h: Float64Array): Float64Array;
+export function convolveAutoF64(x: Float64Array, h: Float64Array, threshold: number): Float64Array;
+export function defaultConvolutionThreshold(): number;
+export function hammingDistanceGF2(a: Uint8Array, b: Uint8Array): number;
+export function weightDistributionGF2(codebook_flat: Uint8Array, n: number): Uint32Array;
 export enum WasmBorder {
   ConstantZero = 0,
   Replicate = 1,
@@ -105,6 +105,7 @@ export class Bernoulli {
   cdf(k: number): number;
   quantile(p: number): number;
   pmf_svg(width: number, height: number): string;
+  readonly p: number;
 }
 export class Binomial {
   free(): void;
@@ -116,6 +117,8 @@ export class Binomial {
   cdf(k: number): number;
   quantile(p: number): number;
   pmf_svg(width: number, height: number): string;
+  readonly n: number;
+  readonly p: number;
 }
 export class Categorical {
   free(): void;
@@ -125,6 +128,7 @@ export class Categorical {
   cdf(k: number): number;
   quantile(p: number): number;
   pmf_svg(width: number, height: number): string;
+  readonly probs: Float64Array;
 }
 export class ChiSquare {
   free(): void;
@@ -136,6 +140,7 @@ export class ChiSquare {
   cdf(x: number): number;
   quantile(p: number): number;
   pdf_svg(width: number, height: number, samples: number): string;
+  readonly k_param: number;
 }
 export class ClosedForm {
   private constructor();
@@ -241,6 +246,7 @@ export class Exponential {
   cdf(x: number): number;
   quantile(p: number): number;
   pdf_svg(width: number, height: number, samples: number): string;
+  readonly lambda: number;
 }
 export class F {
   free(): void;
@@ -252,6 +258,8 @@ export class F {
   cdf(x: number): number;
   quantile(p: number): number;
   pdf_svg(width: number, height: number, samples: number): string;
+  readonly d1: number;
+  readonly d2: number;
 }
 export class GF2 {
   free(): void;
@@ -310,6 +318,8 @@ export class Gamma {
   cdf(x: number): number;
   quantile(p: number): number;
   pdf_svg(width: number, height: number, samples: number): string;
+  readonly shape: number;
+  readonly rate: number;
 }
 export class Hamming74 {
   private constructor();
@@ -341,6 +351,8 @@ export class Matrix {
   eigen_decomposition(): any;
   cholesky(): Matrix;
   pinv(): Matrix;
+  data(): Float64Array;
+  columns(): number;
 }
 export class MatrixF32 {
   free(): void;
@@ -359,6 +371,8 @@ export class MatrixF32 {
   determinant(): number;
   rank(): number;
   inverse(): MatrixF32 | undefined;
+  data(): Float32Array;
+  columns(): number;
 }
 export class MatrixF64 {
   free(): void;
@@ -390,6 +404,8 @@ export class MatrixF64 {
   multiply_vector(vector: VectorF64): VectorF64 | undefined;
   diagonal(): VectorF64;
   solve(b: VectorF64): VectorF64 | undefined;
+  data(): Float64Array;
+  columns(): number;
 }
 export class MatrixI32 {
   free(): void;
@@ -405,6 +421,8 @@ export class MatrixI32 {
   is_square(): boolean;
   transpose(): MatrixI32;
   trace(): number;
+  data(): Int32Array;
+  columns(): number;
 }
 export class Normal {
   free(): void;
@@ -416,6 +434,8 @@ export class Normal {
   cdf(x: number): number;
   quantile(p: number): number;
   pdf_svg(width: number, height: number, samples: number): string;
+  readonly mu: number;
+  readonly sigma: number;
 }
 export class Poisson {
   free(): void;
@@ -428,6 +448,7 @@ export class Poisson {
   cdf(k: number): number;
   quantile(p: number): number;
   pmf_svg(width: number, height: number): string;
+  readonly lambda: number;
 }
 export class PolynomialF64 {
   free(): void;
@@ -440,6 +461,10 @@ export class PolynomialF64 {
   deg(): number;
   get(i: number): number;
   eval(x: number): number;
+  /**
+   * 係数ベクトル（低次→高次）を返す
+   */
+  coeffs(): Float64Array;
 }
 export class PolynomialGF2 {
   free(): void;
@@ -452,6 +477,10 @@ export class PolynomialGF2 {
   deg(): number;
   get(i: number): number;
   eval(x: number): number;
+  /**
+   * 係数ベクトル（低次→高次, 0/1）を返す
+   */
+  coeffs(): Uint8Array;
 }
 export class PolynomialGF256 {
   free(): void;
@@ -464,6 +493,10 @@ export class PolynomialGF256 {
   deg(): number;
   get(i: number): number;
   eval(x: number): number;
+  /**
+   * 係数ベクトル（低次→高次, u8）を返す
+   */
+  coeffs(): Uint8Array;
 }
 export class PolynomialGFExtGF2 {
   free(): void;
@@ -476,6 +509,10 @@ export class PolynomialGFExtGF2 {
   deg(): number;
   get(i: number): Uint8Array;
   eval(x_coeffs: Uint8Array): Uint8Array;
+  /**
+   * 係数ベクトル（各係数は GFExt(GF2) の係数列を Uint8Array として返す）
+   */
+  coeffs(): Uint8Array[];
 }
 export class ReedSolomon {
   free(): void;
@@ -495,6 +532,7 @@ export class StudentT {
   cdf(x: number): number;
   quantile(p: number): number;
   pdf_svg(width: number, height: number, samples: number): string;
+  readonly df: number;
 }
 export class Uniform {
   free(): void;
@@ -506,6 +544,8 @@ export class Uniform {
   cdf(x: number): number;
   quantile(p: number): number;
   pdf_svg(width: number, height: number, samples: number): string;
+  readonly a: number;
+  readonly b: number;
 }
 export class Vector {
   free(): void;
@@ -530,6 +570,7 @@ export class Vector {
   transpose(): MatrixF64;
   to_column_matrix(): MatrixF64;
   to_row_matrix(): MatrixF64;
+  data(): Float64Array;
 }
 export class VectorF32 {
   free(): void;
@@ -547,6 +588,7 @@ export class VectorF32 {
   argmin(): number | undefined;
   max(): number | undefined;
   min(): number | undefined;
+  data(): Float32Array;
 }
 export class VectorF64 {
   free(): void;
@@ -575,6 +617,7 @@ export class VectorF64 {
   transpose(): MatrixF64;
   to_column_matrix(): MatrixF64;
   to_row_matrix(): MatrixF64;
+  data(): Float64Array;
 }
 export class VectorI32 {
   free(): void;
@@ -592,6 +635,7 @@ export class VectorI32 {
   argmin(): number | undefined;
   max(): number | undefined;
   min(): number | undefined;
+  data(): Int32Array;
 }
 export class WasmGF2 {
   free(): void;

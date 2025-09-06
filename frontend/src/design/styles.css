@@ -16,6 +16,9 @@
   --c-secondary-text: #6b7280;   /* gray-500 */
   --c-secondary-border: #c4b5fd; /* violet-300 */
 
+  /* Placeholder text (light) - darkest for readability */
+  --c-placeholder-text: #1f2937; /* slate-800 */
+
   /* Semantic colors (light) */
   --c-danger-bg: #fee2e2;        /* red-100 */
   --c-danger-text: #b91c1c;      /* red-700 */
@@ -24,6 +27,10 @@
   --c-success-bg: #dcfce7;       /* green-100 */
   --c-success-text: #166534;     /* green-800 */
   --c-success-border: #86efac;   /* green-300 */
+
+  /* Drawer nav backgrounds (light) */
+  --c-drawer-active: rgba(0, 0, 0, 0.10);
+  --c-drawer-hover: rgba(0, 0, 0, 0.05);
 }
 
 [data-theme="dark"] {
@@ -40,8 +47,14 @@
 
   /* Secondary: deep violet with brighter text for readability */
   --c-secondary-bg: #2e1065;     /* violet-950 */
-  --c-secondary-text: #f5f3ff;   /* near-white violet tint for readability */
+    --c-secondary-text: #f5f3ff;   /* near-white violet tint for readability */
+    /* Drawer nav backgrounds for dark */
+    --c-drawer-active: rgba(255,255,255,0.16);
+    --c-drawer-hover: rgba(255,255,255,0.08);
   --c-secondary-border: #6d28d9; /* violet-700 */
+
+  /* Placeholder text (dark) - near text color for readability */
+  --c-placeholder-text: #e5e7eb; /* gray-200 */
 
   /* Semantic colors (dark) */
   --c-danger-bg: #7f1d1d;        /* red-900 */
@@ -55,22 +68,35 @@
 
 /* Color utilities */
 .bg-base { background-color: var(--c-base-bg); }
+.bg-surface { background-color: var(--c-base-bg); }
 .bg-primary { background-color: var(--c-primary-bg); }
 .bg-secondary { background-color: var(--c-secondary-bg); }
 .bg-danger { background-color: var(--c-danger-bg); }
 .bg-success { background-color: var(--c-success-bg); }
 
 .text-base { color: var(--c-base-text); }
+.text-on-surface { color: var(--c-base-text); }
+.text-on-base { color: var(--c-base-text); }
+.text-on-primary { color: var(--c-primary-text); }
+.text-on-secondary { color: var(--c-secondary-text); }
+.text-on-danger { color: var(--c-danger-text); }
+.text-on-success { color: var(--c-success-text); }
 .text-primary { color: var(--c-primary-text); }
 .text-secondary { color: var(--c-secondary-text); }
 .text-danger { color: var(--c-danger-text); }
 .text-success { color: var(--c-success-text); }
 
 .border-base { border-color: var(--c-base-border); border-style: solid; }
+.border-surface { border-color: var(--c-base-border); border-style: solid; }
 .border-primary { border-color: var(--c-primary-border); border-style: solid; }
 .border-secondary { border-color: var(--c-secondary-border); border-style: solid; }
 .border-danger { border-color: var(--c-danger-border); border-style: solid; }
 .border-success { border-color: var(--c-success-border); border-style: solid; }
+.border-base { border-color: var(--c-base-border); border-style: solid; border-width: 1px; }
+.border-primary { border-color: var(--c-primary-border); border-style: solid; border-width: 1px; }
+.border-secondary { border-color: var(--c-secondary-border); border-style: solid; border-width: 1px; }
+.border-danger { border-color: var(--c-danger-border); border-style: solid; border-width: 1px; }
+.border-success { border-color: var(--c-success-border); border-style: solid; border-width: 1px; }
 
 /* Size utilities */
 .pad-sm { padding: 8px; }
@@ -145,5 +171,49 @@ button {
 
 textarea::placeholder,
 input::placeholder {
-  color: var(--c-secondary-text);
+  color: var(--c-placeholder-text);
+  opacity: 1; /* ensure not dimmed */
 }
+/* vendor-prefixed placeholders */
+textarea::-webkit-input-placeholder,
+input::-webkit-input-placeholder { color: var(--c-placeholder-text); opacity: 1; }
+textarea::-moz-placeholder,
+input::-moz-placeholder { color: var(--c-placeholder-text); opacity: 1; }
+textarea:-ms-input-placeholder,
+input:-ms-input-placeholder { color: var(--c-placeholder-text); opacity: 1; }
+
+/* Simple component helpers */
+.btn { cursor: pointer; user-select: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn.btn-primary { background-color: var(--c-primary-bg); border-color: var(--c-primary-border); }
+.btn.btn-disabled { opacity: 0.6; cursor: not-allowed; }
+
+.input { display: inline-flex; align-items: center; border: 1px solid var(--c-base-border); }
+.input .input-el { background: transparent; border: none; outline: none; width: 100%; color: inherit; padding: 0; }
+.input.input-invalid { border-color: var(--c-danger-border); }
+
+.card { border: 1px solid var(--c-base-border); }
+.card-header { font-weight: 600; margin-bottom: 8px; }
+.card-body { display: block; }
+.card-footer { margin-top: 8px; }
+
+/* Drawer navigation */
+.nav-link { display: block; padding: 6px 10px; border-radius: 8px; color: var(--c-base-text); text-decoration: none; transition: background-color 120ms ease, color 120ms ease; }
+.nav-link:hover { background: var(--c-drawer-hover, rgba(0,0,0,0.06)); }
+.nav-link[aria-current="page"] { background: var(--c-drawer-active, rgba(0,0,0,0.10)); font-weight: 600; }
+.nav-link:focus-visible { outline: 2px solid var(--c-primary-border); outline-offset: 2px; }
+.nav-toggle { display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; border: none; padding: 6px 8px; cursor: pointer; color: var(--c-base-text); border-radius: 8px; transition: background-color 120ms ease; }
+.nav-toggle:hover { background: var(--c-drawer-hover, rgba(0,0,0,0.06)); }
+
+/* Bracket wrappers for inputs */
+.bracket-wrap { display: inline-grid; grid-auto-flow: column; align-items: stretch; gap: 0; }
+.bracket { position: relative; width: 10px; }
+.bracket::before { content: ""; position: absolute; top: 0; bottom: 0; }
+/* 左括弧は右端に線を描く（セルに密着） */
+.bracket-left::before { right: 0; width: 10px; border-right: 2px solid var(--c-base-text); border-top: 2px solid var(--c-base-text); border-bottom: 2px solid var(--c-base-text); }
+/* 右括弧は左端に線を描く（セルに密着） */
+.bracket-right::before { left: 0; width: 10px; border-left: 2px solid var(--c-base-text); border-top: 2px solid var(--c-base-text); border-bottom: 2px solid var(--c-base-text); }
+
+/* KaTeXで描画した括弧を入力グリッドの高さに合わせてスケールするためのヘルパ */
+.katex-bracket { display: inline-block; line-height: 1; transform-origin: center; }
+.katex-bracket p { margin: 0; }
+.katex-bracket .katex { display: block; }

@@ -56,17 +56,12 @@ impl DiscreteTF {
     pub fn bode_svg(&self, width: u32, height: u32, n_points: usize, hz_axis: bool, legend: bool) -> String {
         let x_axis = if hz_axis { lti_systems::plot::DiscreteXAxis::Hz } else { lti_systems::plot::DiscreteXAxis::Radian };
         let opts = lti_systems::plot::DiscreteBodeOptions { n_points: n_points.max(2), legend, x_axis, ..Default::default() };
-    let path = "/tmp/wasm_discrete_bode.svg";
-    // 公開API: DiscreteTF::plot_bode_svg を使用
-    let _ = self.inner.plot_bode_svg(path, width, height, &opts);
-    std::fs::read_to_string(path).unwrap_or_default()
+    lti_systems::plot::discrete_bode_svg_string(&self.inner, width, height, &opts)
     }
 
     pub fn nyquist_svg(&self, width: u32, height: u32, n_points: usize, show_minus_one: bool, legend: bool) -> String {
         let opts = lti_systems::plot::DiscreteNyquistOptions { n_points: n_points.max(2), show_minus_one, legend, ..Default::default() };
-    let path = "/tmp/wasm_discrete_nyquist.svg";
-    let _ = self.inner.plot_nyquist_svg(path, width, height, &opts);
-    std::fs::read_to_string(path).unwrap_or_default()
+    lti_systems::plot::discrete_nyquist_svg_string(&self.inner, width, height, &opts)
     }
 
     // 直列/並列/フィードバック（単純操作）
@@ -79,9 +74,7 @@ impl DiscreteTF {
     pub fn feedback_unity(&self) -> DiscreteTF { DiscreteTF { inner: self.inner.feedback_unity() } }
 
     pub fn block_feedback_svg(&self, width: u32, height: u32, negative_feedback: bool, feedback_label: Option<String>) -> String {
-    let path = "/tmp/wasm_discrete_blockfb.svg";
-    let _ = self.inner.plot_block_feedback_svg(path, width, height, negative_feedback, feedback_label.as_deref());
-        std::fs::read_to_string(path).unwrap_or_default()
+    lti_systems::plot::discrete_block_feedback_svg_string(&self.inner, width, height, negative_feedback, feedback_label.as_deref())
     }
 }
 
@@ -123,22 +116,16 @@ impl ContinuousTF {
     }
 
     pub fn bode_svg(&self, width: u32, height: u32, f_min_hz: f64, f_max_hz: f64, n_points: usize, legend: bool) -> String {
-    let opts = lti_systems::plot::ContinuousBodeOptions { n_points: n_points.max(2), f_min_hz, f_max_hz, legend, ..Default::default() };
-    let path = "/tmp/wasm_cont_bode.svg";
-    let _ = self.inner.plot_bode_svg(path, width, height, &opts);
-        std::fs::read_to_string(path).unwrap_or_default()
+        let opts = lti_systems::plot::ContinuousBodeOptions { n_points: n_points.max(2), f_min_hz, f_max_hz, legend, ..Default::default() };
+    lti_systems::plot::continuous_bode_svg_string(&self.inner, width, height, &opts)
     }
     pub fn nyquist_svg(&self, width: u32, height: u32, f_min_hz: f64, f_max_hz: f64, n_points: usize, log_freq: bool, legend: bool) -> String {
     let opts = lti_systems::plot::ContinuousNyquistOptions { n_points: n_points.max(2), f_min_hz, f_max_hz, log_freq, legend, ..Default::default() };
-    let path = "/tmp/wasm_cont_nyquist.svg";
-    let _ = self.inner.plot_nyquist_svg(path, width, height, &opts);
-        std::fs::read_to_string(path).unwrap_or_default()
+    lti_systems::plot::continuous_nyquist_svg_string(&self.inner, width, height, &opts)
     }
 
     pub fn block_feedback_svg(&self, width: u32, height: u32, negative_feedback: bool, feedback_label: Option<String>) -> String {
-    let path = "/tmp/wasm_cont_blockfb.svg";
-    let _ = self.inner.plot_block_feedback_svg(path, width, height, negative_feedback, feedback_label.as_deref());
-        std::fs::read_to_string(path).unwrap_or_default()
+    lti_systems::plot::continuous_block_feedback_svg_string(&self.inner, width, height, negative_feedback, feedback_label.as_deref())
     }
 }
 

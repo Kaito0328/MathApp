@@ -1,10 +1,10 @@
 "use client"
 import { useMemo, useState } from 'react'
-import { BaseBox } from '../../../src/design/base/BaseBox'
-import { BaseText } from '../../../src/design/base/BaseText'
-import { CoreColorKey, ColorViewProperty, SizeKey, SizeViewProperty, SizeTextProperty, FontWeightKey } from '../../../src/design/tokens'
-import { MatrixInput } from '../../components'
-import { MatrixCard } from '../../../src/components/base/MatrixCard'
+import { View } from '../../../src/baseComponents/foundation/View'
+import { Text } from '../../../src/baseComponents/foundation/Text'
+import { CoreColorKey, SizeKey, FontWeightKey } from '../../../src/design/tokens'
+import { MatrixInput } from '../../../src/widgets/input'
+import { MatrixView } from '../../../src/widgets/display'
 import { useVariableStore } from '../../../src/state/VariableStore'
 import { VariablePicker } from '../../../src/components/variables/VariablePicker'
 
@@ -27,10 +27,10 @@ export default function LinalgAdd() {
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <BaseText styleKit={{ size: { sizeKey: SizeKey.MD, apply: { default: [SizeTextProperty.FontSize] } }, fontWeightKey: FontWeightKey.Medium }}>A + B（加算）</BaseText>
-      <BaseBox style={{ padding: 8, borderWidth: 0 }}>
+    <Text weight={FontWeightKey.Medium}>A + B（加算）</Text>
+    <View style={{ padding: 8, borderWidth: 0 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <BaseText>サイズ</BaseText>
+      <Text>サイズ</Text>
           <label>rows <input type="number" min={1} value={size.rows} onChange={(e) => setSize(s => ({ ...s, rows: Math.max(1, Math.floor(Number(e.target.value)||1)) }))} /></label>
           <label>cols <input type="number" min={1} value={size.cols} onChange={(e) => setSize(s => ({ ...s, cols: Math.max(1, Math.floor(Number(e.target.value)||1)) }))} /></label>
           <button onClick={() => {
@@ -38,12 +38,12 @@ export default function LinalgAdd() {
             setB(b => ({ rows: size.rows, cols: size.cols, data: Array(size.rows * size.cols).fill(0).map((_, i) => b.data[i] ?? 0) }))
           }}>適用</button>
         </div>
-      </BaseBox>
+  </View>
 
       <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-        <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } } }} style={{ borderWidth: 1 }}>
+    <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1, padding: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <BaseText>A</BaseText>
+      <Text>A</Text>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
               <VariablePicker placeholder="変数から代入" onPick={(name) => {
                 const v = get(name)
@@ -59,13 +59,13 @@ export default function LinalgAdd() {
             </div>
           </div>
           <div style={{ marginTop: 8 }}>
-            <MatrixInput value={A} onChange={setA} controlledSize={size} hideSizeControls />
+            <MatrixInput value={A} onChange={setA} rows={size.rows} cols={size.cols} />
           </div>
-        </BaseBox>
+        </View>
 
-        <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } } }} style={{ borderWidth: 1 }}>
+    <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1, padding: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <BaseText>B</BaseText>
+      <Text>B</Text>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
               <VariablePicker placeholder="変数から代入" onPick={(name) => {
                 const v = get(name)
@@ -81,14 +81,14 @@ export default function LinalgAdd() {
             </div>
           </div>
           <div style={{ marginTop: 8 }}>
-            <MatrixInput value={B} onChange={setB} controlledSize={size} hideSizeControls />
+            <MatrixInput value={B} onChange={setB} rows={size.rows} cols={size.cols} />
           </div>
-        </BaseBox>
+        </View>
       </div>
 
-      <BaseBox styleKit={{ color: { colorKey: CoreColorKey.Base, apply: { default: [ColorViewProperty.Bg, ColorViewProperty.Border] } }, size: { sizeKey: SizeKey.MD, apply: { default: [SizeViewProperty.Padding] } } }} style={{ borderWidth: 1 }}>
+    <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1, padding: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <BaseText>結果</BaseText>
+      <Text>結果</Text>
           <div style={{ marginLeft: 'auto' }}>
             <button onClick={() => {
               if ('error' in result) return
@@ -100,12 +100,12 @@ export default function LinalgAdd() {
         </div>
         <div style={{ marginTop: 8 }}>
           {'error' in result ? (
-            <BaseText>{result.error}</BaseText>
+            <Text>{result.error}</Text>
           ) : (
-            <MatrixCard rows={result.rows} cols={result.cols} data={result.data} showSizeBadge title="A + B" />
+            <MatrixView rows={result.rows} cols={result.cols} data={result.data} />
           )}
         </div>
-      </BaseBox>
+      </View>
     </div>
   )
 }

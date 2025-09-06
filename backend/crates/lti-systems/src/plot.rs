@@ -205,6 +205,97 @@ impl ContinuousTransferFunction {
     }
 }
 
+// ===== Public free functions for in-memory SVG generation (browser-friendly) =====
+/// Discrete TF: Bode SVG as String
+pub fn discrete_bode_svg_string(
+    tf: &crate::discrete::TransferFunction,
+    width: u32,
+    height: u32,
+    opts: &crate::plot::DiscreteBodeOptions,
+) -> String {
+    let mut buf: Vec<u8> = Vec::with_capacity(32 * 1024);
+    let _ = write_bode_svg_discrete_multi(&[(tf, "H(z)")], &mut buf, width, height, opts);
+    String::from_utf8(buf).unwrap_or_default()
+}
+
+/// Discrete TF: Nyquist SVG as String
+pub fn discrete_nyquist_svg_string(
+    tf: &crate::discrete::TransferFunction,
+    width: u32,
+    height: u32,
+    opts: &crate::plot::DiscreteNyquistOptions,
+) -> String {
+    let mut buf: Vec<u8> = Vec::with_capacity(32 * 1024);
+    let _ = write_nyquist_svg_discrete_multi(&[(tf, "H(z)")], &mut buf, width, height, opts);
+    String::from_utf8(buf).unwrap_or_default()
+}
+
+/// Discrete TF: Block feedback diagram SVG as String
+pub fn discrete_block_feedback_svg_string(
+    tf: &crate::discrete::TransferFunction,
+    width: u32,
+    height: u32,
+    negative_feedback: bool,
+    feedback_label: Option<&str>,
+) -> String {
+    let mut buf: Vec<u8> = Vec::with_capacity(8 * 1024);
+    let g_label = format!("{}", tf.display());
+    let _ = write_block_feedback_svg(
+        &g_label,
+        &mut buf,
+        width,
+        height,
+        negative_feedback,
+        feedback_label,
+    );
+    String::from_utf8(buf).unwrap_or_default()
+}
+
+/// Continuous TF: Bode SVG as String
+pub fn continuous_bode_svg_string(
+    tf: &crate::continuous::TransferFunction,
+    width: u32,
+    height: u32,
+    opts: &crate::plot::ContinuousBodeOptions,
+) -> String {
+    let mut buf: Vec<u8> = Vec::with_capacity(32 * 1024);
+    let _ = write_bode_svg_continuous_multi(&[(tf, "G(s)")], &mut buf, width, height, opts);
+    String::from_utf8(buf).unwrap_or_default()
+}
+
+/// Continuous TF: Nyquist SVG as String
+pub fn continuous_nyquist_svg_string(
+    tf: &crate::continuous::TransferFunction,
+    width: u32,
+    height: u32,
+    opts: &crate::plot::ContinuousNyquistOptions,
+) -> String {
+    let mut buf: Vec<u8> = Vec::with_capacity(32 * 1024);
+    let _ = write_nyquist_svg_continuous_multi(&[(tf, "G(s)")], &mut buf, width, height, opts);
+    String::from_utf8(buf).unwrap_or_default()
+}
+
+/// Continuous TF: Block feedback diagram SVG as String
+pub fn continuous_block_feedback_svg_string(
+    tf: &crate::continuous::TransferFunction,
+    width: u32,
+    height: u32,
+    negative_feedback: bool,
+    feedback_label: Option<&str>,
+) -> String {
+    let mut buf: Vec<u8> = Vec::with_capacity(8 * 1024);
+    let g_label = format!("{}", tf.display());
+    let _ = write_block_feedback_svg(
+        &g_label,
+        &mut buf,
+        width,
+        height,
+        negative_feedback,
+        feedback_label,
+    );
+    String::from_utf8(buf).unwrap_or_default()
+}
+
 // ===== Block Diagram (simple single-loop) =====
 
 fn xml_escape(s: &str) -> String {

@@ -77,18 +77,18 @@ impl WasmSignal {
 	}
 
 	pub fn save_svg_simple(&self, width: u32, height: u32) -> String {
-	let s = sp::plot::Series { y: &self.data, label: "signal" };
-	let path = "/tmp/wasm_signal_simple.svg";
-	let _ = sp::plot::save_svg_time_series(path, width, height, &[s], Some(self.fs));
-	std::fs::read_to_string(path).unwrap_or_default()
+		let s = sp::plot::Series { y: &self.data, label: "signal" };
+		let mut buf: Vec<u8> = Vec::with_capacity(16*1024);
+		let _ = sp::plot::write_svg_time_series_to(&mut buf, width, height, &[s], Some(self.fs));
+		String::from_utf8(buf).unwrap_or_default()
 	}
 
 	pub fn save_svg_with_axes(&self, width: u32, height: u32, label: Option<String>) -> String {
 		let lab = label.as_deref().unwrap_or("signal");
-	let s = sp::plot::Series { y: &self.data, label: lab };
-	let path = "/tmp/wasm_signal_axes.svg";
-	let _ = sp::plot::save_svg_time_series(path, width, height, &[s], Some(self.fs));
-	std::fs::read_to_string(path).unwrap_or_default()
+		let s = sp::plot::Series { y: &self.data, label: lab };
+		let mut buf: Vec<u8> = Vec::with_capacity(16*1024);
+		let _ = sp::plot::write_svg_time_series_to(&mut buf, width, height, &[s], Some(self.fs));
+		String::from_utf8(buf).unwrap_or_default()
 	}
 }
 
@@ -130,7 +130,6 @@ impl WasmSpectrum {
 			v.push(Complex::new(di[k], di[k+1]));
 		}
 		let spc = sp::signal::Spectrum::new(v, self.fs);
-	let path = "/tmp/wasm_spectrum_mag.svg";
 	let label = label.as_deref().unwrap_or("spectrum");
 		let mags: Vec<f64> = spc
 			.data()
@@ -138,8 +137,9 @@ impl WasmSpectrum {
 			.map(|c| { let m = c.norm(); if m>0.0 {20.0*m.log10()} else {-120.0} })
 			.collect();
 	let s2 = sp::plot::Series { y: &mags, label };
-	let _ = sp::plot::save_svg_series_scaled(path, width, height, &[s2], "bin", (self.len().saturating_sub(1)) as f64);
-	std::fs::read_to_string(path).unwrap_or_default()
+	let mut buf: Vec<u8> = Vec::with_capacity(16*1024);
+	let _ = sp::plot::write_svg_series_scaled_to(&mut buf, width, height, &[s2], "bin", (self.len().saturating_sub(1)) as f64);
+	String::from_utf8(buf).unwrap_or_default()
 	}
 }
 

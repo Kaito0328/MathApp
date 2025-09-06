@@ -1,194 +1,103 @@
-'use client'
+"use client"
+import React from 'react'
+import type { Vector, Matrix } from '../src/widgets/dto/linalg'
+import type { Complex } from '../src/widgets/dto/complex'
+import type { Polynomial, RationalFunction } from '../src/widgets/dto/polynomial'
+import type { TransferFunction, Zpk } from '../src/widgets/dto/lti-systems'
+import type { Signal, Spectrum } from '../src/widgets/dto/signal_processing'
 
-import { useEffect, useState } from 'react'
-import { initWasm } from './lib/wasm'
-import { VectorInput, MatrixInput, SpectrumCard } from './components'
-import { SpectrumInput, TransferFunctionInput, ZpkInput, PolynomialTermInput } from '../src/components/inputs'
-import { PolynomialCardSimple } from '../src/components/base/PolynomialCardSimple'
-import { SignalCardSimple } from '../src/components/base/SignalCardSimple'
-import { SignalInputSimple } from '../src/components/inputs/SignalInputSimple'
-import { RationalFunctionInputSimple } from '../src/components/inputs/RationalFunctionInputSimple'
-import { VectorCard } from '../src/components/base/VectorCard'
-import { MatrixCard } from '../src/components/base/MatrixCard'
-import { BaseBox } from '../src/design/base/BaseBox'
-import { BaseText } from '../src/design/base/BaseText'
-import { useTheme } from '../src/design/ThemeProvider'
-
-import { ContinuousPdfCard, DiscretePmfCard } from '../src/components/base/DistributionCards'
-import { TransferFunctionCardSimple } from '../src/components/base/LtiCardsSimple'
-import { formatPolynomialMarkdown } from '../src/components/utils/polynomial'
-import { RationalFunctionCard } from '../src/components/base/RationalFunctionCard'
+import { VectorInput, MatrixInput, ComplexInput, PolynomialInput, RationalFunctionInput, TransferFunctionInput, ZpkInput, SignalInput, SpectrumInput } from '../src/widgets/input'
+import { VectorSizeControls, MatrixSizeControls } from '../src/widgets/input/SizeControls'
+import { VectorView, MatrixView, ComplexView, PolynomialView, RationalFunctionView, TransferFunctionView, ZpkView, SignalView, SpectrumView } from '../src/widgets/display/index'
 
 export default function Page() {
-  const [wasmInfo, setWasmInfo] = useState<string>('loading…')
-  const [vec, setVec] = useState<number[]>([1, 2, 3, 4])
-  const [mat, setMat] = useState<{ rows: number; cols: number; data: number[] }>({ rows: 2, cols: 3, data: [1, 2, 3, 4, 5, 6] })
-  const [sig, setSig] = useState<{ data: number[]; sample_rate: number }>({ data: Array.from({ length: 64 }, (_, i) => Math.sin((2*Math.PI*4*i)/64)), sample_rate: 64 })
-  const [spec, setSpec] = useState<{ spectrum: number[]; sample_rate: number }>({ spectrum: [], sample_rate: 64 })
-  const [rf, setRf] = useState<{ num: number[]; den: number[] }>({ num: [1], den: [1, -1] })
-  const [tf, setTf] = useState<{ num: number[]; den: number[]; sample_time?: number | null }>({ num: [1], den: [1, -1], sample_time: undefined })
-  const [zpk, setZpk] = useState<{ zeros: number[]; poles: number[]; gain: number; sample_time?: number | null }>({ zeros: [], poles: [], gain: 1 })
-  const [rfMd, setRfMd] = useState<string>('')
-  const [tfMd, setTfMd] = useState<string>('')
-  const [poly, setPoly] = useState<number[]>([1, -3, 2])
-  const [polyMd, setPolyMd] = useState<string>('')
-  const { theme, setTheme } = useTheme()
-  // Stats demo states
-  const [normalSvg, setNormalSvg] = useState<string>('')
-  const [gammaSvg, setGammaSvg] = useState<string>('')
-  const [binomSvg, setBinomSvg] = useState<string>('')
-  const [poisSvg, setPoisSvg] = useState<string>('')
-
-  useEffect(() => {
-    let mounted = true
-    initWasm()
-      .then((m: any) => {
-        if (!mounted) return
-        // Demo: use MatrixF64 which is guaranteed by wasm.d.ts
-        const MatrixF64 = (m as any).MatrixF64
-        if (MatrixF64) {
-          const A = MatrixF64.zeros(2, 3)
-          const T = A.transpose()
-          const info = `${A.rows()}x${A.cols()} -> transpose ${T.rows()}x${T.cols()}`
-          setWasmInfo(info)
-          A.free?.(); T.free?.()
-        } else {
-          setWasmInfo('WASM loaded (MatrixF64 not found)')
-        }
-      })
-  .catch((e: unknown) => console.error('Failed to init wasm', e))
-    return () => {
-      mounted = false
-    }
-  }, [])
+  // Vector
+  const [vec, setVec] = React.useState<Vector>({ data: [1, 2, 3] })
+  const [vecN, setVecN] = React.useState<number>(3)
+  const applyVec = React.useCallback(() => setVec({ data: (vec.data.slice(0, vecN).concat(Array(Math.max(0, vecN - vec.data.length)).fill(0))) }), [vec, vecN])
+  // Matrix
+  const [mat, setMat] = React.useState<Matrix>({ rows: 2, cols: 2, data: [1, 0, 0, 1] })
+  const [mRows, setMRows] = React.useState<number>(2)
+  const [mCols, setMCols] = React.useState<number>(2)
+  const applyMat = React.useCallback(() => {
+    const r = mRows, c = mCols
+    const size = r * c
+    const next = mat.data.slice(0, size).concat(Array(Math.max(0, size - mat.data.length)).fill(0))
+    setMat({ rows: r, cols: c, data: next })
+  }, [mRows, mCols, mat])
+  // Complex
+  const [z, setZ] = React.useState<Complex>({ re: 1, im: 1 })
+  // Polynomial / Rational
+  const [poly, setPoly] = React.useState<Polynomial>({ coeffs: [1, -3, 2] })
+  const [rat, setRat] = React.useState<RationalFunction>({ numerator: { coeffs: [1, 0] }, denominator: { coeffs: [1, -1] } })
+  // LTI (TF / ZPK)
+  const [tf, setTf] = React.useState<TransferFunction>({ num: [1, 0.5], den: [1, -0.3], sample_time: 1 })
+  const [zpk, setZpk] = React.useState<Zpk>({ zeros: [0.2, 0], poles: [0.5, 0, -0.2, 0], gain: 1, sample_time: 1 })
+  // Signal / Spectrum
+  const [sig, setSig] = React.useState<Signal>({ data: [0, 1, 0, -1], sample_rate: 4 })
+  const [spec, setSpec] = React.useState<Spectrum>({ data: [{ re: 1, im: 0 }, { re: 0, im: -1 }], sample_rate: 2 })
 
   return (
-    <main>
-      <h1 style={{ marginTop: 0 }}>MathApp (Next.js + WASM)</h1>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>Theme: {theme}</button>
-      </div>
-      <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1, margin: '12px 0' }}>
-        <BaseText>WASM demo: {wasmInfo}</BaseText>
-      </BaseBox>
-      {/* Design System Demo */}
-    <BaseBox styleKit={{ color: { colorKey: 'primary' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any, shadowKey: 'sm' as any }}
-        className="border-base" style={{ borderWidth: 1, marginBottom: 12 }}>
-        <BaseText styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['text'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['fontSize'] as any } }, fontWeightKey: 'bold' as any }}>
-          Base components (Box/Text) via tokens
-        </BaseText>
-      </BaseBox>
-  <PolynomialCardSimple coeffs={poly} varName="x" />
+    <main style={{ display: 'grid', gap: 24 }}>
+      <section>
+        <h2 style={{ margin: '8px 0' }}>Vector</h2>
+        <div style={{ display: 'grid', gap: 6 }}>
+          <VectorSizeControls length={vecN} onChange={setVecN} onApply={applyVec} />
+          <VectorInput value={vec} onChange={setVec} orientation="row" length={vecN} />
+        </div>
+        <div style={{ marginTop: 8 }}><VectorView value={vec} orientation="row" /></div>
+      </section>
 
-      {/* Inputs (new grid-based) */}
-      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: '1fr', marginTop: 12 }}>
-  <VectorInput value={vec} onChange={setVec} />
-  <VectorCard data={vec} title="Vector" showSizeBadge={true} />
+      <section>
+        <h2 style={{ margin: '8px 0' }}>Matrix</h2>
+        <div style={{ display: 'grid', gap: 6 }}>
+          <MatrixSizeControls rows={mRows} cols={mCols} onChange={(r, c) => { setMRows(r); setMCols(c) }} onApply={applyMat} />
+          <MatrixInput value={mat} onChange={setMat} rows={mRows} cols={mCols} />
+        </div>
+        <div style={{ marginTop: 8 }}><MatrixView value={mat} /></div>
+      </section>
 
-  <MatrixInput value={mat} onChange={setMat} />
-  <MatrixCard rows={mat.rows} cols={mat.cols} data={mat.data} title="Matrix" showSizeBadge={true} />
+      <section>
+        <h2 style={{ margin: '8px 0' }}>Complex</h2>
+        <ComplexInput value={z} onChange={setZ} />
+        <div style={{ marginTop: 8 }}><ComplexView value={z} /></div>
+      </section>
 
-  {/* Signal / Spectrum */}
-  {/* Signal: モード入力UI（詳細） */}
-  <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1 }}>
-    <BaseText>Signal Input (modes)</BaseText>
-    <div style={{ marginTop: 8 }}>
-      {/* 既存の簡易UIも残す */}
-      <SignalInputSimple value={sig as any} onChange={async (s) => {
-    setSig(s)
-  try {
-      const wasm: any = await initWasm()
-      const interleavedFa: Float64Array = wasm.dftComplexF64(new Float64Array(s.data))
-      setSpec({ spectrum: Array.from(interleavedFa), sample_rate: s.sample_rate })
-  } catch { /* ignore DFT errors */ }
-  }} />
-    </div>
-  </BaseBox>
-  {/* Signal 表示: プロット色はトークン適用で暗背景でも視認性改善 */}
-  <SignalCardSimple data={sig.data} showPlot={true} showVector={false} />
-  {/* Spectrum 入力: Re,Im ラベル整頓とモード説明 */}
-  <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1 }}>
-    <BaseText>Spectrum Input</BaseText>
-    <div style={{ marginTop: 8 }}>
-      <SpectrumInput value={spec} onChange={setSpec} />
-    </div>
-    <div style={{ marginTop: 8 }}>
-      <BaseText styleKit={{ size: { sizeKey: 'sm' as any, apply: { default: ['fontSize'] as any } } }}>
-        Spectrum(DFT) は、時間領域の信号を複素数の周波数領域に変換した結果（離散フーリエ変換）です。
-      </BaseText>
-    </div>
-  </BaseBox>
-  <SpectrumCard spectrum={spec.spectrum} sample_rate={spec.sample_rate} />
+      <section>
+        <h2 style={{ margin: '8px 0' }}>Polynomial</h2>
+        <PolynomialInput value={poly} onChange={setPoly} />
+        <div style={{ marginTop: 8 }}><PolynomialView value={poly} /></div>
+      </section>
 
-  {/* Rational / LTI */}
-  {/* Polynomial Input */}
-  <PolynomialTermInput value={poly} onChange={setPoly} varName="x" label="Polynomial Input" />
-  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-    <button onClick={() => {
-      const md = `P(x) = ${formatPolynomialMarkdown(poly, 'x')}`
-      setPolyMd(md)
-    }}>Process Polynomial</button>
-  </div>
-  {polyMd && (
-    <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1 }}>
-      <BaseText>
-        {`P(x) = ${polyMd.replace(/^P\(x\) =\s*/, '')}`}
-      </BaseText>
-    </BaseBox>
-  )}
-  {/* Rational Function 入力（セル x^n 形式）*/}
-  <RationalFunctionInputSimple value={rf} onChange={setRf} varName="x" />
-  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-    <button onClick={() => {
-      const md = `R(x) = \\frac{${formatPolynomialMarkdown(rf.num, 'x')}}{${formatPolynomialMarkdown(rf.den, 'x')}}`
-      setRfMd(md)
-    }}>Process Rational</button>
-  </div>
-  {rfMd && <RationalFunctionCard markdown={rfMd} title="Rational (Processed)" />}
+      <section>
+        <h2 style={{ margin: '8px 0' }}>Rational Function</h2>
+        <RationalFunctionInput value={rat} onChange={setRat} />
+        <div style={{ marginTop: 8 }}><RationalFunctionView value={rat} /></div>
+      </section>
 
-  {/* TransferFunction: 係数入力はセル x^n、z/s の切替想定（varName使用） */}
-  <TransferFunctionInput value={tf as any} onChange={setTf as any} varName="z" />
-  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-    <button onClick={() => {
-      const md = `H(z) = \\frac{${formatPolynomialMarkdown(tf.num, 'z')}}{${formatPolynomialMarkdown(tf.den, 'z')}}`
-      setTfMd(md)
-    }}>Process TF</button>
-  </div>
-  {tfMd && <TransferFunctionCardSimple num={tf.num} den={tf.den} varName="z" title="Transfer Function (Processed)" />}
-  {/* ZPK: 入力は Re/Im ペアで #0 などの余計な見出しが出ないよう整理済み */}
-  <ZpkInput value={zpk as any} onChange={setZpk as any} />
+      <section>
+        <h2 style={{ margin: '8px 0' }}>Transfer Function</h2>
+        <TransferFunctionInput value={tf} onChange={setTf} />
+        <div style={{ marginTop: 8 }}><TransferFunctionView value={tf} /></div>
+      </section>
 
-  {/* Statistics / Distributions (WASM-backed) */}
-  <BaseBox styleKit={{ color: { colorKey: 'base' as any, apply: { default: ['bg','border'] as any } }, size: { sizeKey: 'md' as any, apply: { default: ['padding'] as any } }, roundKey: 'md' as any }} style={{ borderWidth: 1 }}>
-    <BaseText>Distributions (PDF/PMF)</BaseText>
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-      <button onClick={async () => {
-        const wasm: any = await initWasm()
-        const inst = new wasm.Normal(0, 1)
-        setNormalSvg(inst.pdf_svg(320, 160, 200))
-      }}>Normal(0,1)</button>
-      <button onClick={async () => {
-        const wasm: any = await initWasm()
-        const inst = new wasm.Gamma(2, 1)
-        setGammaSvg(inst.pdf_svg(320, 160, 200))
-      }}>Gamma(k=2, rate=1)</button>
-      <button onClick={async () => {
-        const wasm: any = await initWasm()
-        const inst = new wasm.Binomial(20, 0.4)
-        setBinomSvg(inst.pmf_svg(320, 160))
-      }}>Binomial(n=20,p=0.4)</button>
-      <button onClick={async () => {
-        const wasm: any = await initWasm()
-        const inst = new wasm.Poisson(5)
-        setPoisSvg(inst.pmf_svg(320, 160))
-      }}>Poisson(λ=5)</button>
-    </div>
-  </BaseBox>
-  {normalSvg && <ContinuousPdfCard title="Normal PDF" svg={normalSvg} />}
-  {gammaSvg && <ContinuousPdfCard title="Gamma PDF" svg={gammaSvg} />}
-  {binomSvg && <DiscretePmfCard title="Binomial PMF" svg={binomSvg} />}
-  {poisSvg && <DiscretePmfCard title="Poisson PMF" svg={poisSvg} />}
-      </div>
+      <section>
+        <h2 style={{ margin: '8px 0' }}>ZPK</h2>
+        <ZpkInput value={zpk} onChange={setZpk} />
+        <div style={{ marginTop: 8 }}><ZpkView value={zpk} /></div>
+      </section>
+
+      <section>
+        <h2 style={{ margin: '8px 0' }}>Signal</h2>
+        <SignalInput value={sig} onChange={setSig} />
+        <div style={{ marginTop: 8 }}><SignalView value={sig} /></div>
+      </section>
+
+      <section>
+        <h2 style={{ margin: '8px 0' }}>Spectrum</h2>
+        <SpectrumInput value={spec} onChange={setSpec} />
+        <div style={{ marginTop: 8 }}><SpectrumView value={spec} /></div>
+      </section>
     </main>
   )
 }

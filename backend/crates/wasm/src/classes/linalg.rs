@@ -251,6 +251,12 @@ impl MatrixF64 {
         // Matrix::solve メソッドを使用
         self.0.solve(&b.0).ok().map(VectorF64)
     }
+
+    // === raw data accessor ===
+    #[wasm_bindgen]
+    pub fn data(&self) -> Vec<f64> { self.0.data.clone() }
+    #[wasm_bindgen]
+    pub fn columns(&self) -> usize { self.0.cols }
 }
 
 #[wasm_bindgen]
@@ -271,6 +277,8 @@ impl VectorF64 {
         let matrix = linalg::Matrix::new(1, data.len(), data).unwrap();
         MatrixF64(matrix)
     }
+    #[wasm_bindgen]
+    pub fn data(&self) -> Vec<f64> { self.0.as_slice().to_vec() }
     // outer_product は Vector * Matrix で代替可能なため公開しない
 }
 
@@ -307,6 +315,10 @@ impl MatrixF32 {
     pub fn determinant(&self) -> std::result::Result<f32, wasm_bindgen::JsValue> { self.0.determinant().map_err(|e| JsValue::from_str(&format!("{e}"))) }
     pub fn rank(&self) -> std::result::Result<usize, wasm_bindgen::JsValue> { self.0.rank().map_err(|e| JsValue::from_str(&format!("{e}"))) }
     pub fn inverse(&self) -> Option<Self> { self.0.inverse().map(MatrixF32) }
+    #[wasm_bindgen]
+    pub fn data(&self) -> Vec<f32> { self.0.data.clone() }
+    #[wasm_bindgen]
+    pub fn columns(&self) -> usize { self.0.cols }
 }
 
 // ==============================
@@ -338,6 +350,8 @@ impl VectorF32 {
     pub fn argmin(&self) -> Option<usize> { self.0.argmin() }
     pub fn max(&self) -> Option<f32> { self.0.max() }
     pub fn min(&self) -> Option<f32> { self.0.min() }
+    #[wasm_bindgen]
+    pub fn data(&self) -> Vec<f32> { self.0.as_slice().to_vec() }
 }
 
 // ==============================
@@ -369,6 +383,10 @@ impl MatrixI32 {
     pub fn is_square(&self) -> bool { self.0.is_square() }
     pub fn transpose(&self) -> Self { MatrixI32(self.0.transpose()) }
     pub fn trace(&self) -> std::result::Result<i32, wasm_bindgen::JsValue> { self.0.trace().map_err(|e| JsValue::from_str(&format!("{e}"))) }
+    #[wasm_bindgen]
+    pub fn data(&self) -> Vec<i32> { self.0.data.clone() }
+    #[wasm_bindgen]
+    pub fn columns(&self) -> usize { self.0.cols }
 }
 
 // ==============================
@@ -400,6 +418,8 @@ impl VectorI32 {
     pub fn argmin(&self) -> Option<usize> { self.0.argmin() }
     pub fn max(&self) -> Option<i32> { self.0.max() }
     pub fn min(&self) -> Option<i32> { self.0.min() }
+    #[wasm_bindgen]
+    pub fn data(&self) -> Vec<i32> { self.0.as_slice().to_vec() }
 }
 
 // ==============================
