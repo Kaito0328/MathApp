@@ -6,6 +6,7 @@ use crate::{Direction, Vector};
 mod tests;
 
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Svd {
     pub u: Matrix<f64>,
     pub sigma: Vector<f64>,

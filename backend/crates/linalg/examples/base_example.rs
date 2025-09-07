@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 単位行列の作成
-    let identity: Matrix = Matrix::identity(3);
+    let identity: Matrix<f64> = Matrix::identity(3);
     println!("\n単位行列 (3x3):");
     for i in 0..identity.rows {
         for j in 0..identity.cols {

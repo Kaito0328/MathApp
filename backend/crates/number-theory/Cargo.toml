@@ -11,8 +11,11 @@ path = "src/lib.rs"
 num-bigint = "0.4"
 num-integer = "0.1"
 num-traits = "0.2"
-rand = { version = "0.8", features = ["std"] }
+rand = { version = "0.8", features = ["std"], optional = true }
 linalg = { path = "../linalg" }
 num-complex = "0.4"
 fft-core = { path = "../fft-core" }
 finite-field = { path = "../finite-field" }
+
+[features]
+default = ["rand"]

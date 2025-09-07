@@ -5,11 +5,13 @@ use crate::{
     Vector,
 };
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Eigen {
     pub eigen_values: Vec<f64>,
     pub eigen_vectors: Matrix<f64>,
 }
 
+// Complex<f64>はserdeサポートが必要なため、一時的にserde対応を省略
 pub struct EigenComplex {
     pub eigen_values: Vec<Complex<f64>>,
     pub eigen_vectors: Matrix<Complex<f64>>,

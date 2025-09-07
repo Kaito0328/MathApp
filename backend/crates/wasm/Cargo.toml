@@ -1,0 +1,42 @@
+[package]
+name = "wasm"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "WASM bridge crate for MathApp frontend"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+console_error_panic_hook = { version = "0.1", optional = true }
+wee_alloc = { version = "0.4", optional = true }
+num-complex = "0.4"
+num-traits = "0.2"
+signal_processing = { path = "../signal_processing" }
+fft-core = { path = "../fft-core" }
+finite-field = { path = "../finite-field" }
+linalg = { path = "../linalg", features = ["serde"] }
+poly = { path = "../polynomial" }
+convolution = { path = "../convolution" }
+coding = { path = "../coding" }
+concrete-math = { path = "../concrete-math" }
+special-functions = { path = "../special-functions" }
+lti-systems = { path = "../lti-systems" }
+number-theory = { path = "../number-theory" }
+statistics = { path = "../statistics" }
+statsmodels = { path = "../statsmodels" }
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+wasm-macros = { path = "../wasm-macros" }
+js-sys = "0.3"
+num-bigint = { version = "0.4", features = ["serde"] }
+getrandom = { version = "0.2", features = ["js"] }
+
+
+[features]
+default = ["console_error_panic_hook", "wee_alloc"]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = true

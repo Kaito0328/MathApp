@@ -6,24 +6,24 @@ pub mod prelude {
 }
 
 /// Public API: compute DFT using an automatically chosen algorithm (FFT when possible).
-pub fn dft(x: &[Complex<f64>]) -> crate::error::Result<Vec<Complex<f64>>> {
+pub fn dft(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
     let n = x.len();
     let y = if is_power_of_two(n) {
         fft_radix2_iterative(x)
     } else {
         mixed_radix_fft(x)
     };
-    Ok(y)
+    y
 }
 
 /// Checked variant of DFT (kept for compatibility with earlier staging).
 pub fn dft_checked(x: &[Complex<f64>]) -> crate::error::Result<Vec<Complex<f64>>> {
-    dft(x)
+    Ok(dft(x))
 }
 
 /// Inverse transform.
-pub fn ift(x: &[Complex<f64>]) -> crate::error::Result<Vec<Complex<f64>>> {
-    let mut y = dft(x)?;
+pub fn ift(x: &[Complex<f64>]) -> Vec<Complex<f64>> {
+    let mut y = dft(x);
     if y.len() > 1 {
         y[1..].reverse();
     }
@@ -31,12 +31,12 @@ pub fn ift(x: &[Complex<f64>]) -> crate::error::Result<Vec<Complex<f64>>> {
     for v in &mut y {
         *v /= n;
     }
-    Ok(y)
+    y
 }
 
 /// Checked variant of inverse transform that returns a Result.
 pub fn ift_checked(x: &[Complex<f64>]) -> crate::error::Result<Vec<Complex<f64>>> {
-    ift(x)
+    Ok(ift(x))
 }
 
 /// Naive O(n^2) DFT (for small sizes or prime factors) - kept internal.

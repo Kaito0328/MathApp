@@ -1,0 +1,233 @@
+/* Theme variables */
+:root {
+  /* Base (light) */
+  --c-base-bg: #ffffff;          /* white */
+  --c-base-text: #0f172a;        /* slate-900 */
+  --c-base-border: #cbd5e1;      /* slate-300 */
+  --c-base-icon: #64748b;        /* slate-500 */
+
+  /* Primary: deep indigo/violet accent for light mode */
+  --c-primary-bg: #e0e7ff;       /* indigo-100 */
+  --c-primary-text: #4338ca;     /* indigo-700 */
+  --c-primary-border: #a5b4fc;   /* indigo-300 */
+
+  /* Secondary: neutral subtle gray (no purple) */
+  --c-secondary-bg: #f8fafc;     /* slate-50 */
+  --c-secondary-text: #94a3b8;   /* slate-400 */
+  --c-secondary-border: #e2e8f0; /* slate-200 */
+
+  /* Placeholder text (light) - softer */
+  --c-placeholder-text: #64748b; /* slate-500 */
+
+  /* Semantic colors (light) */
+  --c-danger-bg: #fee2e2;        /* red-100 */
+  --c-danger-text: #b91c1c;      /* red-700 */
+  --c-danger-border: #fca5a5;    /* red-300 */
+
+  --c-success-bg: #dcfce7;       /* green-100 */
+  --c-success-text: #166534;     /* green-800 */
+  --c-success-border: #86efac;   /* green-300 */
+
+  /* Drawer nav backgrounds (light) */
+  --c-drawer-active: rgba(0, 0, 0, 0.10);
+  --c-drawer-hover: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] {
+  /* Base (dark) */
+  --c-base-bg: #0f172a;          /* slate-900 */
+  --c-base-text: #e5e7eb;        /* gray-200 (white-ish) */
+  --c-base-border: #334155;      /* slate-700 */
+  --c-base-icon: #cbd5e1;        /* slate-300 */
+
+  /* Primary: deep indigo suitable for dark bg */
+  --c-primary-bg: #1e1b4b;       /* indigo-950 */
+  --c-primary-text: #c7d2fe;     /* indigo-200 */
+  --c-primary-border: #3730a3;   /* indigo-800 */
+
+  /* Secondary: neutral subtle gray for dark */
+  --c-secondary-bg: rgba(148, 163, 184, 0.12); /* slate-400 @ 12% */
+  --c-secondary-text: #94a3b8;   /* slate-400 */
+  /* Drawer nav backgrounds for dark */
+    --c-drawer-active: rgba(255,255,255,0.16);
+    --c-drawer-hover: rgba(255,255,255,0.08);
+  --c-secondary-border: rgba(148, 163, 184, 0.5); /* slate-400 @ 50% */
+
+  /* Placeholder text (dark) - softer */
+  --c-placeholder-text: #94a3b8; /* slate-400 */
+
+  /* Semantic colors (dark) */
+  --c-danger-bg: #7f1d1d;        /* red-900 */
+  --c-danger-text: #fecaca;      /* red-200 */
+  --c-danger-border: #b91c1c;    /* red-700 */
+
+  --c-success-bg: #14532d;       /* green-900 */
+  --c-success-text: #bbf7d0;     /* green-200 */
+  --c-success-border: #166534;   /* green-800 */
+}
+
+/* Color utilities */
+.bg-base { background-color: var(--c-base-bg); }
+.bg-surface { background-color: var(--c-base-bg); }
+.bg-primary { background-color: var(--c-primary-bg); }
+.bg-secondary { background-color: var(--c-secondary-bg); }
+.bg-danger { background-color: var(--c-danger-bg); }
+.bg-success { background-color: var(--c-success-bg); }
+
+.text-base { color: var(--c-base-text); }
+.text-on-surface { color: var(--c-base-text); }
+.text-on-base { color: var(--c-base-text); }
+.text-on-primary { color: var(--c-primary-text); }
+.text-on-secondary { color: var(--c-secondary-text); }
+.text-on-danger { color: var(--c-danger-text); }
+.text-on-success { color: var(--c-success-text); }
+.text-primary { color: var(--c-primary-text); }
+.text-secondary { color: var(--c-secondary-text); }
+.text-danger { color: var(--c-danger-text); }
+.text-success { color: var(--c-success-text); }
+
+.border-base { border-color: var(--c-base-border); border-style: solid; }
+.border-surface { border-color: var(--c-base-border); border-style: solid; }
+.border-primary { border-color: var(--c-primary-border); border-style: solid; }
+.border-secondary { border-color: var(--c-secondary-border); border-style: solid; }
+.border-danger { border-color: var(--c-danger-border); border-style: solid; }
+.border-success { border-color: var(--c-success-border); border-style: solid; }
+.border-base { border-color: var(--c-base-border); border-style: solid; border-width: 1px; }
+.border-primary { border-color: var(--c-primary-border); border-style: solid; border-width: 1px; }
+.border-secondary { border-color: var(--c-secondary-border); border-style: solid; border-width: 1px; }
+.border-danger { border-color: var(--c-danger-border); border-style: solid; border-width: 1px; }
+.border-success { border-color: var(--c-success-border); border-style: solid; border-width: 1px; }
+
+/* Size utilities */
+.pad-sm { padding: 8px; }
+.pad-md { padding: 12px; }
+.pad-lg { padding: 16px; }
+.pad-xl { padding: 24px; }
+
+.px-sm { padding-left: 8px; padding-right: 8px; }
+.px-md { padding-left: 16px; padding-right: 16px; }
+.px-lg { padding-left: 20px; padding-right: 20px; }
+.px-xl { padding-left: 24px; padding-right: 24px; }
+
+.py-sm { padding-top: 6px; padding-bottom: 6px; }
+.py-md { padding-top: 10px; padding-bottom: 10px; }
+.py-lg { padding-top: 12px; padding-bottom: 12px; }
+.py-xl { padding-top: 16px; padding-bottom: 16px; }
+
+.gap-sm { gap: 4px; }
+.gap-md { gap: 8px; }
+.gap-lg { gap: 12px; }
+.gap-xl { gap: 16px; }
+
+.fs-sm { font-size: 0.875rem; }
+.fs-md { font-size: 1rem; }
+.fs-lg { font-size: 1.125rem; }
+.fs-xl { font-size: 1.25rem; }
+
+/* Round */
+.round-none { border-radius: 0; }
+.round-sm { border-radius: 6px; }
+.round-md { border-radius: 12px; }
+.round-lg { border-radius: 24px; }
+.round-full { border-radius: 9999px; }
+
+/* Shadow */
+.shadow-none { box-shadow: none; }
+.shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
+.shadow-md { box-shadow: 0 2px 6px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.20); }
+.shadow-lg { box-shadow: 0 4px 12px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.20); }
+
+/* Font weight */
+.fw-light { font-weight: 300; }
+.fw-normal { font-weight: 400; }
+.fw-medium { font-weight: 500; }
+.fw-bold { font-weight: 700; }
+
+/* Form elements default styling via tokens for readability (incl. dark mode) */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  color: var(--c-base-text);
+  background-color: var(--c-base-bg);
+  border: 1px solid var(--c-base-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+select,
+button {
+  color: var(--c-base-text);
+}
+
+button {
+  background-color: var(--c-primary-bg);
+  border: 1px solid var(--c-primary-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: var(--c-placeholder-text);
+  opacity: 0.8; /* make it subtler */
+}
+/* vendor-prefixed placeholders */
+textarea::-webkit-input-placeholder,
+input::-webkit-input-placeholder { color: var(--c-placeholder-text); opacity: 0.8; }
+textarea::-moz-placeholder,
+input::-moz-placeholder { color: var(--c-placeholder-text); opacity: 0.8; }
+textarea:-ms-input-placeholder,
+input:-ms-input-placeholder { color: var(--c-placeholder-text); opacity: 0.8; }
+
+/* Simple component helpers */
+.btn { cursor: pointer; user-select: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn.btn-primary { background-color: var(--c-primary-bg); border-color: var(--c-primary-border); }
+.btn.btn-disabled { opacity: 0.6; cursor: not-allowed; }
+
+.input { display: inline-flex; align-items: center; border: 1px solid var(--c-base-border); }
+.input .input-el { background: transparent; border: none; outline: none; width: 100%; color: inherit; padding: 0; }
+.input.input-invalid { border-color: var(--c-danger-border); }
+
+.card { border: 1px solid var(--c-base-border); }
+.card-header { font-weight: 600; margin-bottom: 8px; }
+.card-body { display: block; }
+.card-footer { margin-top: 8px; }
+
+/* Links: use base text color by default and show underline on hover; avoid visited purple */
+a { color: var(--c-base-text); text-decoration: none; }
+a:visited { color: var(--c-base-text); }
+a:hover { text-decoration: underline; }
+
+/* AppLink inline: underline + accent on hover for affordance */
+.app-link-inline { color: var(--c-primary-text); text-decoration: underline; text-underline-offset: 2px; }
+.app-link-inline:hover { color: var(--c-primary-text); text-decoration-thickness: 2px; }
+
+/* AppLink list (uses .nav-link base), enhance affordance */
+.nav-link { position: relative; }
+.nav-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: 4px; height: 1px; background: transparent; transition: background-color 120ms ease; }
+.nav-link:hover::after { background: var(--c-primary-border); }
+
+/* Drawer navigation */
+.nav-link { display: block; padding: 6px 10px; border-radius: 8px; color: var(--c-base-text); text-decoration: none; transition: background-color 120ms ease, color 120ms ease; }
+.nav-link:hover { background: var(--c-drawer-hover, rgba(0,0,0,0.06)); }
+.nav-link[aria-current="page"] { background: var(--c-drawer-active, rgba(0,0,0,0.10)); font-weight: 600; }
+.nav-link:focus-visible { outline: 2px solid var(--c-primary-border); outline-offset: 2px; }
+.nav-toggle { display: flex; align-items: center; gap: 8px; width: 100%; background: transparent; border: none; padding: 6px 8px; cursor: pointer; color: var(--c-base-text); border-radius: 8px; transition: background-color 120ms ease; }
+.nav-toggle:hover { background: var(--c-drawer-hover, rgba(0,0,0,0.06)); }
+
+/* Bracket wrappers for inputs */
+.bracket-wrap { display: inline-grid; grid-auto-flow: column; align-items: stretch; gap: 0; }
+.bracket { position: relative; width: 10px; }
+.bracket::before { content: ""; position: absolute; top: 0; bottom: 0; }
+/* 左括弧は右端に線を描く（セルに密着） */
+.bracket-left::before { right: 0; width: 10px; border-right: 2px solid var(--c-base-text); border-top: 2px solid var(--c-base-text); border-bottom: 2px solid var(--c-base-text); }
+/* 右括弧は左端に線を描く（セルに密着） */
+.bracket-right::before { left: 0; width: 10px; border-left: 2px solid var(--c-base-text); border-top: 2px solid var(--c-base-text); border-bottom: 2px solid var(--c-base-text); }
+
+/* KaTeXで描画した括弧を入力グリッドの高さに合わせてスケールするためのヘルパ */
+.katex-bracket { display: inline-block; line-height: 1; transform-origin: center; }
+.katex-bracket p { margin: 0; }
+.katex-bracket .katex { display: block; }

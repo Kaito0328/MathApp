@@ -17,17 +17,28 @@ pub fn save_svg_time_series(
     sample_rate: Option<f64>,
 ) -> Result<()> {
     let mut f = File::create(path)?;
-    let w = width as f64;
-    let h = height as f64;
+    write_svg_time_series_to(&mut f, width, height, series, sample_rate)
+}
+
+/// WASM等での文字列返却に使えるよう、任意の Write に出力するバージョン。
+pub fn write_svg_time_series_to<W: Write>(
+    mut out: W,
+    width: u32,
+    height: u32,
+    series: &[Series<'_>],
+    sample_rate: Option<f64>,
+) -> Result<()> {
+    let wf = width as f64;
+    let hf = height as f64;
     let margin_l = 48.0;
     let margin_r = 16.0;
     let margin_t = 16.0;
     let margin_b = 40.0;
-    let plot_w = (w - margin_l - margin_r).max(1.0);
-    let plot_h = (h - margin_t - margin_b).max(1.0);
+    let plot_w = (wf - margin_l - margin_r).max(1.0);
+    let plot_h = (hf - margin_t - margin_b).max(1.0);
 
-    writeln!(f, "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>")?;
-    writeln!(f, "<rect width='100%' height='100%' fill='white' />")?;
+    writeln!(out, "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>")?;
+    writeln!(out, "<rect width='100%' height='100%' fill='white' />")?;
 
     // データの統計
     let mut min_y = f64::INFINITY;
@@ -69,23 +80,23 @@ pub fn save_svg_time_series(
     for i in 0..n_ticks {
         let t = i as f64 / (n_ticks - 1) as f64;
         let y_val = min_y * (1.0 - t) + max_y * t;
-        let y = margin_t + (1.0 - t) * plot_h;
-        writeln!(f, "<line x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' stroke='{grid_color}' stroke-width='1' />", margin_l, y, w - margin_r, y)?;
-        writeln!(f, "<text x='{:.1}' y='{:.1}' font-size='10' fill='{text_color}' text-anchor='end' dominant-baseline='middle'>{:.3}</text>", margin_l - 6.0, y, y_val)?;
+    let y = margin_t + (1.0 - t) * plot_h;
+    writeln!(out, "<line x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' stroke='{grid_color}' stroke-width='1' />", margin_l, y, wf - margin_r, y)?;
+    writeln!(out, "<text x='{:.1}' y='{:.1}' font-size='10' fill='{text_color}' text-anchor='end' dominant-baseline='middle'>{:.3}</text>", margin_l - 6.0, y, y_val)?;
     }
 
     // X 軸目盛
     for i in 0..n_ticks {
         let t = i as f64 / (n_ticks - 1) as f64;
-        let x = margin_l + t * plot_w;
+    let x = margin_l + t * plot_w;
         let x_val = x_to_val(t * x_max);
-        writeln!(f, "<line x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' stroke='{grid_color}' stroke-width='1' />", x, margin_t, x, margin_t + plot_h)?;
-        writeln!(f, "<text x='{:.1}' y='{:.1}' font-size='10' fill='{text_color}' text-anchor='middle'>{:.3}</text>", x, h - margin_b + 14.0, x_val)?;
+    writeln!(out, "<line x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' stroke='{grid_color}' stroke-width='1' />", x, margin_t, x, margin_t + plot_h)?;
+    writeln!(out, "<text x='{:.1}' y='{:.1}' font-size='10' fill='{text_color}' text-anchor='middle'>{:.3}</text>", x, hf - margin_b + 14.0, x_val)?;
     }
 
     // 軸線
-    writeln!(f, "<rect x='{margin_l:.1}' y='{margin_t:.1}' width='{plot_w:.1}' height='{plot_h:.1}' fill='none' stroke='{axis_color}' stroke-width='1.5' />")?;
-    writeln!(f, "<text x='{:.1}' y='{:.1}' font-size='11' fill='{text_color}' text-anchor='middle'>{}</text>", margin_l + plot_w / 2.0, h - 6.0, x_label)?;
+    writeln!(out, "<rect x='{margin_l:.1}' y='{margin_t:.1}' width='{plot_w:.1}' height='{plot_h:.1}' fill='none' stroke='{axis_color}' stroke-width='1.5' />")?;
+    writeln!(out, "<text x='{:.1}' y='{:.1}' font-size='11' fill='{text_color}' text-anchor='middle'>{}</text>", margin_l + plot_w / 2.0, hf - 6.0, x_label)?;
 
     // 色サイクル
     let palette = [
@@ -98,7 +109,7 @@ pub fn save_svg_time_series(
         let color = palette[idx % palette.len()];
         // polyline points
         write!(
-            f,
+            out,
             "<polyline fill='none' stroke='{color}' stroke-width='1.2' points='"
         )?;
         let len = s.y.len();
@@ -114,10 +125,10 @@ pub fn save_svg_time_series(
                     (vv - min_y) / (max_y - min_y)
                 };
                 let y = margin_t + (1.0 - ty) * plot_h;
-                write!(f, "{x:.2},{y:.2} ")?;
+        write!(out, "{x:.2},{y:.2} ")?;
             }
         }
-        writeln!(f, "' />")?;
+    writeln!(out, "' />")?;
     }
 
     // 凡例（右上）
@@ -128,9 +139,9 @@ pub fn save_svg_time_series(
         let y = legend_y;
         let x0 = legend_x - 120.0;
         let x1 = x0 + 18.0;
-        writeln!(f, "<line x1='{x0:.1}' y1='{y:.1}' x2='{x1:.1}' y2='{y:.1}' stroke='{color}' stroke-width='2' />")?;
-        writeln!(
-            f,
+    writeln!(out, "<line x1='{x0:.1}' y1='{y:.1}' x2='{x1:.1}' y2='{y:.1}' stroke='{color}' stroke-width='2' />")?;
+    writeln!(
+        out,
             "<text x='{:.1}' y='{:.1}' font-size='10' fill='{text_color}'>{}</text>",
             x1 + 6.0,
             y + 3.0,
@@ -139,7 +150,7 @@ pub fn save_svg_time_series(
         legend_y += 14.0;
     }
 
-    writeln!(f, "</svg>")?;
+    writeln!(out, "</svg>")?;
     Ok(())
 }
 
@@ -237,20 +248,32 @@ pub fn save_svg_series_scaled(
     x_max: f64,
 ) -> Result<()> {
     let mut f = File::create(path)?;
-    let w = width as f64;
-    let h = height as f64;
+    write_svg_series_scaled_to(&mut f, width, height, series, x_label, x_max)
+}
+
+/// 任意の Write に描画するバージョン。
+pub fn write_svg_series_scaled_to<W: Write>(
+    mut out: W,
+    width: u32,
+    height: u32,
+    series: &[Series<'_>],
+    x_label: &str,
+    x_max: f64,
+) -> Result<()> {
+    let wf = width as f64;
+    let hf = height as f64;
     let margin_l = 48.0;
     let margin_r = 16.0;
     let margin_t = 16.0;
     let margin_b = 40.0;
-    let plot_w = (w - margin_l - margin_r).max(1.0);
-    let plot_h = (h - margin_t - margin_b).max(1.0);
+    let plot_w = (wf - margin_l - margin_r).max(1.0);
+    let plot_h = (hf - margin_t - margin_b).max(1.0);
 
     writeln!(
-        f,
+        out,
         "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>"
     )?;
-    writeln!(f, "<rect width='100%' height='100%' fill='white' />")?;
+    writeln!(out, "<rect width='100%' height='100%' fill='white' />")?;
 
     // データの統計
     let mut min_y = f64::INFINITY;
@@ -282,12 +305,12 @@ pub fn save_svg_series_scaled(
         let y_val = min_y * (1.0 - t) + max_y * t;
         let y = margin_t + (1.0 - t) * plot_h;
         writeln!(
-            f,
+            out,
             "<line x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' stroke='{grid_color}' stroke-width='1' />",
-            margin_l, y, w - margin_r, y
+            margin_l, y, wf - margin_r, y
         )?;
         writeln!(
-            f,
+            out,
             "<text x='{:.1}' y='{:.1}' font-size='10' fill='{text_color}' text-anchor='end' dominant-baseline='middle'>{:.3}</text>",
             margin_l - 6.0,
             y,
@@ -301,27 +324,27 @@ pub fn save_svg_series_scaled(
         let x = margin_l + t * plot_w;
         let x_val = t * x_max;
         writeln!(
-            f,
+            out,
             "<line x1='{:.1}' y1='{:.1}' x2='{:.1}' y2='{:.1}' stroke='{grid_color}' stroke-width='1' />",
             x, margin_t, x, margin_t + plot_h
         )?;
         writeln!(
-            f,
+            out,
             "<text x='{:.1}' y='{:.1}' font-size='10' fill='{text_color}' text-anchor='middle'>{:.3}</text>",
-            x, h - margin_b + 14.0, x_val
+            x, hf - margin_b + 14.0, x_val
         )?;
     }
 
     // 枠・ラベル
     writeln!(
-        f,
+    out,
         "<rect x='{margin_l:.1}' y='{margin_t:.1}' width='{plot_w:.1}' height='{plot_h:.1}' fill='none' stroke='{axis_color}' stroke-width='1.5' />"
     )?;
     writeln!(
-        f,
+    out,
         "<text x='{:.1}' y='{:.1}' font-size='11' fill='{text_color}' text-anchor='middle'>{}</text>",
-        margin_l + plot_w / 2.0,
-        h - 6.0,
+    margin_l + plot_w / 2.0,
+    hf - 6.0,
         escape_xml(x_label)
     )?;
 
@@ -335,7 +358,7 @@ pub fn save_svg_series_scaled(
     for (idx, s) in series.iter().enumerate() {
         let color = palette[idx % palette.len()];
         write!(
-            f,
+            out,
             "<polyline fill='none' stroke='{color}' stroke-width='1.2' points='"
         )?;
         let len = s.y.len();
@@ -351,10 +374,10 @@ pub fn save_svg_series_scaled(
                     (vv - min_y) / (max_y - min_y)
                 };
                 let y = margin_t + (1.0 - ty) * plot_h;
-                write!(f, "{x:.2},{y:.2} ")?;
+        write!(out, "{x:.2},{y:.2} ")?;
             }
         }
-        writeln!(f, "' />")?;
+    writeln!(out, "' />")?;
     }
 
     // 凡例（右上）
@@ -365,9 +388,9 @@ pub fn save_svg_series_scaled(
         let y = legend_y;
         let x0 = legend_x - 120.0;
         let x1 = x0 + 18.0;
-        writeln!(f, "<line x1='{x0:.1}' y1='{y:.1}' x2='{x1:.1}' y2='{y:.1}' stroke='{color}' stroke-width='2' />")?;
-        writeln!(
-            f,
+    writeln!(out, "<line x1='{x0:.1}' y1='{y:.1}' x2='{x1:.1}' y2='{y:.1}' stroke='{color}' stroke-width='2' />")?;
+    writeln!(
+        out,
             "<text x='{:.1}' y='{:.1}' font-size='10' fill='{text_color}'>{}</text>",
             x1 + 6.0,
             y + 3.0,
@@ -376,6 +399,6 @@ pub fn save_svg_series_scaled(
         legend_y += 14.0;
     }
 
-    writeln!(f, "</svg>")?;
+    writeln!(out, "</svg>")?;
     Ok(())
 }

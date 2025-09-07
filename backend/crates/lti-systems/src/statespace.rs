@@ -190,25 +190,98 @@ impl fmt::Display for DiscreteStateSpace {
 impl DiscreteStateSpace {
     /// 離散の状態空間から SISO 伝達関数へ（多項式比）
     pub fn to_tf_siso(&mut self) -> RationalFunction<f64> {
-        // H(z) = C (zI - A)^{-1} B + D
+        // 厳密: Faddeev–LeVerrier で p(z)=det(zI-A)=z^n + c1 z^{n-1}+...+c_n を求め、
+        // adj(zI-A)B の係数列 w_k を w_0=B, w_k = A w_{k-1} + c_k B で作り、
+        // u(z) = Σ (C w_k) z^{n-1-k} として、最終 num(z) = u(z) + D*p(z) を構成する。
         use poly::rational_function::RationalFunction;
         use poly::Polynomial as Poly;
 
         let n = self.a.rows;
-        assert!(self.a.rows == self.a.cols && self.b.cols == 1 && self.c.rows == 1);
-        // 多項式行列の処理はここでは簡略化し、数値的に分母を det(zI - A) の形で構成しつつ、
-        // 分子は同サイズの係数を同定する（シンボリックでない簡易版）。
-        // TODO: 高信頼なシンボリック to_tf 実装。
+        assert!(
+            self.a.rows == self.a.cols && self.b.cols == 1 && self.c.rows == 1 && self.d.rows == 1 && self.d.cols == 1,
+            "SISO expected: A square, B(n×1), C(1×n), D(1×1)"
+        );
+        if n == 0 {
+            let num = Poly::new(vec![self.d[(0, 0)]]);
+            let den = Poly::new(vec![1.0]);
+            return RationalFunction::new(num, den);
+        }
 
-        // ここでは簡便に、可制御正準形を前提にした場合の逆変換のみをサポートする簡易手段は保留。
-        // 現在は連続→離散（ZOH）での状態空間結果を直接返すユーティリティが主目的。
-        // 後続のニーズで拡張予定。
-        let _ = n; // silence warning for now
-                   // 仮のプレースホルダ（未使用）。この関数は当面未使用のためダミー値を返さないようにコメントアウト。
-                   // unreachable!("to_tf_siso not yet implemented");
-                   // 暫定で恒等伝達（D のみ）を返すが、現状呼び出さない設計にする。
-        let num = Poly::new(vec![self.d[(0, 0)]]);
-        let den = Poly::new(vec![1.0]);
+        // 1) Faddeev–LeVerrier: 係数 c1..c_n を得る
+        let a = &self.a;
+        let mut coeffs: Vec<f64> = vec![0.0; n + 1];
+        coeffs[0] = 1.0; // z^n の係数
+        // B0 = 0, c0 = 1
+        let mut b_k = Matrix::<f64>::zeros(n, n);
+        let mut c_prev = 1.0;
+        for k in 1..=n {
+            // Bk = A (B_{k-1} + c_{k-1} I)
+            let mut inner = b_k.clone();
+            for i in 0..n {
+                inner[(i, i)] += c_prev;
+            }
+            b_k = a * &inner;
+            let trace = (0..n).map(|i| b_k[(i, i)]).sum::<f64>();
+            let ck = -trace / (k as f64);
+            coeffs[k] = ck;
+            c_prev = ck;
+        }
+
+        // 2) w_k の生成（w_0..w_{n-1}）
+        let mut w: Vec<Matrix<f64>> = Vec::with_capacity(n);
+        w.push(self.b.clone());
+        for k in 1..n {
+            let mut next = &self.a * w.last().unwrap();
+            // next += c_k * B
+            let ck = coeffs[k];
+            if ck != 0.0 {
+                for i in 0..self.b.rows {
+                    next[(i, 0)] += ck * self.b[(i, 0)];
+                }
+            }
+            w.push(next);
+        }
+
+        // 3) u(z) 係数（長さ n）: u_k = C w_k, k=0..n-1 で z^{n-1-k}
+        let mut num_coeffs: Vec<f64> = vec![0.0; n + 1]; // +1 は後で D*p(z) を加えるため
+        for k in 0..n {
+            let mut s = 0.0;
+            for j in 0..self.c.cols {
+                s += self.c[(0, j)] * w[k][(j, 0)];
+            }
+            // 位置: z^{n-1-k} なので index = k にせず、先頭側に割り当て
+            // poly表現は coeffs[0] が定数項なので、後でひっくり返す必要あり。
+            // ここでは最終的に Polynomial::new([a0,a1,...]) へ合わせるため、
+            // 一旦逆順に格納して最後に回転する。
+            num_coeffs[k] = s; // 仮置き
+        }
+        // 4) p(z) を構成（linalgの係数は [1, c1, ..., c_n] が z^n..）→ ポリ表現用に反転
+        let mut den_coeffs: Vec<f64> = coeffs.clone();
+        den_coeffs.reverse(); // 低次→高次（a0..a_n）
+
+        // 5) u(z) の並びを z^{n-1}..z^0 → a0..a_{n-1} に反転
+        num_coeffs.truncate(n); // n 要素
+        num_coeffs.reverse(); // 低次→高次
+
+        // 6) D * p(z) を足す
+        let d00 = self.d[(0, 0)];
+        if d00 != 0.0 {
+            // p(z) は次数 n、u(z) は最大 n-1。num_total は次数 n まで。
+            if num_coeffs.len() < den_coeffs.len() {
+                num_coeffs.resize(den_coeffs.len(), 0.0);
+            }
+            for i in 0..den_coeffs.len() {
+                num_coeffs[i] += d00 * den_coeffs[i];
+            }
+        } else {
+            // 次数を合わせておく（n 次まで）
+            if num_coeffs.len() < den_coeffs.len() {
+                num_coeffs.resize(den_coeffs.len(), 0.0);
+            }
+        }
+
+        let num = Poly::new(num_coeffs);
+        let den = Poly::new(den_coeffs);
         RationalFunction::new(num, den)
     }
 }

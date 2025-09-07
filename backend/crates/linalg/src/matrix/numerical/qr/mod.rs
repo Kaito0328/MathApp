@@ -2,6 +2,7 @@ use crate::matrix::Matrix;
 use crate::Direction;
 use std::cmp::min;
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct QR {
     pub q: Matrix<f64>,
     pub r: Matrix<f64>,

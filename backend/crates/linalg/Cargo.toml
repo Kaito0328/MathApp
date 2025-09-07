@@ -10,9 +10,15 @@ edition = "2021"
 name = "linalg"
 path = "src/lib.rs"
 
+# features
+[features]
+default = []
+serde = ["dep:serde"]
+
 # linalgクレートが直接依存するライブラリがあればここに記述
 [dependencies]
 num-traits = "0.2"
 num-complex = "0.4"
 fft-core = { path = "../fft-core" }
 utils = { path = "../utils" }
+serde = { version = "1.0", features = ["derive"], optional = true }

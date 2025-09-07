@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none" role="img" aria-label="Grath logo light">
+  <defs>
+    <linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <radialGradient id="rg1" cx="0.5" cy="0.5" r="0.7">
+      <stop offset="0%" stop-color="#EEF2FF"/>
+      <stop offset="100%" stop-color="#EDE9FE"/>
+    </radialGradient>
+  </defs>
+  <!-- Badge -->
+  <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#rg1)" stroke="url(#lg1)" stroke-width="1.2"/>
+  <!-- Polar grid arcs (subtle) -->
+  <path d="M8 16a8 8 0 1 1 16 0" stroke="#C7D2FE" stroke-opacity="0.35" stroke-width="1" fill="none"/>
+  <path d="M8 16a8 8 0 0 0 8 8" stroke="#C7D2FE" stroke-opacity="0.25" stroke-width="1" fill="none"/>
+  <!-- Graph path forming an abstract G -->
+  <path d="M9 21 C 12 15, 20 15, 23 11 M23 11 L21.5 11 M17 19 L20 22" stroke="#4338CA" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Nodes -->
+  <circle cx="9" cy="21" r="1.8" fill="#4338CA"/>
+  <circle cx="17" cy="19" r="1.6" fill="#4338CA"/>
+  <circle cx="20" cy="22" r="1.6" fill="#4338CA"/>
+  <circle cx="23" cy="11" r="1.8" fill="#4338CA"/>
+</svg>
