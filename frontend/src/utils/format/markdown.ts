@@ -36,12 +36,19 @@ export function formatPolynomialMarkdown(arg: PolyLike | ArrayLike<number>, varN
   return terms.join(' ')
 }
 
+export function formatNumberForMath(n: number, precision?: number): string {
+  if (typeof precision === 'number') {
+    const rounded = Number(n.toFixed(precision))
+    if (Object.is(rounded, -0) || rounded === 0) return '0'
+    // toString trims trailing zeros; avoids locale
+    return rounded.toString()
+  }
+  if (Object.is(n, -0) || n === 0) return '0'
+  return Number.isInteger(n) ? String(n) : n.toString()
+}
+
 function fmtNumber(n: number, precision?: number): string {
-  if (Number.isInteger(n)) return String(n)
-  if (typeof precision === 'number') return n.toFixed(precision)
-  // default: minimal string without trailing zeros for typical decimals
-  const s = String(n)
-  return s
+  return formatNumberForMath(n, precision)
 }
 
 function toArray(a: ArrayLike<number>): number[] {
@@ -74,7 +81,7 @@ export function formatVectorMarkdown(valuesOrVector: ArrayLike<number> | Vector,
   const nums = toArray((valuesOrVector as any).data ? (valuesOrVector as any).data : (valuesOrVector as ArrayLike<number>))
   if (orientation === 'row') {
     const spec = buildArrayColSpec(nums.length)
-  const arr = `\\begin{array}{${spec}} ${nums.map((v) => fmtNumber(v, p)).join(' \\!&\\! ')} \\end{array}`
+    const arr = `\\begin{array}{${spec}} ${nums.map((v) => fmtNumber(v, p)).join(' & ')} \\end{array}`
     return paren ? `\\left[ ${arr} \\right]` : arr
   } else {
     const spec = buildArrayColSpec(1)
@@ -98,7 +105,7 @@ export function formatMatrixMarkdown(a: number | Matrix, b?: number | { precisio
   for (let r = 0; r < rows; r++) {
     const row: string[] = []
     for (let c = 0; c < cols; c++) row.push(fmtNumber(arr[r * cols + c] ?? 0, p))
-    lines.push(row.join(' \\!&\\! '))
+  lines.push(row.join(' & '))
   }
   const spec = buildArrayColSpec(cols)
   const arrBody = `\\begin{array}{${spec}} ${lines.join(' \\\\ ')} \\end{array}`
@@ -126,7 +133,7 @@ export function formatSpectrumMarkdown(spec: Spectrum | ArrayLike<number>, opts?
   // render as row vector of complex entries with tighter spacing
   const parts = list.map((z) => fmtComplex(Number(z.re ?? 0), Number(z.im ?? 0), p, 'i'))
   const specCols = buildArrayColSpec(parts.length)
-  return `\\begin{array}{${specCols}} ${parts.join(' \\!&\\! ')} \\end{array}`
+  return `\\begin{array}{${specCols}} ${parts.join(' & ')} \\end{array}`
 }
 
 export function formatRationalFunctionMarkdown(rf: RationalFunction, varName = 'x', opts?: { trimZeros?: boolean }): string {

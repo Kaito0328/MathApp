@@ -9,13 +9,14 @@ type Props = {
   cols?: number
   data?: ArrayLike<number>
   precision?: number
+  block?: boolean
 }
 
-export function MatrixView({ value, rows, cols, data, precision }: Props) {
+export function MatrixView({ value, rows, cols, data, precision, block = true }: Props) {
   const md = value
   ? formatMatrixMarkdown(value, { precision, paren: true })
   : formatMatrixMarkdown(rows || 0, cols || 0, data || [], { precision, paren: true })
-  return <MarkdownMath math={md} />
+  return <MarkdownMath math={md} block={block} />
 }
 
 export default MatrixView

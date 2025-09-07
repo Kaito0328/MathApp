@@ -19,6 +19,7 @@ export const Button: React.FC<ButtonProps> = ({ color = CoreColorKey.Primary, va
       color={color}
       variant={variant}
       styleKit={{ size: { sizeKey: size, apply: sizeApply } as any }}
+      style={{ lineHeight: 1 }}
       disabled={disabled}
       {...rest}
     >

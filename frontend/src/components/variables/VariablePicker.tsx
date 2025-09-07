@@ -1,12 +1,17 @@
 "use client"
 import { useVariableStore } from '../../state/VariableStore'
+import { Select } from '../../baseComponents/patterns/Select'
 
-export function VariablePicker({ onPick, placeholder = '選択' }: { onPick: (name: string) => void; placeholder?: string }) {
-  const { names } = useVariableStore()
+export function VariablePicker({ onPick, placeholder = '選択', allowedKinds, disabled }: { onPick: (name: string) => void; placeholder?: string; allowedKinds?: Array<'matrix' | 'vector'>; disabled?: boolean }) {
+  const { names, vars } = useVariableStore() as any
+  const filtered = (allowedKinds && allowedKinds.length > 0)
+    ? names.filter((n: string) => allowedKinds!.includes((vars[n] as any)?.kind))
+    : names
+  const isDisabled = disabled || (allowedKinds && allowedKinds.length > 0 && filtered.length === 0)
   return (
-    <select onChange={(e) => { const v = e.target.value; if (v) onPick(v) }} defaultValue="">
+    <Select onChange={(e) => { const v = (e.target as HTMLSelectElement).value; if (v) onPick(v) }} defaultValue="" disabled={isDisabled}>
       <option value="" disabled>{placeholder}</option>
-      {names.map((n) => (<option key={n} value={n}>{n}</option>))}
-    </select>
+  {filtered.map((n: string) => (<option key={n} value={n}>{n}</option>))}
+    </Select>
   )
 }

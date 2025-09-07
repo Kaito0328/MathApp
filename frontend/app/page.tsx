@@ -9,6 +9,7 @@ import type { Signal, Spectrum } from '../src/widgets/dto/signal_processing'
 import { VectorInput, MatrixInput, ComplexInput, PolynomialInput, RationalFunctionInput, TransferFunctionInput, ZpkInput, SignalInput, SpectrumInput } from '../src/widgets/input'
 import { VectorSizeControls, MatrixSizeControls } from '../src/widgets/input/SizeControls'
 import { VectorView, MatrixView, ComplexView, PolynomialView, RationalFunctionView, TransferFunctionView, ZpkView, SignalView, SpectrumView } from '../src/widgets/display/index'
+import PageContainer from '../src/baseComponents/patterns/PageContainer'
 
 export default function Page() {
   // Vector
@@ -38,7 +39,8 @@ export default function Page() {
   const [spec, setSpec] = React.useState<Spectrum>({ data: [{ re: 1, im: 0 }, { re: 0, im: -1 }], sample_rate: 2 })
 
   return (
-    <main style={{ display: 'grid', gap: 24 }}>
+    <PageContainer title="サンプル" maxWidth={1080} gutters={12}>
+      <div style={{ display: 'grid', gap: 24 }}>
       <section>
         <h2 style={{ margin: '8px 0' }}>Vector</h2>
         <div style={{ display: 'grid', gap: 6 }}>
@@ -98,6 +100,7 @@ export default function Page() {
         <SpectrumInput value={spec} onChange={setSpec} />
         <div style={{ marginTop: 8 }}><SpectrumView value={spec} /></div>
       </section>
-    </main>
+      </div>
+    </PageContainer>
   )
 }

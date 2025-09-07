@@ -11,13 +11,13 @@
   --c-primary-text: #4338ca;     /* indigo-700 */
   --c-primary-border: #a5b4fc;   /* indigo-300 */
 
-  /* Secondary: violet tint */
-  --c-secondary-bg: #ede9fe;     /* violet-100 */
-  --c-secondary-text: #6b7280;   /* gray-500 */
-  --c-secondary-border: #c4b5fd; /* violet-300 */
+  /* Secondary: neutral subtle gray (no purple) */
+  --c-secondary-bg: #f8fafc;     /* slate-50 */
+  --c-secondary-text: #94a3b8;   /* slate-400 */
+  --c-secondary-border: #e2e8f0; /* slate-200 */
 
-  /* Placeholder text (light) - darkest for readability */
-  --c-placeholder-text: #1f2937; /* slate-800 */
+  /* Placeholder text (light) - softer */
+  --c-placeholder-text: #64748b; /* slate-500 */
 
   /* Semantic colors (light) */
   --c-danger-bg: #fee2e2;        /* red-100 */
@@ -45,16 +45,16 @@
   --c-primary-text: #c7d2fe;     /* indigo-200 */
   --c-primary-border: #3730a3;   /* indigo-800 */
 
-  /* Secondary: deep violet with brighter text for readability */
-  --c-secondary-bg: #2e1065;     /* violet-950 */
-    --c-secondary-text: #f5f3ff;   /* near-white violet tint for readability */
-    /* Drawer nav backgrounds for dark */
+  /* Secondary: neutral subtle gray for dark */
+  --c-secondary-bg: rgba(148, 163, 184, 0.12); /* slate-400 @ 12% */
+  --c-secondary-text: #94a3b8;   /* slate-400 */
+  /* Drawer nav backgrounds for dark */
     --c-drawer-active: rgba(255,255,255,0.16);
     --c-drawer-hover: rgba(255,255,255,0.08);
-  --c-secondary-border: #6d28d9; /* violet-700 */
+  --c-secondary-border: rgba(148, 163, 184, 0.5); /* slate-400 @ 50% */
 
-  /* Placeholder text (dark) - near text color for readability */
-  --c-placeholder-text: #e5e7eb; /* gray-200 */
+  /* Placeholder text (dark) - softer */
+  --c-placeholder-text: #94a3b8; /* slate-400 */
 
   /* Semantic colors (dark) */
   --c-danger-bg: #7f1d1d;        /* red-900 */
@@ -172,15 +172,15 @@ button {
 textarea::placeholder,
 input::placeholder {
   color: var(--c-placeholder-text);
-  opacity: 1; /* ensure not dimmed */
+  opacity: 0.8; /* make it subtler */
 }
 /* vendor-prefixed placeholders */
 textarea::-webkit-input-placeholder,
-input::-webkit-input-placeholder { color: var(--c-placeholder-text); opacity: 1; }
+input::-webkit-input-placeholder { color: var(--c-placeholder-text); opacity: 0.8; }
 textarea::-moz-placeholder,
-input::-moz-placeholder { color: var(--c-placeholder-text); opacity: 1; }
+input::-moz-placeholder { color: var(--c-placeholder-text); opacity: 0.8; }
 textarea:-ms-input-placeholder,
-input:-ms-input-placeholder { color: var(--c-placeholder-text); opacity: 1; }
+input:-ms-input-placeholder { color: var(--c-placeholder-text); opacity: 0.8; }
 
 /* Simple component helpers */
 .btn { cursor: pointer; user-select: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
@@ -195,6 +195,20 @@ input:-ms-input-placeholder { color: var(--c-placeholder-text); opacity: 1; }
 .card-header { font-weight: 600; margin-bottom: 8px; }
 .card-body { display: block; }
 .card-footer { margin-top: 8px; }
+
+/* Links: use base text color by default and show underline on hover; avoid visited purple */
+a { color: var(--c-base-text); text-decoration: none; }
+a:visited { color: var(--c-base-text); }
+a:hover { text-decoration: underline; }
+
+/* AppLink inline: underline + accent on hover for affordance */
+.app-link-inline { color: var(--c-primary-text); text-decoration: underline; text-underline-offset: 2px; }
+.app-link-inline:hover { color: var(--c-primary-text); text-decoration-thickness: 2px; }
+
+/* AppLink list (uses .nav-link base), enhance affordance */
+.nav-link { position: relative; }
+.nav-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: 4px; height: 1px; background: transparent; transition: background-color 120ms ease; }
+.nav-link:hover::after { background: var(--c-primary-border); }
 
 /* Drawer navigation */
 .nav-link { display: block; padding: 6px 10px; border-radius: 8px; color: var(--c-base-text); text-decoration: none; transition: background-color 120ms ease, color 120ms ease; }

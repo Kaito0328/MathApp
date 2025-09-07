@@ -7,8 +7,9 @@ export const navSections: NavSection[] = [
     defaultOpen: true,
     items: [
       { title: 'ホーム', href: '/linalg' },
-      { title: '加算 A + B', href: '/linalg/add' },
-      { title: '乗算 A × B', href: '/linalg/mul' },
+  { title: '二項演算 (+, −, ×)', href: '/linalg/binary' },
+  { title: '行列の単項/分解', href: '/linalg/matrix' },
+  { title: '連立方程式 Ax=b', href: '/linalg/solve' },
       // { title: '分解 (LU/QR/SVD)', href: '/linalg/decomp' }, // 将来
     ],
   },
