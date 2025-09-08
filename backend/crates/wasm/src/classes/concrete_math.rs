@@ -2,6 +2,7 @@
 
 use num_complex::Complex;
 use wasm_bindgen::prelude::*;
+use concrete_math::sequence::core::{GeneralTerm as CMGeneralTerm, ClosedFormDisplay as CMClosedFormDisplay};
 
 // ---- 数え上げ（数値） ----
 
@@ -54,6 +55,12 @@ pub fn shift_poly_x_plus_h_js(coeffs_flat: Vec<f64>, h: f64) -> Vec<f64> {
     poly_to_flat(q)
 }
 
+#[wasm_bindgen(js_name = binomXPlusKChooseKPoly)]
+pub fn binom_x_plus_k_choose_k_poly_js(k: usize) -> Vec<f64> {
+    let p = concrete_math::combinatorics::polynomials::binom_x_plus_k_choose_k_poly(k);
+    poly_to_flat(p)
+}
+
 // ---- sum::discrete ----
 
 #[wasm_bindgen(js_name = discreteDiff)]
@@ -100,6 +107,25 @@ impl WasmClosedForm {
         let v = self.0.term(n);
         vec![v.re, v.im]
     }
+
+    /// 人が読める文字列表現（既定 var="n"）。上付き指数はオプション。
+    #[wasm_bindgen(js_name = toString)]
+    pub fn to_string_js(&self, var: Option<String>, unicode_superscript: bool) -> String {
+        let v_static: &'static str = match var.as_deref() {
+            Some("n") => "n",
+            Some("k") => "k",
+            Some("x") => "x",
+            Some("t") => "t",
+            _ => "n",
+        };
+        format!("{}", CMClosedFormDisplay::new(&self.0, v_static).unicode_superscript(unicode_superscript))
+    }
+
+    /// 部分和（S(n) = sum_{i=0..n} a(i)）を ClosedForm として返す
+    #[wasm_bindgen(js_name = partialSum)]
+    pub fn partial_sum_method(&self) -> WasmClosedForm {
+        WasmClosedForm(concrete_math::sum::partial_sum::partial_sum(&self.0))
+    }
 }
 
 // 入力:
@@ -133,4 +159,50 @@ pub fn solve_recurrence(
     }
     let rr = concrete_math::sequence::recurrence_relation::RecurrenceRelation::new(coeffs, terms, initial_values);
     Ok(WasmClosedForm(rr.solve()))
+}
+
+/// 部分和（S(n) = sum_{i=0..n} a(i)）を ClosedForm として返す（自由関数版）
+#[wasm_bindgen(js_name = partialSum)]
+pub fn partial_sum_cf(cf: &WasmClosedForm) -> WasmClosedForm {
+    WasmClosedForm(concrete_math::sum::partial_sum::partial_sum(&cf.0))
+}
+
+// ---- GeneralTerm / RecurrenceRelation をクラスで公開 ----
+
+#[wasm_bindgen(js_name = GeneralTerm)]
+pub struct WasmGeneralTerm(CMGeneralTerm);
+
+#[wasm_bindgen(js_class = "GeneralTerm")]
+impl WasmGeneralTerm {
+    /// constructor from complex-coefficient polynomial (flat) and base (re, im)
+    #[wasm_bindgen(constructor)]
+    pub fn new(poly_flat: Vec<f64>, base_re: f64, base_im: f64) -> WasmGeneralTerm {
+        let poly = flat_to_poly(poly_flat);
+        let base = Complex::new(base_re, base_im);
+        WasmGeneralTerm(CMGeneralTerm { polynomial: poly, base })
+    }
+    #[wasm_bindgen(js_name = polynomial)]
+    pub fn polynomial_flat(&self) -> Vec<f64> { poly_to_flat(self.0.polynomial.clone()) }
+    #[wasm_bindgen(js_name = base)]
+    pub fn base_pair(&self) -> Vec<f64> { vec![self.0.base.re, self.0.base.im] }
+}
+
+#[wasm_bindgen(js_name = RecurrenceRelation)]
+pub struct WasmRecurrenceRelation(concrete_math::sequence::recurrence_relation::RecurrenceRelation);
+
+#[wasm_bindgen(js_class = "RecurrenceRelation")]
+impl WasmRecurrenceRelation {
+    /// constructor: coeffs (a1..ak), non-homogeneous terms, initial values
+    #[wasm_bindgen(constructor)]
+    pub fn new(coeffs: Vec<f64>, terms: Vec<WasmGeneralTerm>, initial_values: Vec<f64>) -> WasmRecurrenceRelation {
+        let internal_terms: Vec<CMGeneralTerm> = terms.into_iter().map(|t| t.0).collect();
+        let rr = concrete_math::sequence::recurrence_relation::RecurrenceRelation::new(coeffs, internal_terms, initial_values);
+        WasmRecurrenceRelation(rr)
+    }
+
+    #[wasm_bindgen(js_name = solve)]
+    pub fn solve_js(&self) -> WasmClosedForm { WasmClosedForm(self.0.solve()) }
+
+    #[wasm_bindgen(js_name = coeffs)]
+    pub fn coeffs(&self) -> Vec<f64> { self.0.coeffs.clone() }
 }

@@ -13,5 +13,17 @@ export const navSections: NavSection[] = [
       // { title: '分解 (LU/QR/SVD)', href: '/linalg/decomp' }, // 将来
     ],
   },
+  {
+    title: '多項式 / 有理関数',
+    defaultOpen: true,
+    items: [
+      { title: 'ホーム', href: '/poly' },
+      { title: '多項式の二項演算', href: '/poly/polynomial/binary' },
+      { title: '多項式の単項演算', href: '/poly/polynomial/unary' },
+      { title: '多項式の生成', href: '/poly/polynomial/generate' },
+      { title: '有理関数の二項演算', href: '/poly/rational/binary' },
+      { title: '有理関数の単項演算', href: '/poly/rational/unary' },
+    ],
+  },
   // 将来: FFT, 信号処理, 統計 など
 ]

@@ -73,7 +73,7 @@ impl JsGFExtGF2 {
     pub fn px(&self) -> Vec<u8> { self.0.px() }
 }
 // Re-export polynomial classes
-pub use classes::polynomial::{PolynomialF64, PolynomialGF2, PolynomialGF256, PolynomialGFExtGF2};
+pub use classes::polynomial::{PolynomialF64, PolynomialGF2, PolynomialGF256, PolynomialGFExtGF2, RationalFunctionF64};
 // Re-export statistics classes
 pub use classes::statistics::{
     WasmNormal,

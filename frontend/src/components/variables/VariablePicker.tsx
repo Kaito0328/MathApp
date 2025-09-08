@@ -2,7 +2,7 @@
 import { useVariableStore } from '../../state/VariableStore'
 import { Select } from '../../baseComponents/patterns/Select'
 
-export function VariablePicker({ onPick, placeholder = '選択', allowedKinds, disabled }: { onPick: (name: string) => void; placeholder?: string; allowedKinds?: Array<'matrix' | 'vector'>; disabled?: boolean }) {
+export function VariablePicker({ onPick, placeholder = '選択', allowedKinds, disabled }: { onPick: (name: string) => void; placeholder?: string; allowedKinds?: Array<'matrix' | 'vector' | 'polynomial' | 'rational'>; disabled?: boolean }) {
   const { names, vars } = useVariableStore() as any
   const filtered = (allowedKinds && allowedKinds.length > 0)
     ? names.filter((n: string) => allowedKinds!.includes((vars[n] as any)?.kind))

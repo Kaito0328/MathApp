@@ -3,7 +3,9 @@ import React from 'react'
 
 export type MatrixVar = { kind: 'matrix'; rows: number; cols: number; data: number[] }
 export type VectorVar = { kind: 'vector'; length: number; data: number[] }
-export type AnyVar = MatrixVar | VectorVar // future: extend to polynomial, etc.
+export type PolynomialVar = { kind: 'polynomial'; coeffs: number[] }
+export type RationalVar = { kind: 'rational'; numerator: number[]; denominator: number[] }
+export type AnyVar = MatrixVar | VectorVar | PolynomialVar | RationalVar
 
 type VarsMap = Record<string, AnyVar>
 

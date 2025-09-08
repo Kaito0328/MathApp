@@ -1,5 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
+export function hammingDistanceGF2(a: Uint8Array, b: Uint8Array): number;
+export function weightDistributionGF2(codebook_flat: Uint8Array, n: number): Uint32Array;
+export function convolveNaiveF64(x: Float64Array, h: Float64Array): Float64Array;
+export function convolveFftF64(x: Float64Array, h: Float64Array): Float64Array;
+export function convolveAutoF64(x: Float64Array, h: Float64Array, threshold: number): Float64Array;
+export function defaultConvolutionThreshold(): number;
 export function dftComplexF64(x_flat: Float64Array): Float64Array;
 export function iftComplexF64(x_flat: Float64Array): Float64Array;
 export function binom(n: number, k: number): number;
@@ -7,9 +13,37 @@ export function stirling2(n: number, k: number): number;
 export function fallingFactorialPoly(m: number): Float64Array;
 export function risingFactorialPoly(m: number): Float64Array;
 export function shiftPolyXPlusH(coeffs_flat: Float64Array, h: number): Float64Array;
+export function binomXPlusKChooseKPoly(k: number): Float64Array;
 export function discreteDiff(coeffs_flat: Float64Array): Float64Array;
 export function discreteSum(coeffs_flat: Float64Array): Float64Array;
 export function solveRecurrence(coeffs: Float64Array, nh_polys_flat: Float64Array, nh_offsets: Uint32Array, nh_bases: Float64Array, initial_values: Float64Array): ClosedForm;
+/**
+ * 部分和（S(n) = sum_{i=0..n} a(i)）を ClosedForm として返す（自由関数版）
+ */
+export function partialSum(cf: ClosedForm): ClosedForm;
+export function init(): void;
+export function __probe(): number;
+export function solveLinearSystem(rows: number, cols: number, a_data: Float64Array, b: Float64Array): Float64Array;
+export function ridgeRegression(rows: number, cols: number, a_data: Float64Array, b: Float64Array, alpha: number): Float64Array;
+export function lassoRegression(rows: number, cols: number, a_data: Float64Array, b: Float64Array, alpha: number, max_iter: number, tol: number): Float64Array;
+export function logisticFit(rows: number, cols: number, x_data: Float64Array, y: Float64Array, lr: number, max_iter: number): Float64Array;
+export function logisticPredictProba(cols: number, coeffs: Float64Array, x: Float64Array): number;
+export function gmmFit(n_samples: number, n_features: number, data: Float64Array, k: number, max_iter: number, tol: number): Float64Array;
+export function gmmPredictProba(n_features: number, params: Float64Array, x: Float64Array): Float64Array;
+export function bayesianLinearPosterior(rows: number, cols: number, x_data: Float64Array, y: Float64Array, prior_mean: Float64Array, prior_cov: Float64Array, noise_cov: Float64Array): Float64Array;
+export function kalmanPredict(n: number, f_flat: Float64Array, q_flat: Float64Array, x_flat: Float64Array, p_flat: Float64Array): Float64Array;
+export function kalmanUpdate(n: number, h_flat: Float64Array, r_flat: Float64Array, z_flat: Float64Array, x_flat: Float64Array, p_flat: Float64Array): Float64Array;
+export function nt_factor_u64(n: bigint): BigUint64Array;
+export function nt_factor_bigint_str(n_str: string): string[];
+export function erf(x: number): number;
+export function erfc(x: number): number;
+export function erfInv(y: number): number;
+export function gamma(x: number): number;
+export function logGamma(x: number): number;
+export function regularizedGamma(s: number, x: number): number;
+export function beta(a: number, b: number): number;
+export function logBeta(a: number, b: number): number;
+export function regularizedBeta(a: number, b: number, x: number): number;
 export function window_hann(size: number): Float64Array;
 export function window_hamming(size: number): Float64Array;
 export function window_blackman(size: number): Float64Array;
@@ -53,35 +87,6 @@ export function u8_to_gray_f64(pixels: Uint8Array): Float64Array;
 export function gray_f64_to_u8_clamped(gray: Float64Array): Uint8Array;
 export function img_convolve2d_f32_io(src: Float32Array, width: number, height: number, kernel: Float32Array, kw: number, kh: number, border: WasmBorder): Float32Array;
 export function img_gaussian_blur_f32_io(src: Float32Array, width: number, height: number, sigma: number, radius: number, border: WasmBorder): Float32Array;
-export function nt_factor_u64(n: bigint): BigUint64Array;
-export function nt_factor_bigint_str(n_str: string): string[];
-export function init(): void;
-export function __probe(): number;
-export function solveLinearSystem(rows: number, cols: number, a_data: Float64Array, b: Float64Array): Float64Array;
-export function ridgeRegression(rows: number, cols: number, a_data: Float64Array, b: Float64Array, alpha: number): Float64Array;
-export function lassoRegression(rows: number, cols: number, a_data: Float64Array, b: Float64Array, alpha: number, max_iter: number, tol: number): Float64Array;
-export function logisticFit(rows: number, cols: number, x_data: Float64Array, y: Float64Array, lr: number, max_iter: number): Float64Array;
-export function logisticPredictProba(cols: number, coeffs: Float64Array, x: Float64Array): number;
-export function gmmFit(n_samples: number, n_features: number, data: Float64Array, k: number, max_iter: number, tol: number): Float64Array;
-export function gmmPredictProba(n_features: number, params: Float64Array, x: Float64Array): Float64Array;
-export function bayesianLinearPosterior(rows: number, cols: number, x_data: Float64Array, y: Float64Array, prior_mean: Float64Array, prior_cov: Float64Array, noise_cov: Float64Array): Float64Array;
-export function kalmanPredict(n: number, f_flat: Float64Array, q_flat: Float64Array, x_flat: Float64Array, p_flat: Float64Array): Float64Array;
-export function kalmanUpdate(n: number, h_flat: Float64Array, r_flat: Float64Array, z_flat: Float64Array, x_flat: Float64Array, p_flat: Float64Array): Float64Array;
-export function erf(x: number): number;
-export function erfc(x: number): number;
-export function erfInv(y: number): number;
-export function gamma(x: number): number;
-export function logGamma(x: number): number;
-export function regularizedGamma(s: number, x: number): number;
-export function beta(a: number, b: number): number;
-export function logBeta(a: number, b: number): number;
-export function regularizedBeta(a: number, b: number, x: number): number;
-export function convolveNaiveF64(x: Float64Array, h: Float64Array): Float64Array;
-export function convolveFftF64(x: Float64Array, h: Float64Array): Float64Array;
-export function convolveAutoF64(x: Float64Array, h: Float64Array, threshold: number): Float64Array;
-export function defaultConvolutionThreshold(): number;
-export function hammingDistanceGF2(a: Uint8Array, b: Uint8Array): number;
-export function weightDistributionGF2(codebook_flat: Uint8Array, n: number): Uint32Array;
 export enum WasmBorder {
   ConstantZero = 0,
   Replicate = 1,
@@ -149,6 +154,14 @@ export class ClosedForm {
   termPoly(i: number): Float64Array;
   termBase(i: number): Float64Array;
   term(n: number): Float64Array;
+  /**
+   * 人が読める文字列表現（既定 var="n"）。上付き指数はオプション。
+   */
+  toString(_var: string | null | undefined, unicode_superscript: boolean): string;
+  /**
+   * 部分和（S(n) = sum_{i=0..n} a(i)）を ClosedForm として返す
+   */
+  partialSum(): ClosedForm;
 }
 export class ContinuousSS {
   free(): void;
@@ -321,6 +334,15 @@ export class Gamma {
   readonly shape: number;
   readonly rate: number;
 }
+export class GeneralTerm {
+  free(): void;
+  /**
+   * constructor from complex-coefficient polynomial (flat) and base (re, im)
+   */
+  constructor(poly_flat: Float64Array, base_re: number, base_im: number);
+  polynomial(): Float64Array;
+  base(): Float64Array;
+}
 export class Hamming74 {
   private constructor();
   free(): void;
@@ -461,10 +483,36 @@ export class PolynomialF64 {
   deg(): number;
   get(i: number): number;
   eval(x: number): number;
+  differentiate(): PolynomialF64;
+  integrate(): PolynomialF64;
   /**
    * 係数ベクトル（低次→高次）を返す
    */
   coeffs(): Float64Array;
+  /**
+   * 実根列から多項式を生成（roots は実数）
+   */
+  static fromRoots(roots: Float64Array): PolynomialF64;
+  /**
+   * 多項式の最大公約多項式（静的メソッド）
+   */
+  static gcd(a: PolynomialF64, b: PolynomialF64): PolynomialF64;
+  /**
+   * 多項式の最小公倍多項式（静的メソッド）
+   */
+  static lcm(a: PolynomialF64, b: PolynomialF64): PolynomialF64;
+  /**
+   * 複素根を返す（re, im の交互並びのフラット配列: [re0, im0, re1, im1, ...]）
+   */
+  findRoots(): Float64Array;
+  /**
+   * 渡された複素根列をクラスタリングして重複度付き根情報を返す
+   * inputs: roots_interleaved = [re0, im0, re1, im1, ...], tolerance
+   */
+  static groupRoots(roots_interleaved: Float64Array, tolerance: number): WasmRoot[];
+  mulSimple(other: PolynomialF64): PolynomialF64;
+  mulFft(other: PolynomialF64): PolynomialF64;
+  mulAuto(other: PolynomialF64): PolynomialF64;
 }
 export class PolynomialGF2 {
   free(): void;
@@ -513,6 +561,61 @@ export class PolynomialGFExtGF2 {
    * 係数ベクトル（各係数は GFExt(GF2) の係数列を Uint8Array として返す）
    */
   coeffs(): Uint8Array[];
+}
+export class RationalFunctionF64 {
+  free(): void;
+  /**
+   * constructor from numerator/denominator coeff arrays (low->high)
+   */
+  constructor(numerator: Float64Array, denominator: Float64Array);
+  /**
+   * numerator coefficients (low->high)
+   */
+  numeratorCoeffs(): Float64Array;
+  /**
+   * denominator coefficients (low->high)
+   */
+  denominatorCoeffs(): Float64Array;
+  simplify(): void;
+  is_zero(): boolean;
+  inverse(): RationalFunctionF64;
+  /**
+   * evaluate at x (Some(y) or None if denominator(x)==0)
+   */
+  eval(x: number): number | undefined;
+  /**
+   * derivative using quotient rule from crate
+   */
+  differentiate(): RationalFunctionF64;
+  /**
+   * basic ops
+   */
+  add(rhs: RationalFunctionF64): RationalFunctionF64;
+  sub(rhs: RationalFunctionF64): RationalFunctionF64;
+  mul(rhs: RationalFunctionF64): RationalFunctionF64;
+  div(rhs: RationalFunctionF64): RationalFunctionF64;
+  /**
+   * multiply/divide by a polynomial
+   */
+  mulPoly(poly_coeffs: Float64Array): RationalFunctionF64;
+  divPoly(poly_coeffs: Float64Array): RationalFunctionF64;
+  /**
+   * find poles (value + multiplicity)
+   */
+  findPoles(): WasmRoot[];
+  /**
+   * partial fraction expansion result
+   */
+  partialFractionExpansion(): any;
+}
+export class RecurrenceRelation {
+  free(): void;
+  /**
+   * constructor: coeffs (a1..ak), non-homogeneous terms, initial values
+   */
+  constructor(coeffs: Float64Array, terms: GeneralTerm[], initial_values: Float64Array);
+  solve(): ClosedForm;
+  coeffs(): Float64Array;
 }
 export class ReedSolomon {
   free(): void;
@@ -723,6 +826,16 @@ export class WasmNLMS {
   constructor(taps: number, step_size: number, epsilon: number);
   process_sample(input: number, desired: number): Float64Array;
   process_series(input: Float64Array, desired: Float64Array): Float64Array;
+}
+/**
+ * JS へ返す重複度付き根
+ */
+export class WasmRoot {
+  private constructor();
+  free(): void;
+  readonly re: number;
+  readonly im: number;
+  readonly multiplicity: number;
 }
 export class WasmSignal {
   free(): void;
