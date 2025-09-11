@@ -1,7 +1,7 @@
 "use client"
 import React from 'react'
 import { Text } from '../../../baseComponents/foundation/Text'
-import { Button } from '../../../baseComponents/patterns/Button'
+import { Button } from '../../../baseComponents/controls/Button'
 import { variableLabel, variablePreview, variableToMarkdown } from './VariableUtils'
 import { MatrixView, VectorView } from '../../../widgets/display'
 import { CoreColorKey, VariantKey, SizeKey } from '../../../design/tokens'

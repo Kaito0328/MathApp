@@ -1,9 +1,9 @@
 "use client"
 import React from 'react'
-import PageContainer from '../../../src/baseComponents/patterns/PageContainer'
+import PageContainer from '../../../src/baseComponents/layout/PageContainer'
 import { View } from '../../../src/baseComponents/foundation/View'
 import { Text } from '../../../src/baseComponents/foundation/Text'
-import { Button } from '../../../src/baseComponents/patterns/Button'
+import { Button } from '../../../src/baseComponents/controls/Button'
 import { CoreColorKey, SizeKey, FontWeightKey } from '../../../src/design/tokens'
 import { MatrixInput, VectorInput, MatrixSizeControls, VectorSizeControls } from '../../../src/widgets/input'
 //
@@ -14,6 +14,8 @@ import { useVariableStore } from '../../../src/state/VariableStore'
 import { VariablePicker } from '../../../src/components/variables/VariablePicker'
 import { solveWith } from '../../../src/wasm/linalg'
 import { variableToMarkdown } from '../../../src/components/variables/parts/VariableUtils'
+import OperationSetting from '../../../src/components/operations/OperationSetting'
+import Row from '../../../src/baseComponents/layout/Row'
 
 type MatrixDTO = { rows: number; cols: number; data: number[] }
 type VectorDTO = { data: number[] }
@@ -28,16 +30,15 @@ export default function SolveAxEqB() {
   const [compute, setCompute] = React.useState<any>({})
   const [precision, setPrecision] = React.useState<number>(4)
   const [checks, setChecks] = React.useState<any>({})
-  const [dirty, setDirty] = React.useState<boolean>(false)
   const [refresh, setRefresh] = React.useState<number>(0)
 
   // latest snapshots to avoid auto compute and satisfy hook deps
   const ARef = React.useRef(A)
   const bRef = React.useRef(b)
   const methodRef = React.useRef(method)
-  React.useEffect(() => { ARef.current = A; setDirty(true) }, [A])
-  React.useEffect(() => { bRef.current = b; setDirty(true) }, [b])
-  React.useEffect(() => { methodRef.current = method; setDirty(true) }, [method])
+  React.useEffect(() => { ARef.current = A }, [A])
+  React.useEffect(() => { bRef.current = b }, [b])
+  React.useEffect(() => { methodRef.current = method }, [method])
 
   React.useEffect(() => {
     let cancelled = false
@@ -61,7 +62,6 @@ export default function SolveAxEqB() {
           const resid = Math.sqrt(Ax.reduce((acc, v, i) => acc + (v - b0.data[i])**2, 0))
           setChecks({ residual: resid })
         }
-        setDirty(false)
       }
     }
     run()
@@ -82,34 +82,41 @@ export default function SolveAxEqB() {
     if (target === 'b' && v.kind === 'vector') setb({ data: v.data.slice() })
   }
 
+  const operations: { label: string; value: Method }[] = [
+    { label: 'Auto', value: 'auto' },
+    { label: '逆行列', value: 'inverse' },
+    { label: '疑似逆行列', value: 'pinv' },
+    { label: 'LU', value: 'lu' },
+    { label: 'QR', value: 'qr' },
+    { label: 'SVD', value: 'svd' },
+    { label: 'コレスキー', value: 'cholesky' },
+  ]
+
   return (
   <PageContainer title="連立一次方程式 Ax = b の解法" stickyHeader>
       <div style={{ display: 'grid', gap: 12 }}>
-  <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <VariablePicker placeholder="A を変数から代入" allowedKinds={['matrix']} onPick={(n) => assignFromVar('A', n)} />
-            <VariablePicker placeholder="b を変数から代入" allowedKinds={['vector']} onPick={(n) => assignFromVar('b', n)} />
-            <label>手法
-              <select value={method} onChange={(e) => setMethod(e.target.value as Method)}>
-                <option value="auto">Auto</option>
-                <option value="inverse">逆行列</option>
-                <option value="pinv">疑似逆行列</option>
-                <option value="lu">LU</option>
-                <option value="qr">QR</option>
-                <option value="svd">SVD</option>
-                <option value="cholesky">コレスキー</option>
-              </select>
-            </label>
-            <label>精度
-              <input type="number" min={0} max={10} value={precision} onChange={(e) => setPrecision(Math.max(0, Math.min(10, Math.floor(Number(e.target.value)||0))))} style={{ width: 72 }} />
-            </label>
-            <Button onClick={() => setRefresh((n)=>n+1)} color={dirty ? CoreColorKey.Primary : CoreColorKey.Secondary} disabled={!dirty} aria-label="計算">
-              <span style={{ display:'inline-flex', gap:4, alignItems:'center' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                計算
-              </span>
-            </Button>
-          </div>
+        <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
+          <Row
+            left={<div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+              <VariablePicker placeholder="A を変数から代入" allowedKinds={['matrix']} onPick={(n) => assignFromVar('A', n)} />
+            </div>}
+            center={
+              <OperationSetting
+                operations={operations}
+                operation={method}
+                onOperationChange={(v)=> setMethod(v as Method)}
+                accuracy={precision}
+                onAccuracyChange={(n)=> setPrecision(Math.max(0, Math.min(10, Math.floor(Number(n)||0))))}
+                accuracy_able
+                onCalc={() => setRefresh((n)=>n+1)}
+                calc_button_able
+                label={'手法'}
+              />
+            }
+            right={<div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', justifyContent:'flex-end' }}>
+              <VariablePicker placeholder="b を変数から代入" allowedKinds={['vector']} onPick={(n) => assignFromVar('b', n)} />
+            </div>}
+          />
         </View>
 
         <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>

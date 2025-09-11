@@ -1,7 +1,7 @@
 "use client"
 import React from 'react'
 import { Zpk } from '../dto/lti-systems'
-import NumberCell from '../../baseComponents/inputs/NumberCell'
+import NumberCellInput from '../../baseComponents/input/NumberCellInput'
 import MarkdownMath from '../../widgets/display/MarkdownMath'
 
 function ensurePairs(a: number[], pairs: number) {
@@ -63,9 +63,9 @@ export const ZpkInput: React.FC<ZpkInputProps> = ({ value, onChange, zeroPairs, 
         <div style={{ display: 'grid', gap: 6 }}>
           {Array.from({ length: zPairs }).map((_, i) => (
             <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <NumberCell value={zeros[i * 2] ?? 0} onChange={(v) => setZero(i, true, v)} width={80} />
+              <NumberCellInput value={zeros[i * 2] ?? 0} onChange={(v) => setZero(i, true, v)} width={80} />
               <MarkdownMath math={`+`} block={false} />
-              <NumberCell value={(zeros[i * 2 + 1] ?? 0)} onChange={(v) => setZero(i, false, v)} width={80} />
+              <NumberCellInput value={(zeros[i * 2 + 1] ?? 0)} onChange={(v) => setZero(i, false, v)} width={80} />
               <MarkdownMath math={`i`} block={false} />
             </div>
           ))}
@@ -76,9 +76,9 @@ export const ZpkInput: React.FC<ZpkInputProps> = ({ value, onChange, zeroPairs, 
         <div style={{ display: 'grid', gap: 6 }}>
           {Array.from({ length: pPairs }).map((_, i) => (
             <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <NumberCell value={poles[i * 2] ?? 0} onChange={(v) => setPole(i, true, v)} width={80} />
+              <NumberCellInput value={poles[i * 2] ?? 0} onChange={(v) => setPole(i, true, v)} width={80} />
               <MarkdownMath math={`+`} block={false} />
-              <NumberCell value={(poles[i * 2 + 1] ?? 0)} onChange={(v) => setPole(i, false, v)} width={80} />
+              <NumberCellInput value={(poles[i * 2 + 1] ?? 0)} onChange={(v) => setPole(i, false, v)} width={80} />
               <MarkdownMath math={`i`} block={false} />
             </div>
           ))}
@@ -86,9 +86,9 @@ export const ZpkInput: React.FC<ZpkInputProps> = ({ value, onChange, zeroPairs, 
       </div>
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <MarkdownMath math={`k`} block={false} />
-        <NumberCell value={value.gain} onChange={(gain) => onChange({ ...value, gain })} width={100} />
+        <NumberCellInput value={value.gain} onChange={(gain) => onChange({ ...value, gain })} width={100} />
         <MarkdownMath math={`T_s`} block={false} />
-        <NumberCell value={value.sample_time ?? 0} onChange={(sample_time) => onChange({ ...value, sample_time })} width={100} />
+        <NumberCellInput value={value.sample_time ?? 0} onChange={(sample_time) => onChange({ ...value, sample_time })} width={100} />
       </div>
     </div>
   )

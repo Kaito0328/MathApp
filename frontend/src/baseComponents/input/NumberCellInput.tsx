@@ -1,6 +1,7 @@
 "use client"
 import React from 'react'
-import { TextInput } from '../patterns/TextInput'
+import { TextInput } from './TextInput'
+import { CoreColorKey, SizeKey } from '../../design/tokens'
 
 export type NumberCellProps = {
   value: number
@@ -12,9 +13,14 @@ export type NumberCellProps = {
   width?: number | string
   disabled?: boolean
   title?: string
+  // デザイン指定
+  color?: CoreColorKey
+  variant?: CoreColorKey
+  size?: SizeKey
+  invalid?: boolean
 }
 
-export const NumberCell: React.FC<NumberCellProps> = ({ value, onChange, placeholder, step = 1, min, max, width = 72, disabled, title }) => {
+export const NumberCellInput: React.FC<NumberCellProps> = ({ value, onChange, placeholder, step = 1, min, max, width = 72, disabled, title, color, variant, size, invalid }) => {
   const [text, setText] = React.useState<string>(Number.isFinite(value) ? String(value) : '')
   React.useEffect(() => {
     const incoming = Number.isFinite(value) ? String(value) : ''
@@ -31,19 +37,22 @@ export const NumberCell: React.FC<NumberCellProps> = ({ value, onChange, placeho
   return (
     <TextInput
       type="number"
-      className="numberCell"
       value={text}
       onChange={(e) => setText(e.target.value)}
       onBlur={(e) => commit(e.target.value)}
-      step={step as any}
-      min={min as any}
-      max={max as any}
+      step={step}
+      min={min}
+      max={max}
       placeholder={placeholder}
       disabled={disabled}
       title={title}
+  color={color}
+  variant={variant}
+  size={size}
+  invalid={invalid}
       style={{ width }}
     />
   )
 }
 
-export default NumberCell
+export default NumberCellInput

@@ -1,7 +1,7 @@
 "use client"
 import React from 'react'
 import { Vector } from '../dto/linalg'
-import NumberCell from '../../baseComponents/inputs/NumberCell'
+import NumberCellInput from '../../baseComponents/input/NumberCellInput'
 import SimpleBrackets from './SimpleBrackets'
 
 export type VectorInputProps = {
@@ -34,7 +34,7 @@ export const VectorInput: React.FC<VectorInputProps> = ({ value, onChange, orien
   <SimpleBrackets side="left" rows={orientation === 'row' ? 1 : n} gapPx={g} />
   <div style={{ display: 'grid', gridAutoFlow: orientation === 'row' ? 'column' : 'row', gap: g }}>
         {data.map((x, i) => (
-          <NumberCell key={i} value={x} onChange={(v) => update(i, v)} width={cellWidth} />
+          <NumberCellInput key={i} value={x} onChange={(v) => update(i, v)} width={cellWidth} />
         ))}
       </div>
   <SimpleBrackets side="right" rows={orientation === 'row' ? 1 : n} gapPx={g} />

@@ -1,7 +1,7 @@
 "use client"
 import React from 'react'
 import { Polynomial } from '../dto/polynomial'
-import NumberCell from '../../baseComponents/inputs/NumberCell'
+import NumberCellInput from '../../baseComponents/input/NumberCellInput'
 import MarkdownMath from '../../widgets/display/MarkdownMath'
 import { VectorSizeControls } from './SizeControls'
 
@@ -26,14 +26,14 @@ export const PolynomialInput: React.FC<PolynomialInputProps> = ({ value, onChang
   // render highest power first: a_{n-1} x^{n-1} + ... + a_0
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <VectorSizeControls length={len} onChange={setLen} onApply={() => onChange({ coeffs })} />
+      <VectorSizeControls length={len} onChange={(n)=> { setLen(n); onChange({ coeffs: coeffs.slice(0, n).concat(Array(Math.max(0, n - coeffs.length)).fill(0)) }) }} />
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         {Array.from({ length: len }).map((_, idx) => {
           const power = len - 1 - idx
           const ci = power // map power to coeff index
           return (
             <div key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <NumberCell value={coeffs[ci] ?? 0} onChange={(v) => setCoeff(ci, v)} width={72} />
+              <NumberCellInput value={coeffs[ci] ?? 0} onChange={(v) => setCoeff(ci, v)} width={72} />
               {power > 1 && <MarkdownMath math={`x^{${power}}`} block={false} />}
               {power === 1 && <MarkdownMath math={`x`} block={false} />}
               {idx < len - 1 && <MarkdownMath math={`+`} block={false} />}

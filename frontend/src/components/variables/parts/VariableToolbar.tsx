@@ -1,8 +1,8 @@
 "use client"
 import React from 'react'
 import { Text } from '../../../baseComponents/foundation/Text'
-import { Button } from '../../../baseComponents/patterns/Button'
-import FilePickerButton from '../../../baseComponents/patterns/FilePickerButton'
+import { Button } from '../../../baseComponents/controls/Button'
+import FilePickerButton from '../../composites/FilePickerButton'
 
 export type VariableToolbarProps = {
   onExport: () => void

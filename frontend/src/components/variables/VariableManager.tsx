@@ -1,7 +1,7 @@
 "use client"
 import React from 'react'
 import { useVariableStore } from '../../state/VariableStore'
-import { Card } from '../../baseComponents/patterns/Card'
+import { Card } from '../../baseComponents/layout/Card'
 import { CoreColorKey, SizeKey } from '../../design/tokens'
 import VariableToolbar from './parts/VariableToolbar'
 import VariableList from './parts/VariableList'

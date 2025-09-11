@@ -20,7 +20,7 @@ export const ComplexVectorInput: React.FC<ComplexVectorInputProps> = ({ value, o
 
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <VectorSizeControls length={len} onChange={setLen} onApply={() => onChange(items)} />
+      <VectorSizeControls length={len} onChange={(n)=> { setLen(n); onChange(items.slice(0,n).concat(Array(Math.max(0, n-items.length)).fill({ re:0, im:0 }))) }} />
       <div style={{ display: 'grid', gap: 8 }}>
         {items.map((c, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

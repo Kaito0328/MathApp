@@ -1,6 +1,6 @@
 "use client"
 import { useVariableStore } from '../../state/VariableStore'
-import { Select } from '../../baseComponents/patterns/Select'
+import { Select } from '../../baseComponents/input/Select'
 
 export function VariablePicker({ onPick, placeholder = '選択', allowedKinds, disabled }: { onPick: (name: string) => void; placeholder?: string; allowedKinds?: Array<'matrix' | 'vector' | 'polynomial' | 'rational'>; disabled?: boolean }) {
   const { names, vars } = useVariableStore() as any

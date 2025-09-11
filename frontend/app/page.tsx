@@ -9,23 +9,16 @@ import type { Signal, Spectrum } from '../src/widgets/dto/signal_processing'
 import { VectorInput, MatrixInput, ComplexInput, PolynomialInput, RationalFunctionInput, TransferFunctionInput, ZpkInput, SignalInput, SpectrumInput } from '../src/widgets/input'
 import { VectorSizeControls, MatrixSizeControls } from '../src/widgets/input/SizeControls'
 import { VectorView, MatrixView, ComplexView, PolynomialView, RationalFunctionView, TransferFunctionView, ZpkView, SignalView, SpectrumView } from '../src/widgets/display/index'
-import PageContainer from '../src/baseComponents/patterns/PageContainer'
+import PageContainer from '../src/baseComponents/layout/PageContainer'
 
 export default function Page() {
   // Vector
   const [vec, setVec] = React.useState<Vector>({ data: [1, 2, 3] })
   const [vecN, setVecN] = React.useState<number>(3)
-  const applyVec = React.useCallback(() => setVec({ data: (vec.data.slice(0, vecN).concat(Array(Math.max(0, vecN - vec.data.length)).fill(0))) }), [vec, vecN])
   // Matrix
   const [mat, setMat] = React.useState<Matrix>({ rows: 2, cols: 2, data: [1, 0, 0, 1] })
   const [mRows, setMRows] = React.useState<number>(2)
   const [mCols, setMCols] = React.useState<number>(2)
-  const applyMat = React.useCallback(() => {
-    const r = mRows, c = mCols
-    const size = r * c
-    const next = mat.data.slice(0, size).concat(Array(Math.max(0, size - mat.data.length)).fill(0))
-    setMat({ rows: r, cols: c, data: next })
-  }, [mRows, mCols, mat])
   // Complex
   const [z, setZ] = React.useState<Complex>({ re: 1, im: 1 })
   // Polynomial / Rational
@@ -44,7 +37,7 @@ export default function Page() {
       <section>
         <h2 style={{ margin: '8px 0' }}>Vector</h2>
         <div style={{ display: 'grid', gap: 6 }}>
-          <VectorSizeControls length={vecN} onChange={setVecN} onApply={applyVec} />
+          <VectorSizeControls length={vecN} onChange={setVecN} />
           <VectorInput value={vec} onChange={setVec} orientation="row" length={vecN} />
         </div>
         <div style={{ marginTop: 8 }}><VectorView value={vec} orientation="row" /></div>
@@ -53,7 +46,7 @@ export default function Page() {
       <section>
         <h2 style={{ margin: '8px 0' }}>Matrix</h2>
         <div style={{ display: 'grid', gap: 6 }}>
-          <MatrixSizeControls rows={mRows} cols={mCols} onChange={(r, c) => { setMRows(r); setMCols(c) }} onApply={applyMat} />
+          <MatrixSizeControls rows={mRows} cols={mCols} onChange={(r, c) => { setMRows(r); setMCols(c) }}  />
           <MatrixInput value={mat} onChange={setMat} rows={mRows} cols={mCols} />
         </div>
         <div style={{ marginTop: 8 }}><MatrixView value={mat} /></div>

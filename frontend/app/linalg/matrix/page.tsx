@@ -1,15 +1,17 @@
 "use client"
 import React from 'react'
-import PageContainer from '../../../src/baseComponents/patterns/PageContainer'
+import PageContainer from '../../../src/baseComponents/layout/PageContainer'
 import { View } from '../../../src/baseComponents/foundation/View'
 import { Text } from '../../../src/baseComponents/foundation/Text'
-import { Button } from '../../../src/baseComponents/patterns/Button'
+import { Button } from '../../../src/baseComponents/controls/Button'
 import { CoreColorKey, SizeKey, FontWeightKey } from '../../../src/design/tokens'
 import { MatrixInput } from '../../../src/widgets/input'
 import { MatrixView } from '../../../src/widgets/display'
 import { MatrixSizeControls } from '../../../src/widgets/input'
 import { matMul as jsMatMul, transpose as jsTranspose, diagFrom as jsDiagFrom } from '../../../src/wasm/linalg'
 import MarkdownMath from '../../../src/widgets/display/MarkdownMath'
+import Row from '../../../src/baseComponents/layout/Row'
+import OperationSetting from '../../../src/components/operations/OperationSetting'
 import { formatNumberForMath, formatVectorMarkdown } from '../../../src/utils/format/markdown'
 import { useVariableStore } from '../../../src/state/VariableStore'
 import { VariablePicker } from '../../../src/components/variables/VariablePicker'
@@ -23,6 +25,18 @@ export default function MatrixOps() {
   const { get, upsert } = useVariableStore()
   const [A, setA] = React.useState<MatrixDTO>({ rows: 3, cols: 3, data: [1,0,0, 0,1,0, 0,0,1] })
   const [op, setOp] = React.useState<Unary>('inverse')
+  const operations: { label: string; value: Unary }[] = [
+    { label: '逆行列', value: 'inverse' },
+    { label: '疑似逆行列', value: 'pinv' },
+    { label: 'コレスキー分解', value: 'cholesky' },
+    { label: 'QR 分解', value: 'qr' },
+    { label: 'SVD 分解', value: 'svd' },
+    { label: '固有値分解', value: 'eigen' },
+    { label: '行列式', value: 'det' },
+    { label: 'ランク', value: 'rank' },
+    { label: 'フロベニウスノルム', value: 'normF' },
+    { label: '行列指数関数', value: 'expm' },
+  ]
 
   const [compute, setCompute] = React.useState<any>({})
   const [checks, setChecks] = React.useState<any>({})
@@ -153,39 +167,29 @@ export default function MatrixOps() {
       <div style={{ display: 'grid', gap: 12 }}>
         {/* Controls */}
         <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
-          <div style={{ display: 'grid', gap: 8 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <VariablePicker placeholder="変数から代入" allowedKinds={['matrix']} onPick={(name) => {
-                const v = get(name) as any
-                if (v && v.kind === 'matrix') setA({ rows: v.rows, cols: v.cols, data: v.data.slice() })
-              }} />
-              <select value={op} onChange={(e) => setOp(e.target.value as Unary)}>
-                <option value="inverse">逆行列</option>
-                <option value="pinv">疑似逆行列</option>
-                <option value="cholesky">コレスキー分解</option>
-                <option value="qr">QR 分解</option>
-                <option value="svd">SVD 分解</option>
-                <option value="eigen">固有値分解</option>
-                <option value="det">行列式</option>
-                <option value="rank">ランク</option>
-                <option value="normF">フロベニウスノルム</option>
-                <option value="expm">行列指数関数</option>
-              </select>
-              {/* 再計算ボタンは重い演算のみ表示 */}
-              {(['qr','svd','eigen','expm'] as Unary[]).includes(op) && (
-                <Button onClick={() => setRefresh((n) => n + 1)} color={dirty ? CoreColorKey.Primary : CoreColorKey.Secondary} disabled={!dirty} aria-label="計算">
-                  <span style={{ display:'inline-flex', gap:4, alignItems:'center' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    計算
-                  </span>
-                </Button>
-              )}
-              <label>精度
-                <input type="number" min={0} max={10} value={precision} onChange={(e) => setPrecision(Math.max(0, Math.min(10, Math.floor(Number(e.target.value)||0))))} style={{ width: 72 }} />
-              </label>
-              
-            </div>
-          </div>
+          <Row
+            left={
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+                <VariablePicker placeholder="変数から代入" allowedKinds={['matrix']} onPick={(name) => {
+                  const v = get(name) as any
+                  if (v && v.kind === 'matrix') setA({ rows: v.rows, cols: v.cols, data: v.data.slice() })
+                }} />
+              </div>
+            }
+            center={
+              <OperationSetting
+                operations={operations}
+                operation={op}
+                onOperationChange={(v)=> setOp(v as Unary)}
+                accuracy={precision}
+                onAccuracyChange={(n)=> setPrecision(Math.max(0, Math.min(10, Math.floor(Number(n)||0))))}
+                accuracy_able
+                onCalc={(['qr','svd','eigen','expm'] as Unary[]).includes(op) ? (()=> setRefresh((n)=>n+1)) : undefined}
+                calc_button_able={(['qr','svd','eigen','expm'] as Unary[]).includes(op) && dirty}
+              />
+            }
+            right={<div />}
+          />
         </View>
 
         {/* Input */}

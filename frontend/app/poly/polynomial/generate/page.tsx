@@ -1,9 +1,9 @@
 "use client"
 import React from 'react'
-import { Button } from '../../../../src/baseComponents/patterns/Button'
+import { Button } from '../../../../src/baseComponents/controls/Button'
 import MarkdownMath from '../../../../src/widgets/display/MarkdownMath'
 import { formatPolynomialMarkdown } from '../../../../src/utils/format/markdown'
-import PageContainer from '../../../../src/baseComponents/patterns/PageContainer'
+import PageContainer from '../../../../src/baseComponents/layout/PageContainer'
 import { View } from '../../../../src/baseComponents/foundation/View'
 import { CoreColorKey, SizeKey } from '../../../../src/design/tokens'
 import { useVariableStore } from '../../../../src/state/VariableStore'

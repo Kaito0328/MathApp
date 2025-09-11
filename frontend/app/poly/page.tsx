@@ -1,7 +1,7 @@
 "use client"
 import React from 'react'
 import Link from 'next/link'
-import PageContainer from '../../src/baseComponents/patterns/PageContainer'
+import PageContainer from '../../src/baseComponents/layout/PageContainer'
 import { View } from '../../src/baseComponents/foundation/View'
 import { Text } from '../../src/baseComponents/foundation/Text'
 import { CoreColorKey, SizeKey, FontWeightKey } from '../../src/design/tokens'

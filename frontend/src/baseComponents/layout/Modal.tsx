@@ -2,7 +2,7 @@
 import React from 'react'
 import { View } from '../foundation/View'
 import { Text } from '../foundation/Text'
-import { Button } from './Button'
+import { Button } from '../controls/Button'
 import { CoreColorKey, SizeKey } from '../../design/tokens'
 
 export type ModalProps = {

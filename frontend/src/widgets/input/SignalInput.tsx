@@ -1,7 +1,7 @@
 "use client"
 import React from 'react'
 import { Signal } from '../dto/signal_processing'
-import NumberCell from '../../baseComponents/inputs/NumberCell'
+import NumberCellInput from '../../baseComponents/input/NumberCellInput'
 import VectorInput from './VectorInput'
 import MarkdownMath from '../../widgets/display/MarkdownMath'
 
@@ -24,7 +24,7 @@ export const SignalInput: React.FC<SignalInputProps> = ({ value, onChange, lengt
       <VectorInput value={{ data }} onChange={(v) => onChange({ ...value, data: v.data })} orientation={'row'} />
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <MarkdownMath math={`F_s`} block={false} />
-        <NumberCell value={value.sample_rate} onChange={(sample_rate) => onChange({ ...value, sample_rate })} width={100} />
+        <NumberCellInput value={value.sample_rate} onChange={(sample_rate) => onChange({ ...value, sample_rate })} width={100} />
       </div>
     </div>
   )

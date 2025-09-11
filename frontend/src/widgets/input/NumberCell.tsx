@@ -1,6 +1,6 @@
 "use client"
 import React from 'react'
-import BaseNumberCell, { NumberCellProps as BaseNumberCellProps } from '../../baseComponents/inputs/NumberCell'
+import BaseNumberCell, { NumberCellProps as BaseNumberCellProps } from '../../baseComponents/input/NumberCellInput'
 
 export type NumberCellProps = BaseNumberCellProps
 

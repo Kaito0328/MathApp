@@ -1,7 +1,7 @@
 "use client"
 import React from 'react'
 import { Matrix } from '../dto/linalg'
-import NumberCell from '../../baseComponents/inputs/NumberCell'
+import NumberCellInput from '../../baseComponents/input/NumberCellInput'
 import SimpleBrackets from './SimpleBrackets'
 
 export type MatrixInputProps = {
@@ -39,7 +39,7 @@ export const MatrixInput: React.FC<MatrixInputProps> = ({ value, onChange, rows,
         {Array.from({ length: r }).map((_, ri) =>
           Array.from({ length: c }).map((_, ci) => {
             const idx = ri * c + ci
-            return <NumberCell key={`${ri}-${ci}`} value={data[idx] ?? 0} onChange={(v) => update(ri, ci, v)} width={cellWidth} />
+            return <NumberCellInput key={`${ri}-${ci}`} value={data[idx] ?? 0} onChange={(v) => update(ri, ci, v)} width={cellWidth} />
           }),
         )}
       </div>

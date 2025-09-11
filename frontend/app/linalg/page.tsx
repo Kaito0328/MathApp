@@ -1,9 +1,9 @@
 "use client"
-import AppLink from '../../src/baseComponents/patterns/AppLink'
+import AppLink from '../../src/components/composites/AppLink'
 import { View } from '../../src/baseComponents/foundation/View'
 import { Text } from '../../src/baseComponents/foundation/Text'
 import { CoreColorKey, SizeKey, FontWeightKey } from '../../src/design/tokens'
-import PageContainer from '../../src/baseComponents/patterns/PageContainer'
+import PageContainer from '../../src/baseComponents/layout/PageContainer'
 import VariableSection from '../../src/components/variables/VariableSection'
 
 export default function LinalgHome() {

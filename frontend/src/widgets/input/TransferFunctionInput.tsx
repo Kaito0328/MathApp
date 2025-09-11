@@ -1,7 +1,7 @@
 "use client"
 import React from 'react'
 import { TransferFunction } from '../dto/lti-systems'
-import NumberCell from '../../baseComponents/inputs/NumberCell'
+import NumberCellInput from '../../baseComponents/input/NumberCellInput'
 import MarkdownMath from '../../widgets/display/MarkdownMath'
 import RationalFunctionInput from './RationalFunctionInput'
 
@@ -25,7 +25,7 @@ export const TransferFunctionInput: React.FC<TransferFunctionInputProps> = ({ va
       />
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <MarkdownMath math={`T_s`} block={false} />
-        <NumberCell value={value.sample_time ?? 0} onChange={(sample_time) => onChange({ ...value, sample_time })} width={100} />
+        <NumberCellInput value={value.sample_time ?? 0} onChange={(sample_time) => onChange({ ...value, sample_time })} width={100} />
         <span style={{ opacity: 0.7 }}>(nullで連続)</span>
       </div>
     </div>
