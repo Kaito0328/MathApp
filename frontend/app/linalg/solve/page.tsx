@@ -11,11 +11,14 @@ import MarkdownMath from '../../../src/widgets/display/MarkdownMath'
 import { formatVectorMarkdown } from '../../../src/utils/format/markdown'
 import { formatNumberForMath } from '../../../src/utils/format/markdown'
 import { useVariableStore } from '../../../src/state/VariableStore'
-import { VariablePicker } from '../../../src/components/variables/VariablePicker'
+import { VariablePicker } from '../../../src/components/features/variables/VariablePicker'
 import { solveWith } from '../../../src/wasm/linalg'
-import { variableToMarkdown } from '../../../src/components/variables/parts/VariableUtils'
-import OperationSetting from '../../../src/components/operations/OperationSetting'
+import { variableToMarkdown } from '../../../src/components/features/variables/parts/VariableUtils'
+import OperationSetting from '../../../src/components/features/operations/OperationSetting'
 import Row from '../../../src/baseComponents/layout/Row'
+import SectionPanelWithTitle from '../../../src/components/composites/panels/SectionPanelWithTitle'
+import DocPanel from '../../../src/components/features/document/Document'
+import SourceBlock from '../../../src/components/features/source/SourceBlock'
 
 type MatrixDTO = { rows: number; cols: number; data: number[] }
 type VectorDTO = { data: number[] }
@@ -117,52 +120,31 @@ export default function SolveAxEqB() {
               <VariablePicker placeholder="b を変数から代入" allowedKinds={['vector']} onPick={(n) => assignFromVar('b', n)} />
             </div>}
           />
-        </View>
+  </View>
 
         <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
-          <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
-            <Text weight={FontWeightKey.Medium}><MarkdownMath math={'A'} block={false} /></Text>
-            <div style={{ marginTop: 8, display:'grid', gridTemplateColumns:'1fr auto', gap: 8, alignItems: 'start' }}>
-              <div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
-                  <MatrixSizeControls rows={A.rows} cols={A.cols} onChange={(r, c) => {
-                    const size = r*c
-                    const next = A.data.slice(0, size)
-                    if (next.length < size) next.push(...Array(size - next.length).fill(0))
-                    setA({ rows: r, cols: c, data: next })
-                    // b の長さも A.rows に追従させる
-                    setb((prev) => ({ data: prev.data.slice(0, r).concat(Array(Math.max(0, r - prev.data.length)).fill(0)) }))
-                  }} />
-                </div>
-                <MatrixInput value={A} onChange={setA} rows={A.rows} cols={A.cols} />
+          <SectionPanelWithTitle title="A" showSave showCopy buildSavePayload={()=> ({ kind:'matrix', rows: A.rows, cols: A.cols, data: A.data.slice() })} copyContent={variableToMarkdown({ kind:'matrix', rows: A.rows, cols: A.cols, data: A.data })}>
+            <div style={{ display:'grid', gap:8 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <MatrixSizeControls rows={A.rows} cols={A.cols} onChange={(r, c) => {
+                  const size = r*c
+                  const next = A.data.slice(0, size)
+                  if (next.length < size) next.push(...Array(size - next.length).fill(0))
+                  setA({ rows: r, cols: c, data: next })
+                  setb((prev) => ({ data: prev.data.slice(0, r).concat(Array(Math.max(0, r - prev.data.length)).fill(0)) }))
+                }} />
               </div>
-              <div style={{ display:'flex', gap: 4 }}>
-                <Button size={SizeKey.SM} onClick={() => { const name = window.prompt('保存する変数名')?.trim(); if (!name) return; upsert(name, { kind:'matrix', rows: A.rows, cols: A.cols, data: A.data.slice() }) }} color={CoreColorKey.Primary} aria-label="保存" title="保存">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                </Button>
-                <Button size={SizeKey.SM} color={CoreColorKey.Base} aria-label="Markdown コピー" title="Markdown コピー" onClick={() => { const md = variableToMarkdown({ kind:'matrix', rows: A.rows, cols: A.cols, data: A.data }); if (md) navigator.clipboard?.writeText(md) }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                </Button>
-              </div>
+              <MatrixInput value={A} onChange={setA} rows={A.rows} cols={A.cols} />
             </div>
-          </View>
-          <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
-            <Text weight={FontWeightKey.Medium}><MarkdownMath math={'b'} block={false} /></Text>
-            <div style={{ marginTop: 8 }}>
-              <div style={{ display:'flex', gap: 12, alignItems:'center', marginBottom: 8 }}>
+          </SectionPanelWithTitle>
+          <SectionPanelWithTitle title="b" showSave showCopy buildSavePayload={()=> ({ kind:'vector', length: b.data.length, data: b.data.slice() })} copyContent={variableToMarkdown({ kind:'vector', data: b.data })}>
+            <div style={{ display:'grid', gap:8 }}>
+              <div style={{ display:'flex', gap: 12, alignItems:'center' }}>
                 <VectorSizeControls length={b.data.length} onChange={(n) => setb({ data: b.data.slice(0, n).concat(Array(Math.max(0, n - b.data.length)).fill(0)) })} />
-                <div style={{ display:'flex', gap: 4 }}>
-                  <Button size={SizeKey.SM} onClick={() => { const name = window.prompt('保存する変数名')?.trim(); if (!name) return; upsert(name, { kind:'vector', length: b.data.length, data: b.data.slice() }) }} color={CoreColorKey.Primary} aria-label="保存" title="保存">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                  </Button>
-                  <Button size={SizeKey.SM} color={CoreColorKey.Base} aria-label="Markdown コピー" title="Markdown コピー" onClick={() => { const md = variableToMarkdown({ kind:'vector', data: b.data }); if (md) navigator.clipboard?.writeText(md) }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                  </Button>
-                </div>
               </div>
               <VectorInput value={b} onChange={setb} orientation="col" length={b.data.length} />
             </div>
-          </View>
+          </SectionPanelWithTitle>
         </div>
 
         <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
@@ -201,6 +183,22 @@ export default function SolveAxEqB() {
             )}
           </div>
         </View>
+
+        <SectionPanelWithTitle title="ドキュメント">
+          <DocPanel
+            docPath={
+              method === 'inverse' ? 'notes/linalg/overview.md'
+              : method === 'pinv' ? 'notes/linalg/matrix_pinv.md'
+              : method === 'qr' ? 'notes/linalg/matrix_qr.md'
+              : method === 'svd' ? 'notes/linalg/matrix_svd.md'
+              : method === 'cholesky' ? 'notes/linalg/overview.md'
+              : 'notes/linalg/overview.md'
+            }
+          />
+        </SectionPanelWithTitle>
+        <div style={{ marginTop: 12 }}>
+          <SourceBlock title="ソースコード（linalg solve 関連）" path="crates/linalg/src/matrix/numerical/eigen/mod.rs" />
+        </div>
       </div>
     </PageContainer>
   )

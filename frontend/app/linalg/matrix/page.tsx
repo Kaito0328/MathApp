@@ -1,28 +1,27 @@
 "use client"
 import React from 'react'
 import PageContainer from '../../../src/baseComponents/layout/PageContainer'
-import { View } from '../../../src/baseComponents/foundation/View'
-import { Text } from '../../../src/baseComponents/foundation/Text'
-import { Button } from '../../../src/baseComponents/controls/Button'
-import { CoreColorKey, SizeKey, FontWeightKey } from '../../../src/design/tokens'
+import Row from '../../../src/baseComponents/layout/Row'
+import UnaryLayout from '../../../src/components/features/layout/UnaryLayout'
 import { MatrixInput } from '../../../src/widgets/input'
 import { MatrixView } from '../../../src/widgets/display'
-import { MatrixSizeControls } from '../../../src/widgets/input'
-import { matMul as jsMatMul, transpose as jsTranspose, diagFrom as jsDiagFrom } from '../../../src/wasm/linalg'
 import MarkdownMath from '../../../src/widgets/display/MarkdownMath'
-import Row from '../../../src/baseComponents/layout/Row'
-import OperationSetting from '../../../src/components/operations/OperationSetting'
-import { formatNumberForMath, formatVectorMarkdown } from '../../../src/utils/format/markdown'
+import { VariablePicker } from '../../../src/components/features/variables/VariablePicker'
 import { useVariableStore } from '../../../src/state/VariableStore'
-import { VariablePicker } from '../../../src/components/variables/VariablePicker'
-import { variableToMarkdown } from '../../../src/components/variables/parts/VariableUtils'
+import { variableToMarkdown } from '../../../src/components/features/variables/parts/VariableUtils'
+import { formatNumberForMath, formatVectorMarkdown } from '../../../src/utils/format/markdown'
+import { matMul as jsMatMul, transpose as jsTranspose, diagFrom as jsDiagFrom } from '../../../src/wasm/linalg'
 import { inverse, cholesky, pinv, qr as wasmQR, svd as wasmSVD, eigen as wasmEigen, determinant as wasmDet, rank as wasmRank, frobeniusNorm as wasmFrob, expm as wasmExpm } from '../../../src/wasm/linalg'
+import Document from '../../../src/components/features/document/Document'
+import Modal from '../../../src/components/ui/Modal'
+import CodeViewer from '../../../src/components/features/source/CodeViewer'
+import SourceBlock from '../../../src/components/features/source/SourceBlock'
 
 type MatrixDTO = { rows: number; cols: number; data: number[] }
 type Unary = 'inverse' | 'pinv' | 'cholesky' | 'qr' | 'svd' | 'eigen' | 'det' | 'rank' | 'normF' | 'expm'
 
 export default function MatrixOps() {
-  const { get, upsert } = useVariableStore()
+  const { get } = useVariableStore()
   const [A, setA] = React.useState<MatrixDTO>({ rows: 3, cols: 3, data: [1,0,0, 0,1,0, 0,0,1] })
   const [op, setOp] = React.useState<Unary>('inverse')
   const operations: { label: string; value: Unary }[] = [
@@ -44,10 +43,18 @@ export default function MatrixOps() {
   const [refresh, setRefresh] = React.useState<number>(0)
   const [dirty, setDirty] = React.useState<boolean>(false)
   const [computedRefresh, setComputedRefresh] = React.useState<number>(0)
+  const [openSrc, setOpenSrc] = React.useState(false)
+  const sourcePath = React.useMemo(() => (
+    op === 'cholesky' ? 'crates/linalg/src/matrix/numerical/cholesky/mod.rs'
+    : op === 'eigen' ? 'crates/linalg/src/matrix/numerical/eigen/mod.rs'
+    : op === 'expm' ? 'crates/linalg/src/matrix/numerical/exp.rs'
+    : op === 'det' || op === 'rank' || op === 'qr' ? 'crates/linalg/src/matrix/algebra/lu.rs'
+    : op === 'pinv' || op === 'svd' ? 'crates/linalg/src/matrix/numerical/eigen/mod.rs'
+    : /* inverse など */ 'crates/linalg/src/matrix/algebra/field.rs'
+  ), [op])
 
   const isHeavy = (o: Unary) => (['qr','svd','eigen','expm'] as Unary[]).includes(o)
 
-  // Heavy op: mark dirty when input changes; Light op: no dirty tracking
   React.useEffect(() => {
     if (isHeavy(op)) setDirty(true)
   }, [A, op])
@@ -55,17 +62,14 @@ export default function MatrixOps() {
     if (isHeavy(op)) setDirty(true)
     else setDirty(false)
   }, [op])
-  // 演算変更時に前結果をクリア
   React.useEffect(() => {
     setCompute({})
     setChecks({})
-    // heavy は dirty=true のまま、light はこの直後の計算で上書き
   }, [op])
 
   React.useEffect(() => {
     let cancelled = false
     const run = async () => {
-      // For heavy ops, only run when user clicks the button (refresh changes)
       if (isHeavy(op)) {
         if (computedRefresh === refresh) return
       }
@@ -81,7 +85,7 @@ export default function MatrixOps() {
         if (isHeavy(op)) { setDirty(false); setComputedRefresh(refresh) }
         return
       }
-  if (op === 'pinv') {
+      if (op === 'pinv') {
         const r = await pinv(A)
         if (!cancelled) {
           setCompute(r)
@@ -92,7 +96,7 @@ export default function MatrixOps() {
           } else setChecks({})
         }
         if (isHeavy(op)) { setDirty(false); setComputedRefresh(refresh) }
-  return
+        return
       }
       if (op === 'cholesky') {
         const r = await cholesky(A)
@@ -109,7 +113,7 @@ export default function MatrixOps() {
         if (isHeavy(op)) { setDirty(false); setComputedRefresh(refresh) }
         return
       }
-  if (op === 'qr') {
+      if (op === 'qr') {
         const r = await wasmQR(A)
         if (!cancelled) {
           setCompute(r)
@@ -135,7 +139,7 @@ export default function MatrixOps() {
         if (isHeavy(op)) { setDirty(false); setComputedRefresh(refresh) }
         return
       }
-  if (op === 'eigen') {
+      if (op === 'eigen') {
         const r = await wasmEigen(A)
         if (!cancelled) {
           setCompute(r)
@@ -149,90 +153,50 @@ export default function MatrixOps() {
         if (isHeavy(op)) { setDirty(false); setComputedRefresh(refresh) }
         return
       }
-  if (op === 'det') { const r = await wasmDet(A); if (!cancelled) { setCompute({ det: r }); setChecks({}) } return }
-  if (op === 'rank') { const r = await wasmRank(A); if (!cancelled) { setCompute({ rank: r }); setChecks({}) } return }
-  if (op === 'normF') { const r = await wasmFrob(A); if (!cancelled) { setCompute({ frob: r }); setChecks({}) } return }
-  if (op === 'expm') { const r = await wasmExpm(A); if (!cancelled) { setCompute(r); setChecks({}) } return }
-      // TODO: LU, RREF は wasm 側 API 探索後に接続
+      if (op === 'det') { const r = await wasmDet(A); if (!cancelled) { setCompute({ det: r }); setChecks({}) } return }
+      if (op === 'rank') { const r = await wasmRank(A); if (!cancelled) { setCompute({ rank: r }); setChecks({}) } return }
+      if (op === 'normF') { const r = await wasmFrob(A); if (!cancelled) { setCompute({ frob: r }); setChecks({}) } return }
+      if (op === 'expm') { const r = await wasmExpm(A); if (!cancelled) { setCompute(r); setChecks({}) } return }
       if (!cancelled) setCompute({ error: '未実装（今後実装: LU / RREF）' })
     }
     run()
     return () => { cancelled = true }
   }, [A, op, refresh, computedRefresh])
 
-  // save logic moved into inline button handler below
-
   return (
     <PageContainer title="行列の単項演算・分解" stickyHeader>
-      <div style={{ display: 'grid', gap: 12 }}>
-        {/* Controls */}
-        <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
-          <Row
-            left={
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-                <VariablePicker placeholder="変数から代入" allowedKinds={['matrix']} onPick={(name) => {
-                  const v = get(name) as any
-                  if (v && v.kind === 'matrix') setA({ rows: v.rows, cols: v.cols, data: v.data.slice() })
-                }} />
-              </div>
-            }
-            center={
-              <OperationSetting
-                operations={operations}
-                operation={op}
-                onOperationChange={(v)=> setOp(v as Unary)}
-                accuracy={precision}
-                onAccuracyChange={(n)=> setPrecision(Math.max(0, Math.min(10, Math.floor(Number(n)||0))))}
-                accuracy_able
-                onCalc={(['qr','svd','eigen','expm'] as Unary[]).includes(op) ? (()=> setRefresh((n)=>n+1)) : undefined}
-                calc_button_able={(['qr','svd','eigen','expm'] as Unary[]).includes(op) && dirty}
-              />
-            }
-            right={<div />}
-          />
-        </View>
-
-        {/* Input */}
-        <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
-          <Text weight={FontWeightKey.Medium}>入力行列</Text>
-          <div style={{ marginTop: 8, display:'grid', gridTemplateColumns:'1fr auto', gap: 8, alignItems: 'start' }}>
-            <div>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
-                <MatrixSizeControls rows={A.rows} cols={A.cols} onChange={(r, c) => {
-                  const size = r * c
-                  const next = A.data.slice(0, size)
-                  if (next.length < size) next.push(...Array(size - next.length).fill(0))
-                  setA({ rows: r, cols: c, data: next })
-                }} />
-              </div>
-              <MatrixInput value={A} onChange={setA} rows={A.rows} cols={A.cols} />
-            </div>
-            <div style={{ display:'flex', gap: 4 }}>
-              <Button size={SizeKey.SM} onClick={() => { const name = window.prompt('保存する変数名')?.trim(); if (!name) return; upsert(name, { kind:'matrix', rows: A.rows, cols: A.cols, data: A.data.slice() }) }} color={CoreColorKey.Primary} aria-label="保存" title="保存">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              </Button>
-              <Button size={SizeKey.SM} color={CoreColorKey.Base} aria-label="Markdown コピー" title="Markdown コピー" onClick={() => { const md = variableToMarkdown({ kind:'matrix', rows: A.rows, cols: A.cols, data: A.data }); if (md) navigator.clipboard?.writeText(md) }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-              </Button>
-            </div>
-          </div>
-        </View>
-
-        {/* Result */}
-        <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
-          <Text weight={FontWeightKey.Medium}>結果</Text>
-          <div style={{ marginTop: 8, display: 'grid', gap: 12 }}>
+      <UnaryLayout
+        operations={operations}
+        operation={op}
+        onOperationChange={(v)=> setOp(v as Unary)}
+        accuracy={precision}
+        onAccuracyChange={(n)=> setPrecision(Math.max(0, Math.min(10, Math.floor(Number(n)||0))))}
+        accuracy_able
+        onCalc={(['qr','svd','eigen','expm'] as Unary[]).includes(op) ? (()=> setRefresh((n)=>n+1)) : undefined}
+        calc_button_able={(['qr','svd','eigen','expm'] as Unary[]).includes(op) && dirty}
+        operation_left={
+          <VariablePicker placeholder="変数から代入" allowedKinds={['matrix']} onPick={(name) => {
+            const v = get(name) as any
+            if (v && v.kind === 'matrix') setA({ rows: v.rows, cols: v.cols, data: v.data.slice() })
+          }} />
+        }
+        operation_right={<Row />}
+        operand={<MatrixInput value={A} onChange={setA} rows={A.rows} cols={A.cols} />}
+        operand_copyContent={variableToMarkdown({ kind:'matrix', rows: A.rows, cols: A.cols, data: A.data })}
+        operand_buildSavePayload={()=> ({ kind:'matrix', rows: A.rows, cols: A.cols, data: A.data.slice() })}
+        operand_afterSave={()=>{}}
+        result={
+          <div style={{ display: 'grid', gap: 12 }}>
             {compute && compute.error ? (
-              <Text>{compute.error}</Text>
+              <span style={{ color:'crimson' }}>{compute.error}</span>
             ) : (
               <>
-                {/* スカラー系の結果表示（$...$ を二重にしない） */}
                 {typeof compute.det !== 'undefined' && (
                   <div>
                     {typeof compute.det === 'number' ? (
                       <MarkdownMath math={`\\det(A) = ${formatNumberForMath(Number(compute.det), precision)}`} />
                     ) : (
-                      <Text>{String((compute.det as any)?.error || compute.det)}</Text>
+                      <span>{String((compute.det as any)?.error || compute.det)}</span>
                     )}
                   </div>
                 )}
@@ -241,7 +205,7 @@ export default function MatrixOps() {
                     {typeof compute.rank === 'number' ? (
                       <MarkdownMath math={`\\operatorname{rank}(A) = ${formatNumberForMath(Number(compute.rank), precision)}`} />
                     ) : (
-                      <Text>{String((compute.rank as any)?.error || compute.rank)}</Text>
+                      <span>{String((compute.rank as any)?.error || compute.rank)}</span>
                     )}
                   </div>
                 )}
@@ -250,13 +214,12 @@ export default function MatrixOps() {
                     {typeof compute.frob === 'number' ? (
                       <MarkdownMath math={`\\lVert A \\rVert_F = ${formatNumberForMath(Number(compute.frob), precision)}`} />
                     ) : (
-                      <Text>{String((compute.frob as any)?.error || compute.frob)}</Text>
+                      <span>{String((compute.frob as any)?.error || compute.frob)}</span>
                     )}
                   </div>
                 )}
                 {compute.P && (<div style={{display:'flex',gap:6,alignItems:'center'}}><MarkdownMath math={'P ='} block={false} /> <MatrixView rows={compute.P.rows} cols={compute.P.cols} data={compute.P.data} precision={precision} block={false} /></div>)}
                 {compute.L && (<div style={{display:'flex',gap:6,alignItems:'center'}}><MarkdownMath math={'L ='} block={false} /> <MatrixView rows={compute.L.rows} cols={compute.L.cols} data={compute.L.data} precision={precision} block={false} /></div>)}
-                {/* SVDがある場合はUを二重表示しない */}
                 {compute.U && !(compute.S && compute.V) && (
                   <div style={{display:'flex',gap:6,alignItems:'center'}}><MarkdownMath math={'U ='} block={false} /> <MatrixView rows={compute.U.rows} cols={compute.U.cols} data={compute.U.data} precision={precision} block={false} /></div>
                 )}
@@ -279,7 +242,6 @@ export default function MatrixOps() {
                   </div>
                 )}
                 {compute.V && !compute.U && !compute.R && (<div style={{display:'flex',gap:6,alignItems:'center'}}><MarkdownMath math={'V ='} block={false} /> <MatrixView rows={compute.V.rows} cols={compute.V.cols} data={compute.V.data} precision={precision} block={false} /></div>)}
-                {/* op別のラベル付き表示 */}
                 {op === 'inverse' && compute.rows && (
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
                     <MarkdownMath math={'A^{-1} ='} block={false} />
@@ -303,41 +265,12 @@ export default function MatrixOps() {
                     <MatrixView rows={compute.rows} cols={compute.cols} data={compute.data} precision={precision} block={false} />
                   </div>
                 )}
-                {/* 単一の行列結果のみ保存ボタンを表示 */}
-                {(() => {
-                  let target: MatrixDTO | null = null
-                  if (compute && compute.rows && compute.cols && compute.data) target = compute as MatrixDTO
-                  else if (compute && compute.L && compute.L.rows) target = compute.L as MatrixDTO
-                  // その他（Q/R/U/V等が単独の場合のみ保存したい時は条件追加）
-                  if (!target) return null
-                  return (
-                    <div style={{ display:'flex', gap: 6 }}>
-                      <Button onClick={() => {
-                        const name = window.prompt('保存する変数名を入力')?.trim()
-                        if (!name) return
-                        const M = target as MatrixDTO
-                        upsert(name, { kind: 'matrix', rows: M.rows, cols: M.cols, data: M.data })
-                      }} color={CoreColorKey.Primary} aria-label="保存" title="保存">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                      </Button>
-                      <Button color={CoreColorKey.Base} aria-label="Markdown コピー" title="Markdown コピー" onClick={() => {
-                        const md = variableToMarkdown({ kind:'matrix', rows: (target as any).rows, cols: (target as any).cols, data: (target as any).data })
-                        if (md) navigator.clipboard?.writeText(md)
-                      }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                      </Button>
-                    </div>
-                  )
-                })()}
               </>
             )}
           </div>
-        </View>
-
-        {/* 検証ブロック */}
-        <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ borderWidth: 1 }}>
-          <Text weight={FontWeightKey.Medium}>検証</Text>
-          <div style={{ marginTop: 8, display: 'grid', gap: 12 }}>
+        }
+        verification={
+          <div style={{ display: 'grid', gap: 12 }}>
             {op === 'inverse' && checks.identity && !checks.identity.error && (
               <div>
                 <MarkdownMath math={'A \\; A^{-1}'} />
@@ -399,7 +332,35 @@ export default function MatrixOps() {
               </div>
             )}
           </div>
-        </View>
+        }
+        document={
+          <div style={{ display:'grid', gap:8, marginTop: 4 }}>
+            <div style={{ textAlign:'right' }}>
+              <button onClick={()=> setOpenSrc(true)}>ソースを表示</button>
+            </div>
+            <Document
+              docPath={
+                op === 'qr' ? 'notes/linalg/matrix_qr.md'
+                : op === 'svd' ? 'notes/linalg/matrix_svd.md'
+                : op === 'eigen' ? 'notes/linalg/matrix_eigendecomp.md'
+                : op === 'pinv' ? 'notes/linalg/matrix_pinv.md'
+                : op === 'expm' ? 'notes/linalg/matrix_expm.md'
+                : 'notes/linalg/overview.md'
+              }
+              rustUrl={
+                // Placeholder link; adjust to actual repo path when ready
+                'https://github.com/your-org/your-repo/tree/main/backend/crates/linalg'
+              }
+            />
+            <Modal open={openSrc} onClose={()=> setOpenSrc(false)} title="backend/crates/linalg ソース">
+              <CodeViewer rootRelPath={''} initialPath={'crates/linalg/src/lib.rs'} />
+            </Modal>
+          </div>
+        }
+        documentTitle="ドキュメント"
+      />
+      <div style={{ marginTop: 12 }}>
+        <SourceBlock title="ソースコード（linalg）" path={sourcePath} />
       </div>
     </PageContainer>
   )

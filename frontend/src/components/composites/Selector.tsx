@@ -51,7 +51,7 @@ export const Selector: React.FC<SelectorProps> = ({
         value={value}
         onChange={(e) => onChange?.(e.target.value, e)}
         size={controlSize as any}
-        variant={color}
+        color={color}
         invalid={invalid}
         {...rest}
       >

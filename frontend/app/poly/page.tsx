@@ -5,7 +5,7 @@ import PageContainer from '../../src/baseComponents/layout/PageContainer'
 import { View } from '../../src/baseComponents/foundation/View'
 import { Text } from '../../src/baseComponents/foundation/Text'
 import { CoreColorKey, SizeKey, FontWeightKey } from '../../src/design/tokens'
-import PolyVariableSection from '../../src/components/variables/PolyVariableSection'
+import PolyVariableSection from '../../src/components/features/variables/PolyVariableSection'
 
 export default function PolyHomePage() {
   return (

@@ -25,5 +25,15 @@ export const navSections: NavSection[] = [
       { title: '有理関数の単項演算', href: '/poly/rational/unary' },
     ],
   },
+  {
+    title: 'Concrete Math',
+    defaultOpen: true,
+    items: [
+      { title: 'ホーム', href: '/concrete-math' },
+      { title: '組合せ論', href: '/concrete-math/combinatorics' },
+      { title: '離散多項式', href: '/concrete-math/discrete' },
+      { title: '数列（漸化式）', href: '/concrete-math/sequence' },
+    ],
+  },
   // 将来: FFT, 信号処理, 統計 など
 ]

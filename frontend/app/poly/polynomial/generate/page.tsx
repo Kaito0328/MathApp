@@ -9,6 +9,7 @@ import { CoreColorKey, SizeKey } from '../../../../src/design/tokens'
 import { useVariableStore } from '../../../../src/state/VariableStore'
 import { Complex } from '../../../../src/widgets/dto/complex'
 import { ComplexVectorInput } from '../../../../src/widgets/input'
+import SourceBlock from '../../../../src/components/features/source/SourceBlock'
 
 export default function PolyGeneratePage() {
   const [roots, setRoots] = React.useState<Complex[]>([{ re: 1, im: 0 }, { re: -1, im: 0 }])
@@ -63,6 +64,7 @@ export default function PolyGeneratePage() {
   }
 
   return (
+    <>
     <PageContainer title="多項式の生成" stickyHeader>
       <View color={CoreColorKey.Base} size={SizeKey.MD} style={{ display:'grid', gap:12, borderWidth:1, padding:12 }}>
       <div style={{ display:'grid', gap:6 }}>
@@ -87,5 +89,9 @@ export default function PolyGeneratePage() {
       )}
       </View>
     </PageContainer>
+    <div style={{ marginTop: 12 }}>
+      <SourceBlock title="ソースコード（polynomial）" path="crates/polynomial/src/lib.rs" />
+    </div>
+    </>
   )
 }

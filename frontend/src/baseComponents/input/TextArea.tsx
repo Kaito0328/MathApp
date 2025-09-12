@@ -4,14 +4,12 @@ import { inputColorMap, inputSizeMap } from '../../design/maps/input'
 
 export type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
   color?: CoreColorKey
-  variant?: CoreColorKey
   size?: SizeKey
   invalid?: boolean
 }
 
 export const TextArea: React.FC<TextAreaProps> = ({
   color,
-  variant = CoreColorKey.Base,
   size = SizeKey.MD,
   invalid,
   className,
@@ -19,7 +17,7 @@ export const TextArea: React.FC<TextAreaProps> = ({
   ...rest
 }) => {
   const sz = size ?? SizeKey.MD
-  const col = (color ?? variant) as CoreColorKey
+  const col = (color ?? CoreColorKey.Base) as CoreColorKey
   const sizeCls = inputSizeMap[sz]
   const colorCls = inputColorMap[col] ?? inputColorMap[CoreColorKey.Base]
   const invalidCls = invalid ? 'input-invalid' : ''

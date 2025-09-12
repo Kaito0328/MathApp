@@ -15,12 +15,11 @@ export type NumberCellProps = {
   title?: string
   // デザイン指定
   color?: CoreColorKey
-  variant?: CoreColorKey
   size?: SizeKey
   invalid?: boolean
 }
 
-export const NumberCellInput: React.FC<NumberCellProps> = ({ value, onChange, placeholder, step = 1, min, max, width = 72, disabled, title, color, variant, size, invalid }) => {
+export const NumberCellInput: React.FC<NumberCellProps> = ({ value, onChange, placeholder, step = 1, min, max, width = 72, disabled, title, color, size, invalid }) => {
   const [text, setText] = React.useState<string>(Number.isFinite(value) ? String(value) : '')
   React.useEffect(() => {
     const incoming = Number.isFinite(value) ? String(value) : ''
@@ -47,7 +46,6 @@ export const NumberCellInput: React.FC<NumberCellProps> = ({ value, onChange, pl
       disabled={disabled}
       title={title}
   color={color}
-  variant={variant}
   size={size}
   invalid={invalid}
       style={{ width }}

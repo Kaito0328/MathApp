@@ -1,15 +1,18 @@
 "use client"
 import React from 'react'
 import PageContainer from '../../../../src/baseComponents/layout/PageContainer'
-import { VariablePicker } from '../../../../src/components/variables/VariablePicker'
+import { VariablePicker } from '../../../../src/components/features/variables/VariablePicker'
 import { useVariableStore } from '../../../../src/state/VariableStore'
 import Stack from '../../../../src/baseComponents/layout/Stack'
 import Row from '../../../../src/baseComponents/layout/Row'
 import Panel from '../../../../src/baseComponents/layout/Panel'
-import RationalOperandPanel from '../../../../src/components/rationalFunction/RationalOperandPanel'
-import RationalResultPanel from '../../../../src/components/rationalFunction/RationalResultPanel'
+import RationalOperandPanel from '../../../../src/components/domain/polynomial/rationalFunction/RationalOperandPanel'
+import RationalResultPanel from '../../../../src/components/domain/polynomial/rationalFunction/RationalResultPanel'
 import { getWasm } from '../../../../src/wasm/loader'
-import OperationSetting from '../../../../src/components/operations/OperationSetting'
+import OperationSetting from '../../../../src/components/features/operations/OperationSetting'
+import SectionPanelWithTitle from '../../../../src/components/composites/panels/SectionPanelWithTitle'
+import DocPanel from '../../../../src/components/features/document/Document'
+import SourceBlock from '../../../../src/components/features/source/SourceBlock'
 
 export default function RationalBinaryPage() {
   const [F, setF] = React.useState({ numerator: { coeffs: [1,0] }, denominator: { coeffs: [1] } })
@@ -96,7 +99,13 @@ export default function RationalBinaryPage() {
           precision={precision}
           buildSavePayload={()=> out ? { kind:'rational', numerator: out.numerator.coeffs.slice(), denominator: out.denominator.coeffs.slice() } : null}
         />
+        <SectionPanelWithTitle title="ドキュメント">
+          <DocPanel docPath={'notes/polynomial/rational_function.md'} />
+        </SectionPanelWithTitle>
       </Stack>
+      <div style={{ marginTop: 12 }}>
+        <SourceBlock title="ソースコード（polynomial / rational）" path="crates/polynomial/src/lib.rs" />
+      </div>
     </PageContainer>
   )
 }

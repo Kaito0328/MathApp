@@ -4,7 +4,7 @@ import { View } from '../../src/baseComponents/foundation/View'
 import { Text } from '../../src/baseComponents/foundation/Text'
 import { CoreColorKey, SizeKey, FontWeightKey } from '../../src/design/tokens'
 import PageContainer from '../../src/baseComponents/layout/PageContainer'
-import VariableSection from '../../src/components/variables/VariableSection'
+import VariableSection from '../../src/components/features/variables/VariableSection'
 
 export default function LinalgHome() {
   return (

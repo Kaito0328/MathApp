@@ -4,7 +4,7 @@ import React from 'react'
 export function VectorSizeControls({ length, onChange }: { length: number; onChange: (n: number) => void }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>長さ
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>次元
         <input type="number" min={1} value={length} onChange={(e) => onChange(Math.max(1, Math.floor(Number(e.target.value) || 1)))} style={{ width: 72 }} />
       </label>
       <button onClick={() => onChange(length + 1)}>+</button>

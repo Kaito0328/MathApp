@@ -8,6 +8,7 @@ import type { Signal, Spectrum } from '../../widgets/dto/signal_processing'
 import type { RationalFunction } from '../../widgets/dto/polynomial'
 import type { TransferFunction, Zpk } from '../../widgets/dto/lti-systems'
 import type { Complex } from '../../widgets/dto/complex'
+import type { PartialFractionExpansion as PFEDTO } from '../../types/polynomial'
 
 type PolyLike = { coeffs(): ArrayLike<number> }
 
@@ -140,6 +141,42 @@ export function formatRationalFunctionMarkdown(rf: RationalFunction, varName = '
   const num = formatPolynomialMarkdown(rf.numerator.coeffs, varName, opts)
   const den = formatPolynomialMarkdown(rf.denominator.coeffs, varName, opts)
   return `\\frac{${num}}{${den}}`
+}
+
+// Partial Fraction Expansion formatting
+// Accepts our PFEDTO or a compatible shape: { polynomial_part: {coeffs:number[]}, pole_terms: { pole:{re,im}, coefficients: {re,im}[] }[] }
+// Returns a right-hand side string: P(x) + sum_k sum_m c_{k,m}/(x - p_k)^m
+export function formatPartialFractionExpansionMarkdown(pfe: PFEDTO | any, varName = 'x', opts?: { precision?: number }): string {
+  const p = opts?.precision
+  try {
+    if (!pfe || typeof pfe !== 'object') return ''
+    const polyCoeffs: number[] | undefined = (pfe as any).polynomial_part?.coeffs
+    const terms: string[] = []
+    // polynomial part
+    if (Array.isArray(polyCoeffs) && polyCoeffs.length > 0 && polyCoeffs.some((v)=>Math.abs(Number(v)||0)>1e-12)) {
+      const rounded = polyCoeffs.map((c)=> Number(formatNumberForMath(Number(c)||0, p)))
+      terms.push(formatPolynomialMarkdown(rounded, varName))
+    }
+    // pole terms
+    const poleTerms: Array<{ pole: { re:number; im:number }; coefficients: Array<{ re:number; im:number }> }> = (pfe as any).pole_terms || []
+    for (const t of poleTerms) {
+      const pole = t.pole || { re:0, im:0 }
+      const coeffs = Array.isArray(t.coefficients) ? t.coefficients : []
+      coeffs.forEach((c, idx)=> {
+        const m = idx + 1
+        const coef = fmtComplex(Number(c?.re||0), Number(c?.im||0), p, 'i')
+        const denom = `(${varName} - (${fmtComplex(Number(pole?.re||0), Number(pole?.im||0), p, 'i')}))${m>1?`^{${m}}`:''}`
+        // if coef is negative with leading '-', keep as `- \frac{...}{...}`; else prefix '+' later via join
+        const frac = `\\frac{${coef}}{${denom}}`
+        terms.push(frac)
+      })
+    }
+    if (terms.length === 0) return '0'
+    // join with plus (KaTeX friendly spacing)
+    return terms.join(' + ')
+  } catch {
+    return ''
+  }
 }
 
 // Accept either { num, den, sample_time } or { numerator: {coeffs}, denominator: {coeffs}, sample_time? }

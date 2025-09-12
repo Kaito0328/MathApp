@@ -3,9 +3,8 @@ import { CoreColorKey, SizeKey } from '../../design/tokens';
 import { inputColorMap, inputSizeMap } from '../../design/maps/input';
 
 export type TextInputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size' | 'color'> & {
-  /** 色キー（variant は後方互換のため残す） */
+  /** 色キー */
   color?: CoreColorKey;
-  variant?: CoreColorKey;
   /** サイズキー */
   size?: SizeKey;
   /** 入力が不正な時の見た目切り替え */
@@ -14,7 +13,6 @@ export type TextInputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, '
 
 export const TextInput: React.FC<TextInputProps> = ({
   color,
-  variant = CoreColorKey.Base,
   size = SizeKey.MD,
   invalid,
   className,
@@ -22,7 +20,7 @@ export const TextInput: React.FC<TextInputProps> = ({
   ...rest
 }) => {
   const sz = size ?? SizeKey.MD;
-  const col = (color ?? variant) as CoreColorKey;
+  const col = (color ?? CoreColorKey.Base) as CoreColorKey;
   const sizeCls = inputSizeMap[sz];
   const colorCls = inputColorMap[col] ?? inputColorMap[CoreColorKey.Base];
   const invalidCls = invalid ? 'input-invalid' : '';

@@ -3,15 +3,16 @@ import React from 'react'
 import PageContainer from '../../../../src/baseComponents/layout/PageContainer'
 import { polyAdd, polySub, polyMul, polyDiv, polyDivRem, polyGcd, polyLcm } from '../../../../src/wasm/polynomial'
 import { useVariableStore } from '../../../../src/state/VariableStore'
-import { VariablePicker } from '../../../../src/components/variables/VariablePicker'
+import { VariablePicker } from '../../../../src/components/features/variables/VariablePicker'
+import BinaryResultSwitch, { type PolyBinaryOp } from '../../../../src/components/domain/polynomial/polynomial/result/binary/BinaryResultSwitch'
+import PolynomialInput from '../../../../src/widgets/input/PolynomialInput'
+import BinaryLayout from '../../../../src/components/features/layout/BinaryLayout'
 import Row from '../../../../src/baseComponents/layout/Row'
-import Panel from '../../../../src/baseComponents/layout/Panel'
-import PolynomialOperandPanel from '../../../../src/components/polynomial/PolynomialOperand'
-import PolynomialResultPanel, { PolyBinaryResultDU } from '../../../../src/components/polynomial/PolynomialBinaryResult'
-import OperationSetting from '../../../../src/components/operations/OperationSetting'
+import { formatPolynomialMarkdown } from '../../../../src/utils/format/markdown'
+import Document from '../../../../src/components/features/document/Document'
+import SourceBlock from '../../../../src/components/features/source/SourceBlock'
 
 export default function PolyBinaryPage() {
-  type PolyBinaryOp = 'add'|'sub'|'mul'|'div'|'divrem'|'gcd'|'lcm'
   const operations: { label: string; value: PolyBinaryOp }[] = [
     { label: '+', value: 'add' },
     { label: '-', value: 'sub' },
@@ -48,54 +49,56 @@ export default function PolyBinaryPage() {
 
   return (
     <PageContainer title="多項式の二項演算" stickyHeader>
-        <Panel header={null}>
-          <Row
-            left={<div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
-              <span>左:</span>
-              <VariablePicker placeholder="変数から代入" allowedKinds={['polynomial']} onPick={(n)=>{ const v:any=get(n); if(v?.kind==='polynomial') setA({ coeffs: v.coeffs.slice() }) }} />
-            </div>}
-            center={
-              <OperationSetting
-                operations={operations}
-                operation={op}
-                onOperationChange={(v) => { setOp(v as any); if (v !== 'noop') run(v as PolyBinaryOp) }}
-                onAccuracyChange={()=>{}}
-              />
+      <BinaryLayout
+        // Operation block
+        operations={operations}
+        operation={op}
+        onOperationChange={(v) => { setOp(v as any); if (v !== 'noop') run(v as PolyBinaryOp) }}
+        onAccuracyChange={()=>{}}
+        operation_left={<Row left={<span>左:</span>} right={<VariablePicker placeholder="変数から代入" allowedKinds={['polynomial']} onPick={(n)=>{ const v:any=get(n); if(v?.kind==='polynomial') setA({ coeffs: v.coeffs.slice() }) }} />} />}
+        operation_right={<Row left={<span>右:</span>} right={<VariablePicker placeholder="変数から代入" allowedKinds={['polynomial']} onPick={(n)=>{ const v:any=get(n); if(v?.kind==='polynomial') setB({ coeffs: v.coeffs.slice() }) }} />} />}
+
+        // Operands
+        operand_left={<PolynomialInput value={A} onChange={setA} />}
+        operand_left_buildSavePayload={()=> ({ kind:'polynomial', coeffs: A.coeffs.slice() })}
+        operand_left_afterSave={()=>{}}
+        operand_left_copyContent={formatPolynomialMarkdown(A.coeffs)}
+        operand_right={<PolynomialInput value={B} onChange={setB} />}
+        operand_right_buildSavePayload={()=> ({ kind:'polynomial', coeffs: B.coeffs.slice() })}
+        operand_right_afterSave={()=>{}}
+        operand_right_copyContent={formatPolynomialMarkdown(B.coeffs)}
+
+        // Result
+        result={
+          <BinaryResultSwitch
+            data={op==='noop' ? null : (
+              op==='divrem'
+                ? { op:'divrem', q: quot ?? undefined, r: rem ?? undefined, error: err ?? undefined }
+                : { op, value: out ?? undefined, error: err ?? undefined }
+            )}
+            buildSavePayload={(k)=> {
+              if (k==='result') return out ? { kind:'polynomial', coeffs: out.slice() } : null
+              if (k==='quot') return quot ? { kind:'polynomial', coeffs: quot.slice() } : null
+              if (k==='rem') return rem ? { kind:'polynomial', coeffs: rem.slice() } : null
+              return null
+            }}
+          />
+        }
+
+        // Verification block
+        verification={null}
+        document={
+          <Document
+            docPath={
+              op==='gcd' || op==='lcm' ? 'notes/polynomial/polynomial_gcd_lcm.md' : 'notes/polynomial/polynomial_core.md'
             }
-            right={<div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', justifyContent:'flex-end' }}>
-              <span>右:</span>
-              <VariablePicker placeholder="変数から代入" allowedKinds={['polynomial']} onPick={(n)=>{ const v:any=get(n); if(v?.kind==='polynomial') setB({ coeffs: v.coeffs.slice() }) }} />
-            </div>}
           />
-        </Panel>
-        <div style={{ display:'grid', gap:12, gridTemplateColumns:'repeat(auto-fit, minmax(320px, 1fr))' }}>
-          <PolynomialOperandPanel
-            title="左オペランド"
-            value={A}
-            onChange={setA}
-            buildSavePayload={()=> ({ kind:'polynomial', coeffs: A.coeffs.slice() })}
-          />
-          <PolynomialOperandPanel
-            title="右オペランド"
-            value={B}
-            onChange={setB}
-            buildSavePayload={()=> ({ kind:'polynomial', coeffs: B.coeffs.slice() })}
-          />
-        </div>
-        <PolynomialResultPanel
-          data={((): PolyBinaryResultDU | null => {
-            if (err) return { op: (op as any), error: err } as any
-            if (op === 'divrem') return { op: 'divrem', q: quot || undefined, r: rem || undefined }
-            if (op === 'add' || op === 'sub' || op === 'mul' || op === 'div' || op === 'gcd' || op === 'lcm') return { op, value: out || undefined }
-            return null
-          })()}
-          buildSavePayload={(k)=> {
-            if(k==='result' && out) return { kind:'polynomial', coeffs: out.slice() }
-            if(k==='quot' && quot) return { kind:'polynomial', coeffs: quot.slice() }
-            if(k==='rem' && rem) return { kind:'polynomial', coeffs: rem.slice() }
-            return null
-          }}
-        />
+        }
+        documentTitle="ドキュメント"
+      />
+      <div style={{ marginTop: 12 }}>
+        <SourceBlock title="ソースコード（polynomial）" path="crates/polynomial/src/lib.rs" />
+      </div>
     </PageContainer>
   )
 }
