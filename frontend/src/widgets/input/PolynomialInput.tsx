@@ -9,9 +9,10 @@ export type PolynomialInputProps = {
   value: Polynomial
   onChange: (value: Polynomial) => void
   degree?: number
+  varName?: string
 }
 
-export const PolynomialInput: React.FC<PolynomialInputProps> = ({ value, onChange, degree }) => {
+export const PolynomialInput: React.FC<PolynomialInputProps> = ({ value, onChange, degree, varName = 'x' }) => {
   const initLen = (degree ?? (value.coeffs.length - 1)) + 1
   const [len, setLen] = React.useState<number>(initLen)
   React.useEffect(() => { setLen(initLen) }, [initLen])
@@ -34,8 +35,8 @@ export const PolynomialInput: React.FC<PolynomialInputProps> = ({ value, onChang
           return (
             <div key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <NumberCellInput value={coeffs[ci] ?? 0} onChange={(v) => setCoeff(ci, v)} width={72} />
-              {power > 1 && <MarkdownMath math={`x^{${power}}`} block={false} />}
-              {power === 1 && <MarkdownMath math={`x`} block={false} />}
+              {power > 1 && <MarkdownMath math={`${varName}^${power}`} block={false} />}
+              {power === 1 && <MarkdownMath math={`${varName}`} block={false} />}
               {idx < len - 1 && <MarkdownMath math={`+`} block={false} />}
             </div>
           )

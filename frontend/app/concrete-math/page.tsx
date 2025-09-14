@@ -18,7 +18,8 @@ export default function ConcreteMathHome() {
         <SectionPanelWithTitle title="ページ">
           <div style={{ display:'grid', gap:8 }}>
             <Link href="/concrete-math/combinatorics">組合せ論</Link>
-            <Link href="/concrete-math/discrete">離散多項式</Link>
+            <Link href="/concrete-math/sum">和（部分和）</Link>
+            <Link href="/concrete-math/sum">和（部分和）</Link>
             <Link href="/concrete-math/sequence">数列（漸化式）</Link>
           </div>
         </SectionPanelWithTitle>

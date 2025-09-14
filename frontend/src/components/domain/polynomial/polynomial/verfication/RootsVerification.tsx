@@ -131,13 +131,43 @@ const RootsVerification: React.FC<RootsVerificationProps> = ({ coeffs, precomput
           ? ''
           : (Math.abs(leading + 1) < eps ? '-' : formatNumberForMath(leading, precision))
 
-        // Build expanded polynomial via fromRoots (monic) then scale by leading
-    const rootArr: number[] = []
-        for (const r of roots) { rootArr.push(r.re, r.im) }
-  const monic = wasm.PolynomialF64.fromRoots(Float64Array.from(rootArr))
-        const monicCoeffs: number[] = Array.from(monic.coeffs?.() ?? [])
-        monic.free?.()
-  const expandedCoeffs = monicCoeffs.map(c=> c * leading)
+        // Build expanded polynomial (monic) by multiplying linear/quadratic real-coefficient factors
+        // Factors: real root a -> (x - a) with coeffs [-a, 1]
+        //          conjugate pair a±ib -> x^2 - 2a x + (a^2 + b^2) with coeffs [a^2+b^2, -2a, 1]
+        const factors: number[][] = [] // each factor coeffs low->high
+        // linear real roots
+        for (const g of realGroups) {
+          for (let k = 0; k < g.mult; k++) factors.push([-g.r.re, 1])
+        }
+        // conjugate pairs
+        for (let i=0;i<complexGroups.length;i++) {
+          if (usedC[i]) continue
+          const g = complexGroups[i]
+          const a = g.r.re, b = Math.abs(g.r.im)
+          let cj = -1
+          for (let j=i+1;j<complexGroups.length;j++) if (!usedC[j]) {
+            const h = complexGroups[j]
+            if (Math.abs(h.r.re - a)<eps && Math.abs(h.r.im + g.r.im)<eps && h.mult===g.mult) { cj=j; break }
+          }
+          if (cj>=0) {
+            const c0 = a*a + b*b // constant term
+            const c1 = -2*a
+            for (let k=0;k<g.mult;k++) factors.push([c0, c1, 1])
+            usedC[i]=usedC[cj]=true
+          } else {
+            // unmatched complex root (rare): skip to keep real coefficients
+            usedC[i]=true
+          }
+        }
+        // multiply all factors
+        const polyMul = (A: number[], B: number[]) => {
+          const out = new Array(A.length + B.length - 1).fill(0)
+          for (let i=0;i<A.length;i++) for (let j=0;j<B.length;j++) out[i+j] += A[i]*B[j]
+          return out
+        }
+        let monicCoeffs = [1]
+        for (const f of factors) monicCoeffs = polyMul(monicCoeffs, f)
+        const expandedCoeffs = monicCoeffs.map(c=> c * leading)
         // clean tiny numbers
         for (let i=0;i<expandedCoeffs.length;i++) if (Math.abs(expandedCoeffs[i]) < 1e-12) expandedCoeffs[i] = 0
         // apply precision rounding for display

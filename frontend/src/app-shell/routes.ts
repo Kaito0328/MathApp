@@ -31,8 +31,17 @@ export const navSections: NavSection[] = [
     items: [
       { title: 'ホーム', href: '/concrete-math' },
       { title: '組合せ論', href: '/concrete-math/combinatorics' },
-      { title: '離散多項式', href: '/concrete-math/discrete' },
+  { title: '和（部分和）', href: '/concrete-math/sum' },
       { title: '数列（漸化式）', href: '/concrete-math/sequence' },
+    ],
+  },
+  {
+    title: '符号理論',
+    defaultOpen: true,
+    items: [
+      { title: 'ホーム', href: '/coding' },
+      { title: 'Hamming(7,4)', href: '/coding/hamming74' },
+      { title: 'Reed–Solomon', href: '/coding/rs' },
     ],
   },
   // 将来: FFT, 信号処理, 統計 など

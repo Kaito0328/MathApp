@@ -14,7 +14,7 @@ type CodewordGF256 = coding::types::Codeword<GF256>;
 #[wasm_bindgen(js_name = Hamming74)]
 pub struct WasmHamming74(coding::Hamming74);
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = "Hamming74")]
 impl WasmHamming74 {
 	#[wasm_bindgen(constructor)]
 	pub fn new() -> WasmHamming74 { WasmHamming74(Default::default()) }
@@ -24,6 +24,25 @@ impl WasmHamming74 {
 		let msg = MessageGF2::from(linalg::Vector::new(u.into_iter().map(|x| GF2::new(x as i64)).collect())) ;
 		let cw = self.0.encode(&msg).map_err(|e| JsError::new(&e.to_string()))?;
 		Ok(cw.0.into_iter().map(|g| g.value() as u8).collect())
+	}
+
+	/// H 行列（(n-k)×n）を行優先で返す
+	#[wasm_bindgen(js_name = parityCheck)]
+	pub fn parity_check(&self) -> Result<Vec<u8>, JsError> {
+		let h = coding::code_utils::parity_check_from_generator(&self.0.g)
+			.map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(h.0.data.into_iter().map(|x| x.value() as u8).collect())
+	}
+
+	/// 有界距離復号（t=1）で訂正したコード語を返す
+	pub fn decode(&self, r: Vec<u8>) -> Result<Vec<u8>, JsError> {
+		let h = coding::code_utils::parity_check_from_generator(&self.0.g)
+			.map_err(|e| JsError::new(&e.to_string()))?;
+		let v = linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect());
+		let cw = CodewordGF2::from(v);
+		let corrected = coding::code_utils::bounded_distance_decode_gf2(&h, &cw, 1)
+			.map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
 	}
 }
 
@@ -46,6 +65,41 @@ impl WasmLinearCodeGF2 {
 		let cw = self.0.encode(&msg).map_err(|e| JsError::new(&e.to_string()))?;
 		Ok(cw.0.into_iter().map(|g| g.value() as u8).collect())
 	}
+
+	/// H行列（(n-k)×n）を返す（標準形への変換を内部で行う）
+	#[wasm_bindgen(js_name = parityCheck)]
+	pub fn parity_check(&self) -> Result<Vec<u8>, JsError> {
+		let h = coding::code_utils::parity_check_from_generator(&self.0.g)
+			.map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(h.0.data.into_iter().map(|x| x.value() as u8).collect())
+	}
+
+	/// シンドローム復号（内部で H を構成）
+	#[wasm_bindgen(js_name = decodeSyndrome)]
+	pub fn decode_syndrome(&self, r: Vec<u8>, t: usize) -> Result<Vec<u8>, JsError> {
+		let h = coding::code_utils::parity_check_from_generator(&self.0.g)
+			.map_err(|e| JsError::new(&e.to_string()))?;
+		let v = linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect());
+		let cw = CodewordGF2::from(v);
+		let corrected = coding::code_utils::syndrome_decode_gf2(&h, &cw, t)
+			.map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
+	}
+
+	/// 与えられた H を使って復号（(n-k)×n 行列を行優先、t は有界距離）
+	#[wasm_bindgen(js_name = decodeWithH)]
+	pub fn decode_with_h(&self, h_flat: Vec<u8>, rows: usize, r: Vec<u8>, t: usize) -> Result<Vec<u8>, JsError> {
+		let n = self.0.n;
+		if h_flat.len() != rows * n { return Err(JsError::new("invalid H length")); }
+		let data: Vec<GF2> = h_flat.into_iter().map(|x| GF2::new(x as i64)).collect();
+		let hmat = linalg::Matrix::new(rows, n, data).map_err(|e| JsError::new(&format!("{e}")))?;
+		let h = coding::types::ParityCheckMatrix(hmat);
+		let v = linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect());
+		let cw = CodewordGF2::from(v);
+		let corrected = coding::code_utils::syndrome_decode_gf2(&h, &cw, t)
+			.map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
+	}
 }
 
 // CyclicCode<GF(2)> 簡易（n と g 係数 0/1）
@@ -65,6 +119,21 @@ impl WasmCyclicCodeGF2 {
 		Ok(cw.0.into_iter().map(|g| g.value() as u8).collect())
 	}
 	pub fn k(&self) -> usize { self.0.k() }
+
+	/// 与えられた H を使って復号（(n-k)×n 行列を行優先、t は有界距離）
+	#[wasm_bindgen(js_name = decodeWithH)]
+	pub fn decode_with_h(&self, h_flat: Vec<u8>, rows: usize, r: Vec<u8>, t: usize) -> Result<Vec<u8>, JsError> {
+		let n = self.0.n;
+		if h_flat.len() != rows * n { return Err(JsError::new("invalid H length")); }
+		let data: Vec<GF2> = h_flat.into_iter().map(|x| GF2::new(x as i64)).collect();
+		let hmat = linalg::Matrix::new(rows, n, data).map_err(|e| JsError::new(&format!("{e}")))?;
+		let h = coding::types::ParityCheckMatrix(hmat);
+		let v = linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect());
+		let cw = CodewordGF2::from(v);
+		let corrected = coding::code_utils::syndrome_decode_gf2(&h, &cw, t)
+			.map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
+	}
 }
 
 // ReedSolomon<GF256> 簡易（alphas は Uint8Array として渡す）
@@ -116,6 +185,21 @@ impl WasmBCHGF2 {
 	pub fn k(&self) -> usize { self.0.k() }
 	pub fn n(&self) -> usize { self.0.n }
 	pub fn t(&self) -> usize { self.0.t }
+
+	/// 与えられた H を使って復号（(n-k)×n 行列を行優先、t は有界距離）
+	#[wasm_bindgen(js_name = decodeWithH)]
+	pub fn decode_with_h(&self, h_flat: Vec<u8>, rows: usize, r: Vec<u8>, t: usize) -> Result<Vec<u8>, JsError> {
+		let n = self.0.n;
+		if h_flat.len() != rows * n { return Err(JsError::new("invalid H length")); }
+		let data: Vec<GF2> = h_flat.into_iter().map(|x| GF2::new(x as i64)).collect();
+		let hmat = linalg::Matrix::new(rows, n, data).map_err(|e| JsError::new(&format!("{e}")))?;
+		let h = coding::types::ParityCheckMatrix(hmat);
+		let v = linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect());
+		let cw = CodewordGF2::from(v);
+		let corrected = coding::code_utils::syndrome_decode_gf2(&h, &cw, t)
+			.map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
+	}
 }
 
 // ---- code_utils helpers (GF2 specific) ----
@@ -140,5 +224,76 @@ pub fn weight_distribution_gf2(codebook_flat: Vec<u8>, n: usize) -> Result<Vec<u
 		cws.push(CodewordGF2::from(linalg::Vector::new(v)));
 	}
 	Ok(coding::code_utils::weight_distribution(&cws))
+}
+
+// ---- Additional utilities (GF2) ----
+
+#[wasm_bindgen(js_name = parityCheckFromGeneratorGF2)]
+pub fn parity_check_from_generator_gf2(k: usize, n: usize, g_flat: Vec<u8>) -> Result<Vec<u8>, JsError> {
+	if g_flat.len() != k * n { return Err(JsError::new("invalid generator length")); }
+	let data: Vec<GF2> = g_flat.into_iter().map(|x| GF2::new(x as i64)).collect();
+	let g = linalg::Matrix::new(k, n, data).map_err(|e| JsError::new(&format!("{e}")))?;
+	let gm = coding::types::GeneratorMatrix(g);
+	let h = coding::code_utils::parity_check_from_generator(&gm).map_err(|e| JsError::new(&e.to_string()))?;
+	Ok(h.0.data.into_iter().map(|x| x.value() as u8).collect())
+}
+
+#[wasm_bindgen(js_name = computeSyndromeGF2)]
+pub fn compute_syndrome_gf2_js(h_flat: Vec<u8>, rows: usize, n: usize, r: Vec<u8>) -> Result<Vec<u8>, JsError> {
+	if h_flat.len() != rows * n { return Err(JsError::new("invalid H length")); }
+	if r.len() != n { return Err(JsError::new("invalid codeword length")); }
+	let data: Vec<GF2> = h_flat.into_iter().map(|x| GF2::new(x as i64)).collect();
+	let hmat = linalg::Matrix::new(rows, n, data).map_err(|e| JsError::new(&format!("{e}")))?;
+	let h = coding::types::ParityCheckMatrix(hmat);
+	let rv = CodewordGF2::from(linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect()));
+	let syn = coding::code_utils::compute_syndrome_gf2(&h, &rv);
+	Ok(syn.0.into_iter().map(|x| x.value() as u8).collect())
+}
+
+#[wasm_bindgen(js_name = syndromeDecodeGF2)]
+pub fn syndrome_decode_gf2_js(h_flat: Vec<u8>, rows: usize, n: usize, r: Vec<u8>, t: usize) -> Result<Vec<u8>, JsError> {
+	if h_flat.len() != rows * n { return Err(JsError::new("invalid H length")); }
+	if r.len() != n { return Err(JsError::new("invalid codeword length")); }
+	let data: Vec<GF2> = h_flat.into_iter().map(|x| GF2::new(x as i64)).collect();
+	let hmat = linalg::Matrix::new(rows, n, data).map_err(|e| JsError::new(&format!("{e}")))?;
+	let h = coding::types::ParityCheckMatrix(hmat);
+	let rv = CodewordGF2::from(linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect()));
+	let corrected = coding::code_utils::syndrome_decode_gf2(&h, &rv, t).map_err(|e| JsError::new(&e.to_string()))?;
+	Ok(corrected.0.into_iter().map(|x| x.value() as u8).collect())
+}
+
+#[wasm_bindgen(js_name = boundedDistanceDecodeGF2)]
+pub fn bounded_distance_decode_gf2_js(h_flat: Vec<u8>, rows: usize, n: usize, r: Vec<u8>, t: usize) -> Result<Vec<u8>, JsError> {
+	if h_flat.len() != rows * n { return Err(JsError::new("invalid H length")); }
+	if r.len() != n { return Err(JsError::new("invalid codeword length")); }
+	let data: Vec<GF2> = h_flat.into_iter().map(|x| GF2::new(x as i64)).collect();
+	let hmat = linalg::Matrix::new(rows, n, data).map_err(|e| JsError::new(&format!("{e}")))?;
+	let h = coding::types::ParityCheckMatrix(hmat);
+	let rv = CodewordGF2::from(linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect()));
+	let corrected = coding::code_utils::bounded_distance_decode_gf2(&h, &rv, t).map_err(|e| JsError::new(&e.to_string()))?;
+	Ok(corrected.0.into_iter().map(|x| x.value() as u8).collect())
+}
+
+#[wasm_bindgen(js_name = hammingDMinGF2)]
+pub fn hamming_d_min_gf2(codebook_flat: Vec<u8>, n: usize) -> Result<usize, JsError> {
+	if n == 0 { return Err(JsError::new("n must be > 0")); }
+	if codebook_flat.len() % n != 0 { return Err(JsError::new("codebook_flat length must be multiple of n")); }
+	let m = codebook_flat.len() / n;
+	let mut cws: Vec<CodewordGF2> = Vec::with_capacity(m);
+	for i in 0..m {
+		let start = i * n;
+		let v = codebook_flat[start..start+n].iter().map(|&x| GF2::new(x as i64)).collect();
+		cws.push(CodewordGF2::from(linalg::Vector::new(v)));
+	}
+	Ok(coding::code_utils::linear_hamming_d_min(&cws))
+}
+
+#[wasm_bindgen(js_name = codingRateFromGeneratorGF2)]
+pub fn coding_rate_from_generator_gf2(k: usize, n: usize, g_flat: Vec<u8>) -> Result<f64, JsError> {
+	if g_flat.len() != k * n { return Err(JsError::new("invalid generator length")); }
+	let data: Vec<GF2> = g_flat.into_iter().map(|x| GF2::new(x as i64)).collect();
+	let g = linalg::Matrix::new(k, n, data).map_err(|e| JsError::new(&format!("{e}")))?;
+	let gm = coding::types::GeneratorMatrix(g);
+	Ok(coding::code_utils::coding_rate_from_generator(&gm))
 }
 

@@ -19,16 +19,25 @@ export default function CombinatoricsPage() {
   const [val, setVal] = React.useState<number | null>(null)
   const [err, setErr] = React.useState<string | null>(null)
 
-  const run = async () => {
-    setErr(null); setVal(null)
-    try {
-      const { cm_binom, cm_stirling2 } = await import('../../../src/wasm/concreteMath')
-      const v = op==='binom' ? await cm_binom(n, k) : await cm_stirling2(n, k)
-      setVal(v)
-    } catch (e: any) {
-      setErr(e?.message || String(e))
-    }
-  }
+  // Reset when operation changes
+  React.useEffect(()=>{
+    setVal(null)
+    setErr(null)
+  }, [op])
+
+  // Auto compute for combinatorics (軽い計算): op/n/k/precision が変わったら実行
+  React.useEffect(()=>{
+    (async ()=>{
+      setErr(null); setVal(null)
+      try {
+        const { cm_binom, cm_stirling2 } = await import('../../../src/wasm/concreteMath')
+        const v = op==='binom' ? await cm_binom(n, k) : await cm_stirling2(n, k)
+        setVal(v)
+      } catch (e: any) {
+        setErr(e?.message || String(e))
+      }
+    })()
+  }, [op, n, k, precision])
 
   return (
     <PageContainer title="Concrete Math / 組合せ論" stickyHeader>
@@ -38,8 +47,8 @@ export default function CombinatoricsPage() {
         onOperationChange={(v)=> setOp(v as Op)}
         accuracy={precision}
         onAccuracyChange={(p)=> setPrecision(p)}
-        onCalc={run}
-        calc_button_able
+        onCalc={undefined}
+        calc_button_able={false as any}
         accuracy_able
         // operand
         operand={

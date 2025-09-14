@@ -53,3 +53,63 @@ fn geometric_weighted_linear_inhomogeneous() {
         assert!((eval(&cf, n).re - val).abs() < 1e-7);
     }
 }
+
+#[test]
+fn quadratic_inhomogeneous_partial_sum() {
+    // a_n - a_{n-1} = n^2, a_0 = 0
+    // 非同次項: P(n) = n^2（係数 [0,0,1]）, base r = 1
+    let nh = vec![GeneralTerm {
+        polynomial: Polynomial::new(vec![0.0, 0.0, 1.0]).to_complex(),
+        base: Complex::new(1.0, 0.0),
+    }];
+    let rr = RecurrenceRelation::new(vec![1.0], nh, vec![0.0]);
+    let cf = rr.solve();
+
+    // 期待値: n(n+1)(2n+1)/6
+    for n in 0..50 {
+        let got = eval(&cf, n).re;
+        let n_f = n as f64;
+        let want = n_f * (n_f + 1.0) * (2.0 * n_f + 1.0) / 6.0;
+        let err = (got - want).abs();
+        eprintln!("n={n}, got={got:.12e}, want={want:.12e}, err={err:.3e}");
+        assert!(err < 1e-6);
+    }
+}
+
+#[test]
+fn exponential_inhomogeneous_partial_sum() {
+    // a_n - a_{n-1} = 2^n, a_0 = 0  => a_n = sum_{k=0..n} 2^k = 2^{n+1} - 2
+    let nh = vec![GeneralTerm {
+        polynomial: Polynomial::one().to_complex(),
+        base: Complex::new(2.0, 0.0),
+    }];
+    let rr = RecurrenceRelation::new(vec![1.0], nh, vec![0.0]);
+    let cf = rr.solve();
+    for n in 0..30 {
+        let got = eval(&cf, n).re;
+        let want = 2f64.powi((n as i32) + 1) - 2.0;
+        let err = (got - want).abs();
+        eprintln!("[exp] n={n}, got={got:.12e}, want={want:.12e}, err={err:.3e}");
+        assert!(err < 1e-9);
+    }
+}
+
+#[test]
+fn mixed_linear_exponential_inhomogeneous_partial_sum() {
+    // a_n - a_{n-1} = n * 2^n, a_0 = 0
+    // 期待値: sum_{k=0..n} k 2^k = (n-1)2^{n+1} + 2  （n>=0 で成り立つ）
+    let nh = vec![GeneralTerm {
+        polynomial: Polynomial::new(vec![0.0, 1.0]).to_complex(), // P(n)=n
+        base: Complex::new(2.0, 0.0),
+    }];
+    let rr = RecurrenceRelation::new(vec![1.0], nh, vec![0.0]);
+    let cf = rr.solve();
+    for n in 0..30 {
+        let got = eval(&cf, n).re;
+        let n_i = n as i32;
+        let want = (n_i - 1) as f64 * 2f64.powi(n_i + 1) + 2.0;
+        let err = (got - want).abs();
+        eprintln!("[n*2^n] n={n}, got={got:.12e}, want={want:.12e}, err={err:.3e}");
+        assert!(err < 1e-7);
+    }
+}

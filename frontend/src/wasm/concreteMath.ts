@@ -1,6 +1,26 @@
 "use client"
 import { getWasm } from './loader'
 
+// Helpers to map between real-coefficient arrays and WASM complex-interleaved flat arrays
+function toWasmFlatReal(coeffs: number[]): Float64Array {
+  const out: number[] = []
+  for (let i = 0; i < coeffs.length; i++) { out.push(Number(coeffs[i] ?? 0), 0) }
+  return Float64Array.from(out)
+}
+
+function fromWasmFlatToReal(arr: Float64Array): number[] {
+  const n = Math.floor((arr?.length ?? 0) / 2)
+  const out: number[] = new Array(n)
+  for (let i = 0; i < n; i++) {
+    const re = Number(arr[2 * i] ?? 0)
+    // const im = Number(arr[2 * i + 1] ?? 0) // ignore, expected ~0 for these wrappers
+    out[i] = re
+  }
+  // trim trailing ~0s to keep degree minimal
+  while (out.length > 1 && Math.abs(out[out.length - 1]) < 1e-12) out.pop()
+  return out
+}
+
 export async function cm_binom(n: number, k: number): Promise<number> {
   const wasm: any = await getWasm()
   return Number(wasm.binom(n, k))
@@ -14,37 +34,37 @@ export async function cm_stirling2(n: number, k: number): Promise<number> {
 export async function cm_fallingFactorialPoly(m: number): Promise<number[]> {
   const wasm: any = await getWasm()
   const arr: Float64Array = wasm.fallingFactorialPoly(m)
-  return Array.from(arr)
+  return fromWasmFlatToReal(arr)
 }
 
 export async function cm_risingFactorialPoly(m: number): Promise<number[]> {
   const wasm: any = await getWasm()
   const arr: Float64Array = wasm.risingFactorialPoly(m)
-  return Array.from(arr)
+  return fromWasmFlatToReal(arr)
 }
 
 export async function cm_shiftPolyXPlusH(coeffs: number[], h: number): Promise<number[]> {
   const wasm: any = await getWasm()
-  const out: Float64Array = wasm.shiftPolyXPlusH(Float64Array.from(coeffs), h)
-  return Array.from(out)
+  const out: Float64Array = wasm.shiftPolyXPlusH(toWasmFlatReal(coeffs), h)
+  return fromWasmFlatToReal(out)
 }
 
 export async function cm_binomXPlusKChooseKPoly(k: number): Promise<number[]> {
   const wasm: any = await getWasm()
   const out: Float64Array = wasm.binomXPlusKChooseKPoly(k)
-  return Array.from(out)
+  return fromWasmFlatToReal(out)
 }
 
 export async function cm_discreteDiff(coeffs: number[]): Promise<number[]> {
   const wasm: any = await getWasm()
-  const out: Float64Array = wasm.discreteDiff(Float64Array.from(coeffs))
-  return Array.from(out)
+  const out: Float64Array = wasm.discreteDiff(toWasmFlatReal(coeffs))
+  return fromWasmFlatToReal(out)
 }
 
 export async function cm_discreteSum(coeffs: number[]): Promise<number[]> {
   const wasm: any = await getWasm()
-  const out: Float64Array = wasm.discreteSum(Float64Array.from(coeffs))
-  return Array.from(out)
+  const out: Float64Array = wasm.discreteSum(toWasmFlatReal(coeffs))
+  return fromWasmFlatToReal(out)
 }
 
 // ClosedForm minimal wrapper helpers

@@ -281,3 +281,57 @@ export function formatComplexMarkdown(
   const z = arg as Complex
   return fmtComplex(Number(z.re ?? 0), Number(z.im ?? 0), p, imag)
 }
+
+// ============ General term (Q(n) r^n) formatting ============
+export type GeneralTermLike = { poly: { coeffs: ArrayLike<number> } | ArrayLike<number>; base: number }
+
+function roundCoeffsForPrecision(coeffs: ArrayLike<number>, precision?: number): number[] {
+  const out: number[] = []
+  for (let i = 0; i < coeffs.length; i++) out[i] = Number(formatNumberForMath(Number((coeffs as any)[i] ?? 0), precision))
+  return out
+}
+
+function formatBaseWithPow(base: number, varName: string, precision?: number): string {
+  // 1^n -> 1 (handled by caller via hide), -2 -> (-2)^{n} for clarity
+  const b = Number(formatNumberForMath(Number(base || 0), precision))
+  if (Math.abs(b - 1) < 1e-12) return '1'
+  if (b < 0) return `(${b})^{${varName}}`
+  return `${b}^{${varName}}`
+}
+
+export function formatGeneralTermMarkdown(
+  term: GeneralTermLike,
+  opts?: { varName?: string; precision?: number; hideBaseOne?: boolean; productSymbol?: string; parenPoly?: 'auto' | 'always' | 'never' }
+): string {
+  const varName = opts?.varName ?? 'n'
+  const p = opts?.precision
+  const product = typeof opts?.productSymbol === 'string' ? opts!.productSymbol : '\\,'
+  const parenMode = opts?.parenPoly ?? 'auto'
+  const coeffs = Array.isArray((term.poly as any)) || typeof (term.poly as any).length === 'number'
+    ? (term.poly as ArrayLike<number>)
+    : (term.poly as { coeffs: ArrayLike<number> }).coeffs
+  const rounded = roundCoeffsForPrecision(coeffs, p)
+  const qn = formatPolynomialMarkdown(rounded, varName)
+  if (qn === '0') return '0'
+  const base = Number(term.base || 0)
+  const isOne = Math.abs(base - 1) < 1e-12
+  if (isOne && (opts?.hideBaseOne ?? true)) return qn
+  const pow = formatBaseWithPow(base, varName, p)
+  // Handle Q=1 or Q=-1 specially
+  if (qn === '1') return pow
+  if (qn === '-1') return `- ${pow}`
+  // Parentheses policy
+  const needParen = parenMode === 'always' || (parenMode === 'auto' && /[+\-\s]/.test(qn))
+  const left = needParen ? `(${qn})` : qn
+  return `${left} ${product} ${pow}`
+}
+
+export function formatGeneralTermsMarkdown(
+  terms: ReadonlyArray<GeneralTermLike>,
+  opts?: { varName?: string; precision?: number; hideBaseOne?: boolean; productSymbol?: string; parenPoly?: 'auto' | 'always' | 'never' }
+): string {
+  if (!terms || terms.length === 0) return '0'
+  const parts = terms.map(t => formatGeneralTermMarkdown(t, opts))
+  // Clean up occurrences like '+ -' if any polynomial produced negatives
+  return parts.join(' + ').replace(/\+ -/g, '- ')
+}
