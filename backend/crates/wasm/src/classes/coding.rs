@@ -153,30 +153,59 @@ pub struct WasmReedSolomonGF256(coding::ReedSolomon);
 impl WasmReedSolomonGF256 {
 	#[wasm_bindgen(constructor)]
 	pub fn new(k: usize, n: usize) -> Result<WasmReedSolomonGF256, JsError> {
-		// Use default GF(2^8) AES modulus and primitive RS evaluation points α^0..α^{n-1}
+		// Default: GF(2^8) AES modulus and primitive evaluation points
 		let px = finite_field::gf256::gf256_modulus();
 		let field = finite_field::field2m::FiniteField2m::new(px.as_ref());
 		let rs = coding::ReedSolomon::new_with_field(k, n, &field)
 			.map_err(|e| JsError::new(&e.to_string()))?;
 		Ok(WasmReedSolomonGF256(rs))
 	}
+	/// Construct with a custom primitive polynomial over GF(2).
+	/// `px` are GF(2) coefficients in low->high order, length m+1, with px[0]=px[m]=1.
+	#[wasm_bindgen(js_name = newWithPrimitive)]
+	pub fn new_with_primitive(px: Vec<u8>, k: usize, n: usize) -> Result<WasmReedSolomonGF256, JsError> {
+		if px.len() < 3 { return Err(JsError::new("px length must be >= 3 (m >= 2)")); }
+		let m = px.len() - 1;
+		if m < 2 || m > 15 { return Err(JsError::new("supported m is 2..=15")); }
+		if (px[0] & 1) == 0 || (px[m] & 1) == 0 { return Err(JsError::new("px[0] and px[m] must be 1")); }
+		let coeffs: Vec<finite_field::gfp::GFp<2>> = px.into_iter().map(|b| finite_field::gfp::GFp::<2>((b & 1) as u16)).collect();
+		let field = finite_field::field2m::FiniteField2m::new(&coeffs);
+		let rs = coding::ReedSolomon::new_with_field(k, n, &field).map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(WasmReedSolomonGF256(rs))
+	}
+	/// Auto-select minimal m with 2^m-1 >= n and build RS over GF(2^m)
+	#[wasm_bindgen(js_name = newAuto)]
+	pub fn new_auto(k: usize, n: usize) -> Result<WasmReedSolomonGF256, JsError> {
+		let rs = coding::ReedSolomon::new_auto(k, n).map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(WasmReedSolomonGF256(rs))
+	}
 	pub fn encode(&self, f: Vec<u8>) -> Result<Vec<u8>, JsError> {
-		let msg = MessageGF256::from(linalg::Vector::new(f.into_iter().map(finite_field::gf256::gf256_from_u8).collect()));
+		let px = self.0.field.px_arc();
+		let msg = MessageGF256::from(linalg::Vector::new(
+			f.into_iter().map(|x| finite_field::gfext::GFExt::<finite_field::gfp::GFp<2>>::from_u8(px.clone(), x)).collect()
+		));
 		let cw = self.0.encode(&msg).map_err(|e| JsError::new(&e.to_string()))?;
 		Ok(cw.0.into_iter().map(|g| g.to_u8()).collect())
 	}
 	pub fn decode(&self, r: Vec<u8>) -> Result<Vec<u8>, JsError> {
-		let cw = CodewordGF256::from(linalg::Vector::new(r.into_iter().map(finite_field::gf256::gf256_from_u8).collect()));
+		let px = self.0.field.px_arc();
+		let cw = CodewordGF256::from(linalg::Vector::new(
+			r.into_iter().map(|x| finite_field::gfext::GFExt::<finite_field::gfp::GFp<2>>::from_u8(px.clone(), x)).collect()
+		));
 		let out = self.0.decode(&cw).map_err(|e| JsError::new(&e.to_string()))?;
 		Ok(out.decoded.0.into_iter().map(|g| g.to_u8()).collect())
 	}
 	pub fn n(&self) -> usize { self.0.n }
 	pub fn t(&self) -> usize { self.0.t }
+	pub fn k(&self) -> usize { self.0.k }
 
 	/// Berlekamp–Massey ベースの代替復号器
 	#[wasm_bindgen(js_name = decodeBM)]
 	pub fn decode_bm(&self, r: Vec<u8>) -> Result<Vec<u8>, JsError> {
-		let cw = CodewordGF256::from(linalg::Vector::new(r.into_iter().map(finite_field::gf256::gf256_from_u8).collect()));
+		let px = self.0.field.px_arc();
+		let cw = CodewordGF256::from(linalg::Vector::new(
+			r.into_iter().map(|x| finite_field::gfext::GFExt::<finite_field::gfp::GFp<2>>::from_u8(px.clone(), x)).collect()
+		));
 		let out = self.0.decode_bm(&cw).map_err(|e| JsError::new(&e.to_string()))?;
 		Ok(out.decoded.0.into_iter().map(|g| g.to_u8()).collect())
 	}
@@ -194,16 +223,23 @@ impl WasmBCHGF2 {
 		let g_vec: Vec<GF2> = g.into_iter().map(|x| GF2::new(x as i64)).collect();
 		let poly = coding::Poly::new(g_vec);
 		let deg = if poly.is_zero() { 0 } else { poly.deg() as usize };
-		let t = (deg.max(1)) / 2; // heuristic; encode uses only n and g
-		// Build a dummy field for given n via AES poly if n<=255; otherwise this path is for LUT decode only.
-		let px = finite_field::gf256::gf256_modulus();
-	let field = finite_field::field2m::FiniteField2m::new(px.as_ref());
-	let mut code = coding::BCHCode::new_with_field(field, n, t);
-		// Override generator polynomial to provided one and recompute k
-		code.n = n;
-		code.g = poly;
-		code.k = n - (code.g.coeffs.len() - 1);
-		WasmBCHGF2(code)
+		let t = (deg.max(1)) / 2; // heuristic upper-bound; exact t depends on design distance
+
+		// Choose a GF(2^m) field consistent with n when possible (n must be 2^m-1 for BCH)
+		// Otherwise, fall back to AES m=8 field for encode/LUT decode use-cases.
+		let n_plus_1 = n + 1;
+		let is_pow2 = n_plus_1.is_power_of_two();
+		let field = if is_pow2 {
+			let m = n_plus_1.trailing_zeros() as usize; // since n+1 = 2^m
+			finite_field::field2m::FiniteField2m::new_auto(m)
+		} else {
+			let px = finite_field::gf256::gf256_modulus();
+			finite_field::field2m::FiniteField2m::new(px.as_ref())
+		};
+
+		// Construct BCHCode directly to avoid internal asserts; override g, n, k, t as provided/derived
+		let k = n.saturating_sub(poly.coeffs.len().saturating_sub(1));
+		WasmBCHGF2(coding::BCHCode { field, n, k, t, g: poly })
 	}
 
 	/// Construct BCH automatically from m (GF(2^m)) and designed t (n = 2^m - 1). Narrow-sense (b=1).

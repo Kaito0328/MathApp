@@ -7,6 +7,8 @@ import { VariablePicker } from '../../../src/components/features/variables/Varia
 import { useVariableStore } from '../../../src/state/VariableStore'
 import CodeCharacteristics from '../../../src/components/features/coding/CodeCharacteristics'
 import { Button } from '../../../src/baseComponents/controls/Button'
+import { PolynomialInput } from '../../../src/widgets/input/PolynomialInput'
+import type { Polynomial } from '../../../src/widgets/dto/polynomial'
 
 type InputMode = 'text' | 'binary'
 
@@ -31,20 +33,18 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out
 }
 
-function parseCsv01(s: string): number[] {
-  const a = s.split(',').map(t=>t.trim()).filter(t=>t!=="")
-  const v = a.map(x=> Number(x))
-  if (v.some(x=> !(x===0 || x===1))) throw new Error('0/1 の CSV で入力してください（定数項からの昇順）')
-  return v
-}
+// (旧) CSV 0/1 入力は廃止
 
 export default function BCHCodePage() {
   const { get } = useVariableStore()
   const [mode, setMode] = React.useState<InputMode>('text')
   const [text, setText] = React.useState<string>('HELLO')
   const [binary, setBinary] = React.useState<string>('')
-  const [n, setN] = React.useState<number>(15)
-  const [gCsv, setGCsv] = React.useState<string>('1,0,1,1,0,0,0,1') // 例
+  // 新仕様: m, t を指定（n = 2^m - 1 は内部で決定）
+  const [m, setM] = React.useState<number>(4)
+  const [tDesign, setTDesign] = React.useState<number>(2)
+  // 高度な設定: 原始多項式（現状 API 未対応のため UI のみ）
+  const [px, setPx] = React.useState<Polynomial | null>(null)
   const [k, setK] = React.useState<number | null>(null)
   const [t, setT] = React.useState<number | null>(null)
   const [encoded, setEncoded] = React.useState<Uint8Array | null>(null)
@@ -52,6 +52,7 @@ export default function BCHCodePage() {
   const [decoded, setDecoded] = React.useState<Uint8Array | null>(null)
   const [err, setErr] = React.useState<string>('')
   const [bitFlipIdx, setBitFlipIdx] = React.useState<number | null>(null)
+  const [nEff, setNEff] = React.useState<number>(15)
 
   const getMsgBits = React.useCallback((): number[] => {
     return mode==='text' ? textToBits(text) : (binary||'').split('').filter(c=>c==='0'||c==='1').map(c=>Number(c))
@@ -60,13 +61,14 @@ export default function BCHCodePage() {
   const onEncode = async () => {
     setErr(''); setDecoded(null)
     try {
-      const g = parseCsv01(gCsv)
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
-      const bch = new wasm.BCH(n, new Uint8Array(g))
+  // 原始多項式は現状 API で指定不可のため、標準の狭義BCHを自動生成
+  const bch = wasm.BCH.newAuto(Math.max(2, Math.floor(m||2)), Math.max(1, Math.floor(tDesign||1)))
       const kEff: number = bch.k()
       const tEff: number = bch.t()
-      setK(kEff); setT(tEff)
+  const nAuto: number = bch.n()
+  setK(kEff); setT(tEff); setNEff(nAuto)
       const bits = getMsgBits()
       const blocks = chunk(bits, kEff)
       if (blocks.length && blocks[blocks.length-1].length < kEff) {
@@ -100,16 +102,19 @@ export default function BCHCodePage() {
       if (!noisy) return
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
-      const bch = new wasm.BCH(n, new Uint8Array(parseCsv01(gCsv)))
+      const bch = wasm.BCH.newAuto(Math.max(2, Math.floor(m||2)), Math.max(1, Math.floor(tDesign||1)))
+      const nLocal: number = bch.n()
+      setNEff(nLocal)
       // 受信語長は n の倍数である必要がある
       const r = new Uint8Array(noisy)
-      if (r.length % n !== 0) {
-        throw new Error(`受信語の長さ (${r.length}) は n (${n}) の倍数である必要があります`)
+      if (r.length % nLocal !== 0) {
+        throw new Error(`受信語の長さ (${r.length}) は n (${nLocal}) の倍数である必要があります`)
       }
       const out: number[] = []
-      for (let i = 0; i < r.length; i += n) {
-        const block = r.subarray(i, i + n)
-        const corr: Uint8Array = bch.decodeLUT(block)
+      for (let i = 0; i < r.length; i += nLocal) {
+        const block = r.subarray(i, i + nLocal)
+        // BM + Chien の復号
+        const corr: Uint8Array = bch.decodeBM(block)
         out.push(...Array.from(corr))
       }
       setDecoded(new Uint8Array(out))
@@ -145,10 +150,17 @@ export default function BCHCodePage() {
 
         <SectionPanelWithTitle title="エンコード入力">
           <div style={{ display:'grid', gap:8 }}>
-            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-              <label>n: <input type="number" value={n} onChange={(e)=> setN(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 120 }} /></label>
-              <label>生成多項式 g（0/1 CSV・昇順）: <input type="text" value={gCsv} onChange={(e)=> setGCsv(e.target.value)} style={{ width: 360 }} placeholder="1,0,1,1,0,0, ..." /></label>
+            <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+              <label>m: <input type="number" value={m} onChange={(e)=> setM(Math.max(2, Math.floor(Number(e.target.value)||2)))} style={{ width: 120 }} /></label>
+              <label>t (設計誤り訂正能力): <input type="number" value={tDesign} onChange={(e)=> setTDesign(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 160 }} /></label>
             </div>
+      <details>
+              <summary style={{ cursor:'pointer', opacity:0.85 }}>高度な設定（原始多項式の指定）</summary>
+              <div style={{ marginTop:8 }}>
+                <PolynomialInput value={px ?? { coeffs: [] }} onChange={(p)=> setPx({ coeffs: p.coeffs.map((x)=> Math.round(x) & 1) })} />
+                <div style={{ fontSize:12, opacity:0.75, marginTop:6 }}>注: 現状の WASM API では原始多項式の指定に未対応のため、この入力は未適用です。</div>
+              </div>
+            </details>
             {mode==='text' ? (
               <textarea value={text} onChange={(e)=> setText(e.target.value)} rows={3} style={{ width: '100%', boxSizing:'border-box' }} />
             ) : (
@@ -160,7 +172,7 @@ export default function BCHCodePage() {
         {/* 符号語表示 */}
         <SectionPanelWithTitle title="符号語（2進）">
           <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap', wordBreak:'break-all' }}>
-            {encoded ? Array.from(encoded).map((b, i)=> ((i>0 && k!=null && i% n===0) ? ' ' : '') + String(b)).join('') : '-'}
+            {encoded ? Array.from(encoded).map((b, i)=> ((i>0 && k!=null && i% nEff===0) ? ' ' : '') + String(b)).join('') : '-'}
           </div>
         </SectionPanelWithTitle>
 
@@ -185,7 +197,7 @@ export default function BCHCodePage() {
         />
 
         <div style={{ opacity:0.75, fontSize:12 }}>
-          注) 既定の復号は内部で G/H/LUT を構成して動作します（H の手入力は不要）。
+          注) 復号は BM + Chien（狭義 BCH）で行います。受信語は n の倍数長で入力してください。
         </div>
 
         {/* 受信語入力（2進） */}
@@ -216,11 +228,11 @@ export default function BCHCodePage() {
 
         <SectionPanelWithTitle title="符号の特性">
           <CodeCharacteristics lines={[
-            `n = ${n}`,
+            `n = ${nEff}`,
             `k = ${k ?? '-'}`,
             `d_{\\min} = -`,
             `t = ${t ?? '-'}`,
-            `R = \\tfrac{k}{n} = ${k!=null ? (k/n).toFixed(3) : '-'}`,
+            `R = \\tfrac{k}{n} = ${k!=null ? (k/nEff).toFixed(3) : '-'}`,
           ]} />
         </SectionPanelWithTitle>
       </div>

@@ -7,13 +7,11 @@
   "files": [
     "wasm_bg.wasm",
     "wasm.js",
-    "wasm_bg.js",
     "wasm.d.ts"
   ],
   "main": "wasm.js",
   "types": "wasm.d.ts",
   "sideEffects": [
-    "./wasm.js",
     "./snippets/*"
   ]
 }

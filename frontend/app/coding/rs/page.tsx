@@ -6,6 +6,8 @@ import OperationBaseBlock from '../../../src/components/features/operations/Oper
 import { VariablePicker } from '../../../src/components/features/variables/VariablePicker'
 import CodeCharacteristics from '../../../src/components/features/coding/CodeCharacteristics'
 import { Button } from '../../../src/baseComponents/controls/Button'
+import { PolynomialInput } from '../../../src/widgets/input/PolynomialInput'
+import type { Polynomial } from '../../../src/widgets/dto/polynomial'
 import { useVariableStore } from '../../../src/state/VariableStore'
 
 type InputMode = 'text' | 'hex'
@@ -27,8 +29,10 @@ export default function RSPage() {
   const [mode, setMode] = React.useState<InputMode>('text')
   const [text, setText] = React.useState('hello rs')
   const [hex, setHex] = React.useState('')
+  const [m, setM] = React.useState<number>(4)
   const [k, setK] = React.useState<number>(8)
-  const [alphasCsv, setAlphasCsv] = React.useState<string>('1,2,3,4,5,6,7,8,9,10,11,12,13,14,15')
+  const [alphasCsv, setAlphasCsv] = React.useState<string>('')
+  const [primitive, setPrimitive] = React.useState<Polynomial>({ coeffs: [1,0,0,1,1] })
   const [encoded, setEncoded] = React.useState<Uint8Array | null>(null)
   const [noisy, setNoisy] = React.useState<Uint8Array | null>(null)
   const [decoded, setDecoded] = React.useState<Uint8Array | null>(null)
@@ -51,13 +55,9 @@ export default function RSPage() {
       const wasm: any = await getWasm()
       // 自動/高度設定による有効パラメータ決定
       const msg = getMessage()
-      const autoK = msg.length
-      const autoAlphas = (len: number) => {
-        const n = Math.max(31, Math.min(255, 2 * Math.max(1, len)))
-        return new Uint8Array(Array.from({ length: n }, (_, i) => i + 1))
-      }
-
-  const kEff = advancedEnabled ? k : autoK
+      const autoK = msg.length || 1
+      const nFromM = (mm: number) => (1 << Math.max(2, Math.min(8, mm))) - 1
+      const kEff = advancedEnabled ? k : autoK
       let alphasEff: Uint8Array
       if (advancedEnabled) {
         const alphaList = alphasCsv.split(',').map(s=>Number(s.trim())).filter(x=>Number.isFinite(x))
@@ -67,14 +67,15 @@ export default function RSPage() {
         if (alphaList.length < kEff) throw new Error(`alphas の個数 (${alphaList.length}) は k (${kEff}) 以上が必要です`)
         alphasEff = new Uint8Array(alphaList)
       } else {
-        // 自動設定を UI にも反映
+        // m に基づいて n=2^m-1 個の評価点 1..n を使用
+        const n = nFromM(m)
         setK(autoK)
-        const a = autoAlphas(autoK)
+        const a = new Uint8Array(Array.from({ length: n }, (_, i) => i + 1))
         setAlphasCsv(Array.from(a).join(','))
         alphasEff = a
       }
 
-      const rs = new wasm.ReedSolomon(kEff, alphasEff)
+  const rs = new wasm.ReedSolomon(kEff, alphasEff)
       setNVal(rs.n())
       setTVal(rs.t())
       let f = new Uint8Array(msg)
@@ -120,7 +121,7 @@ export default function RSPage() {
       if (!noisy) return
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
-      // 復号時は現在の k/alphas を使用（自動エンコード後は自動反映済み）
+  // 復号時は現在の k/alphas を使用（自動エンコード後は自動反映済み）
       const alphaList = alphasCsv.split(',').map(s=>Number(s.trim())).filter(x=>Number.isFinite(x))
       if (alphaList.some(x=>x<0 || x>255)) throw new Error('alphas は 0..255 の整数で指定してください')
       const uniq = new Set(alphaList)
@@ -162,7 +163,7 @@ export default function RSPage() {
   }, [decoded, origMsgLen])
 
   return (
-    <PageContainer title="Reed–Solomon" stickyHeader>
+  <PageContainer title="Reed–Solomon (GF(2^m))" stickyHeader>
       <div style={{ display:'grid', gap:12 }}>
         {/* ページ全体の表現トグル */}
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
@@ -172,6 +173,7 @@ export default function RSPage() {
 
         {/* 入力調整（モード行直下） */}
         <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+          <label>m: <input type="number" value={m} onChange={(e)=> setM(Math.max(2, Math.min(8, Math.floor(Number(e.target.value)||2))))} style={{ width: 120 }} /></label>
           <label>入力調整:
             <select value={autoAdjustLen} onChange={(e)=> setAutoAdjustLen(e.target.value as any)}>
               <option value="none">自動（入力に追従）</option>
@@ -193,6 +195,10 @@ export default function RSPage() {
           <div style={{ display:'grid', gap:8, marginTop:8 }}>
             <label>k: <input type="number" value={k} onChange={(e)=> setK(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 120 }} /></label>
             <label>評価点 α（CSV）: <input type="text" value={alphasCsv} onChange={(e)=> setAlphasCsv(e.target.value)} style={{ width: '100%' }} /></label>
+            <div>
+              <div style={{ fontSize:12, opacity:0.8, marginBottom:6 }}>原始多項式（UI のみ・未適用）</div>
+              <PolynomialInput value={primitive} onChange={setPrimitive} />
+            </div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
               <Button onClick={()=> setAlphasCsv(Array.from({length:15},(_,i)=> String(i+1)).join(','))}>プリセット（1..15）</Button>
               <Button onClick={()=> setAlphasCsv(Array.from({length:31},(_,i)=> String(i+1)).join(','))}>プリセット（1..31）</Button>

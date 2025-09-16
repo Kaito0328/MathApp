@@ -7,6 +7,8 @@ import { VariablePicker } from '../../../src/components/features/variables/Varia
 import { useVariableStore } from '../../../src/state/VariableStore'
 import CodeCharacteristics from '../../../src/components/features/coding/CodeCharacteristics'
 import { Button } from '../../../src/baseComponents/controls/Button'
+import { PolynomialInput } from '../../../src/widgets/input/PolynomialInput'
+import type { Polynomial } from '../../../src/widgets/dto/polynomial'
 
 type InputMode = 'text' | 'binary'
 
@@ -31,11 +33,13 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out
 }
 
-function parseCsv01(s: string): number[] {
-  const a = s.split(',').map(t=>t.trim()).filter(t=>t!=="")
-  const v = a.map(x=> Number(x))
-  if (v.some(x=> !(x===0 || x===1))) throw new Error('0/1 の CSV で入力してください（定数項からの昇順）')
-  return v
+function normalizeBinaryCoeffs(p: Polynomial): Uint8Array {
+  // GF(2) 多項式: 係数は 0/1 に丸める
+  const a = p.coeffs.map((x)=> (Math.round(x) & 1) >>> 0)
+  // 末尾の余分な 0 は削除（ただし定数 0 多項式は長さ 1 を保持）
+  let end = a.length
+  while (end > 1 && a[end-1] === 0) end--
+  return new Uint8Array(a.slice(0, end))
 }
 
 export default function CyclicCodePage() {
@@ -44,7 +48,7 @@ export default function CyclicCodePage() {
   const [text, setText] = React.useState<string>('HELLO')
   const [binary, setBinary] = React.useState<string>('')
   const [n, setN] = React.useState<number>(7)
-  const [gCsv, setGCsv] = React.useState<string>('1,1,0,1') // 1 + x + x^3 の例（昇順）
+  const [gPoly, setGPoly] = React.useState<Polynomial>({ coeffs: [1,1,0,1] }) // 1 + x + x^3
   const [k, setK] = React.useState<number | null>(null)
   const [encoded, setEncoded] = React.useState<Uint8Array | null>(null)
   const [noisy, setNoisy] = React.useState<Uint8Array | null>(null)
@@ -59,7 +63,7 @@ export default function CyclicCodePage() {
   const onEncode = async () => {
     setErr(''); setDecoded(null)
     try {
-      const g = parseCsv01(gCsv)
+  const g = Array.from(normalizeBinaryCoeffs(gPoly))
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
       const cyc = new wasm.CyclicCode(n, new Uint8Array(g))
@@ -102,7 +106,7 @@ export default function CyclicCodePage() {
       if (!noisy) return
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
-      const cyc = new wasm.CyclicCode(n, new Uint8Array(parseCsv01(gCsv)))
+  const cyc = new wasm.CyclicCode(n, normalizeBinaryCoeffs(gPoly))
       // 受信語長は n の倍数である必要がある
       const r = new Uint8Array(noisy)
       if (r.length % n !== 0) {
@@ -148,9 +152,12 @@ export default function CyclicCodePage() {
 
         <SectionPanelWithTitle title="エンコード入力">
           <div style={{ display:'grid', gap:8 }}>
-            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
               <label>n: <input type="number" value={n} onChange={(e)=> setN(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 120 }} /></label>
-              <label>生成多項式 g（0/1 CSV・昇順）: <input type="text" value={gCsv} onChange={(e)=> setGCsv(e.target.value)} style={{ width: 360 }} placeholder="1,0,1,1" /></label>
+              <div>
+                <div style={{ fontSize:12, opacity:0.8, marginBottom:6 }}>生成多項式 g（GF(2) 係数, 低次→高次）</div>
+                <PolynomialInput value={gPoly} onChange={setGPoly} />
+              </div>
             </div>
             {mode==='text' ? (
               <textarea value={text} onChange={(e)=> setText(e.target.value)} rows={3} style={{ width: '100%', boxSizing:'border-box' }} />
