@@ -13,6 +13,9 @@ export default function CodingIndexPage() {
           <li><Link href="/coding/rs">Reed–Solomon</Link></li>
           <li><Link href="/coding/cyclic">Cyclic Code (GF(2))</Link></li>
           <li><Link href="/coding/bch">BCH Code (GF(2))</Link></li>
+          <li><Link href="/coding/channel">チャネル符号（統合）</Link> <span style={{ fontSize:12, opacity:0.7 }}>(実装中)</span></li>
+          <li><Link href="/coding/source">情報源符号（統合）</Link> <span style={{ fontSize:12, opacity:0.7 }}>(実装中)</span></li>
+          <li><Link href="/coding/comm">通信体験（E2E）</Link> <span style={{ fontSize:12, opacity:0.7 }}>(実装中)</span></li>
         </ul>
         <div style={{ opacity:0.8, fontSize:13 }}>ユーティリティや他の符号（Linear, Cyclic, BCH）は順次追加します。</div>
       </div>

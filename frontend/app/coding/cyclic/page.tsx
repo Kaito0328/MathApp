@@ -1,6 +1,7 @@
 "use client"
 import React from 'react'
 import PageContainer from '../../../src/baseComponents/layout/PageContainer'
+import Stack from '../../../src/baseComponents/layout/Stack'
 import SectionPanelWithTitle from '../../../src/components/composites/panels/SectionPanelWithTitle'
 import OperationBaseBlock from '../../../src/components/features/operations/OperationBaseBlock'
 import { VariablePicker } from '../../../src/components/features/variables/VariablePicker'
@@ -48,25 +49,46 @@ export default function CyclicCodePage() {
   const [text, setText] = React.useState<string>('HELLO')
   const [binary, setBinary] = React.useState<string>('')
   const [n, setN] = React.useState<number>(7)
-  const [gPoly, setGPoly] = React.useState<Polynomial>({ coeffs: [1,1,0,1] }) // 1 + x + x^3
+  const [gPoly, setGPoly] = React.useState<Polynomial>({ coeffs: [1,1,0,1] })
   const [k, setK] = React.useState<number | null>(null)
   const [encoded, setEncoded] = React.useState<Uint8Array | null>(null)
   const [noisy, setNoisy] = React.useState<Uint8Array | null>(null)
   const [decoded, setDecoded] = React.useState<Uint8Array | null>(null)
+  const [recovered, setRecovered] = React.useState<Uint8Array | null>(null)
+  const [nonZeroRemainderBlocks, setNonZeroRemainderBlocks] = React.useState<number>(0)
   const [err, setErr] = React.useState<string>('')
   const [randomErrors, setRandomErrors] = React.useState<number>(0)
+  const [gValid, setGValid] = React.useState<boolean | null>(null)
 
   const getMsgBits = React.useCallback((): number[] => {
     return mode==='text' ? textToBits(text) : (binary||'').split('').filter(c=>c==='0'||c==='1').map(c=>Number(c))
   }, [mode, text, binary])
 
   const onEncode = async () => {
-    setErr(''); setDecoded(null)
+    setErr(''); setDecoded(null); setRecovered(null); setNonZeroRemainderBlocks(0)
     try {
-  const g = Array.from(normalizeBinaryCoeffs(gPoly))
+      const gCoeffs = normalizeBinaryCoeffs(gPoly)
+      // g | (x^n - 1) 検証
+      try {
+        const { getWasm } = await import('../../../src/wasm/loader')
+        const wasm: any = await getWasm()
+        const xPowN = new wasm.PolynomialGF2(new Uint8Array(Array.from({ length: n + 1 }, (_, i)=> i===n ? 1 : 0)))
+        const one = new wasm.PolynomialGF2(new Uint8Array([1]))
+        const xnMinus1 = xPowN.sub(one)
+        const gPolyGF2 = new wasm.PolynomialGF2(gCoeffs)
+        const remPair = xnMinus1.divRem(gPolyGF2)
+        const remCoeffs: Uint8Array = remPair[1].coeffs()
+        const isZero = Array.from(remCoeffs).every((v)=> v===0)
+        setGValid(isZero)
+        if (!isZero) throw new Error('生成多項式 g(x) は x^n - 1 を割り切りません')
+      } catch (e:any) {
+        if (e?.message) throw e
+        throw new Error('g | (x^n-1) 検証に失敗しました')
+      }
+
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
-      const cyc = new wasm.CyclicCode(n, new Uint8Array(g))
+      const cyc = new wasm.CyclicCode(n, new Uint8Array(gCoeffs))
       const kEff: number = cyc.k()
       setK(kEff)
       const bits = getMsgBits()
@@ -87,8 +109,6 @@ export default function CyclicCodePage() {
     }
   }
 
-  
-
   const onInjectRandomErrors = () => {
     if (!encoded) return
     const nlen = encoded.length
@@ -106,28 +126,49 @@ export default function CyclicCodePage() {
       if (!noisy) return
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
-  const cyc = new wasm.CyclicCode(n, normalizeBinaryCoeffs(gPoly))
-      // 受信語長は n の倍数である必要がある
+      const gCoeffs = normalizeBinaryCoeffs(gPoly)
+      const cyc = new wasm.CyclicCode(n, gCoeffs)
+      const kEff: number = cyc.k()
+      setK(kEff)
       const r = new Uint8Array(noisy)
       if (r.length % n !== 0) {
         throw new Error(`受信語の長さ (${r.length}) は n (${n}) の倍数である必要があります`)
       }
       const out: number[] = []
+      const msgOut: number[] = []
+      let nzRemBlocks = 0
       for (let i = 0; i < r.length; i += n) {
         const block = r.subarray(i, i + n)
         const corr: Uint8Array = cyc.decodeLUT(block)
         out.push(...Array.from(corr))
+        // メッセージ復元: g(x) で割った商を各ブロックから取得
+        const cwPoly = new wasm.PolynomialGF2(corr)
+        const gPolyGF2 = new wasm.PolynomialGF2(gCoeffs)
+        const [quot, rem] = cwPoly.divRem(gPolyGF2)
+        const remCoeffs: Uint8Array = rem.coeffs()
+        const hasRem = Array.from(remCoeffs).some((v)=> v!==0)
+        if (hasRem) nzRemBlocks++
+        const quotCoeffs: Uint8Array = quot.coeffs()
+        // 低次→高次、長さを k にゼロパディング
+        const qArr = Array.from(quotCoeffs)
+        while (qArr.length < kEff) qArr.push(0)
+        msgOut.push(...qArr.slice(0, kEff))
       }
       setDecoded(new Uint8Array(out))
+      setRecovered(new Uint8Array(msgOut))
+      setNonZeroRemainderBlocks(nzRemBlocks)
     } catch (e:any) {
       setErr(e?.message || String(e))
     }
   }
 
-  const decodedText = React.useMemo(() => decoded ? bitsToText(Array.from(decoded)) : '' , [decoded])
+  const recoveredText = React.useMemo(() => recovered ? bitsToText(Array.from(recovered)) : '' , [recovered])
 
   return (
     <PageContainer title="Cyclic Code (GF(2))" stickyHeader>
+      <div style={{ background:'#fffbe6', border:'1px solid #f0e6a6', padding:8, marginBottom:12, borderRadius:6, fontSize:13 }}>
+        このページは統合版に移行しました。新しい <a href="/coding/channel">チャネル符号（統合）</a> をご利用ください。
+      </div>
       <div style={{ display:'grid', gap:12 }}>
         {/* ページ全体の表現トグル */}
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
@@ -135,6 +176,22 @@ export default function CyclicCodePage() {
           <label><input type="radio" checked={mode==='binary'} onChange={()=> setMode('binary')} /> 2進</label>
         </div>
 
+        {/* 符号器設定（縦並び） */}
+        <SectionPanelWithTitle title="符号器設定">
+          <Stack gap={8}>
+            <label>n:
+              <input type="number" value={n} onChange={(e)=> setN(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 120, marginLeft:8 }} />
+            </label>
+            <div>
+              <div style={{ fontSize:12, opacity:0.8, marginBottom:6 }}>生成多項式 g（GF(2) 係数, 低次→高次）</div>
+              <PolynomialInput value={gPoly} onChange={setGPoly} />
+              {gValid===false && <div style={{ color:'crimson', marginTop:6 }}>g(x) は x^n - 1 を割り切っていません</div>}
+              {gValid===true && <div style={{ color:'seagreen', marginTop:6, opacity:0.8 }}>g(x) は x^n - 1 を割り切ります</div>}
+            </div>
+          </Stack>
+        </SectionPanelWithTitle>
+
+        {/* 演算指定ブロック（符号化ボタン） */}
         <OperationBaseBlock
           left={
             <VariablePicker
@@ -150,15 +207,9 @@ export default function CyclicCodePage() {
           right={null}
         />
 
-        <SectionPanelWithTitle title="エンコード入力">
+        {/* 入力（テキスト/2進） */}
+        <SectionPanelWithTitle title="入力">
           <div style={{ display:'grid', gap:8 }}>
-            <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
-              <label>n: <input type="number" value={n} onChange={(e)=> setN(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 120 }} /></label>
-              <div>
-                <div style={{ fontSize:12, opacity:0.8, marginBottom:6 }}>生成多項式 g（GF(2) 係数, 低次→高次）</div>
-                <PolynomialInput value={gPoly} onChange={setGPoly} />
-              </div>
-            </div>
             {mode==='text' ? (
               <textarea value={text} onChange={(e)=> setText(e.target.value)} rows={3} style={{ width: '100%', boxSizing:'border-box' }} />
             ) : (
@@ -167,13 +218,15 @@ export default function CyclicCodePage() {
             {err && <div style={{ color:'crimson' }}>{err}</div>}
           </div>
         </SectionPanelWithTitle>
-        {/* 符号語表示 */}
+
+        {/* 符号語 */}
         <SectionPanelWithTitle title="符号語（2進）">
           <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap', wordBreak:'break-all' }}>
             {encoded ? Array.from(encoded).map((b, i)=> ((i>0 && k!=null && i% n===0) ? ' ' : '') + String(b)).join('') : '-'}
           </div>
         </SectionPanelWithTitle>
 
+        {/* 復号操作 */}
         <OperationBaseBlock
           left={
             <VariablePicker
@@ -195,7 +248,7 @@ export default function CyclicCodePage() {
         />
 
         <div style={{ opacity:0.75, fontSize:12 }}>
-          注) 既定の復号は内部で H を構成し、シンドロームLUTで訂正します（H の手入力は不要）。
+          注) このページの復号は「訂正後コード語」を返します（内部で H を構成しシンドロームLUTで訂正）。メッセージは各ブロックを g(x) で割った「商」として復元します。
         </div>
 
         {/* 受信語入力（2進） */}
@@ -210,15 +263,31 @@ export default function CyclicCodePage() {
           </div>
         </SectionPanelWithTitle>
 
-        {/* H 行列を使った復号は廃止（通常運用で不要なため） */}
-
+        {/* 復号結果 */}
         <SectionPanelWithTitle title="復号結果（訂正後コード語）">
           <div style={{ display:'grid', gap:8 }}>
             <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap' }}>{decoded ? Array.from(decoded).join('') : '-'}</div>
+            {decoded && noisy && (
+              <div style={{ fontSize:12, opacity:0.8 }}>
+                訂正ビット数（総和）: {Array.from(decoded).reduce((s, b, i)=> s + ((b ^ (noisy![i] ?? 0)) & 1), 0)}
+              </div>
+            )}
+            {nonZeroRemainderBlocks>0 && (
+              <div style={{ fontSize:12, color:'crimson' }}>
+                注意: g(x) で割った余りが 0 でないブロック数: {nonZeroRemainderBlocks}
+              </div>
+            )}
+          </div>
+        </SectionPanelWithTitle>
+
+        {/* 復元メッセージ（g で割った商） */}
+        <SectionPanelWithTitle title="復元メッセージ（各ブロック: g で割った商）">
+          <div style={{ display:'grid', gap:8 }}>
+            <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap' }}>{recovered ? Array.from(recovered).map((b, i)=> ((i>0 && k!=null && i% (k||1)===0) ? ' ' : '') + String(b)).join('') : '-'}</div>
             {mode==='text' && (
               <>
-                <div>復号（テキスト解釈）:</div>
-                <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap' }}>{decoded ? decodedText : '-'}</div>
+                <div>メッセージ（テキスト解釈）:</div>
+                <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap' }}>{recovered ? recoveredText : '-'}</div>
               </>
             )}
           </div>

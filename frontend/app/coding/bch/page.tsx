@@ -40,7 +40,9 @@ export default function BCHCodePage() {
   const [mode, setMode] = React.useState<InputMode>('text')
   const [text, setText] = React.useState<string>('HELLO')
   const [binary, setBinary] = React.useState<string>('')
-  // 新仕様: m, t を指定（n = 2^m - 1 は内部で決定）
+  // 入力モード（自動/標準/高度）
+  const [encoderMode, setEncoderMode] = React.useState<'auto' | 'standard' | 'advanced'>('auto')
+  // 標準/高度用: m, t を指定（n = 2^m - 1）
   const [m, setM] = React.useState<number>(4)
   const [tDesign, setTDesign] = React.useState<number>(2)
   // 高度な設定: 原始多項式（現状 API 未対応のため UI のみ）
@@ -50,6 +52,7 @@ export default function BCHCodePage() {
   const [encoded, setEncoded] = React.useState<Uint8Array | null>(null)
   const [noisy, setNoisy] = React.useState<Uint8Array | null>(null)
   const [decoded, setDecoded] = React.useState<Uint8Array | null>(null)
+  const [recovered, setRecovered] = React.useState<Uint8Array | null>(null)
   const [err, setErr] = React.useState<string>('')
   const [bitFlipIdx, setBitFlipIdx] = React.useState<number | null>(null)
   const [nEff, setNEff] = React.useState<number>(15)
@@ -57,18 +60,47 @@ export default function BCHCodePage() {
   const getMsgBits = React.useCallback((): number[] => {
     return mode==='text' ? textToBits(text) : (binary||'').split('').filter(c=>c==='0'||c==='1').map(c=>Number(c))
   }, [mode, text, binary])
+  const msgBitsLen = React.useMemo(() => getMsgBits().length, [getMsgBits])
+  const pickMForLen = (len: number): { m: number, n: number } => {
+    const target = Math.max(3, len)
+    for (let mm = 2; mm <= 12; mm++) { // BCHはmをやや広めに
+      const n = (1 << mm) - 1
+      if (n >= target) return { m: mm, n }
+    }
+    const mm = 12; return { m: mm, n: (1 << mm) - 1 }
+  }
+  // 自動モードのパラメータ推定: m は最小、t は安全側に小さめ（例: 2 以上で n-k が確保される範囲）
+  const liveParams = React.useMemo(() => {
+    if (encoderMode === 'auto') {
+      const { m: mm, n } = pickMForLen(msgBitsLen || 1)
+      // newAuto(m,t) は設計距離由来。k は実装から取得するためここでは未知。t は保守的に2以上で n>k を確保する仮値。
+      const tGuess = Math.max(2, Math.floor((n - (msgBitsLen || 1)) / 2))
+      return { m: mm, n, t: Math.max(1, tGuess) }
+    }
+    const mm = Math.max(2, Math.floor(m || 2))
+    const n = (1 << mm) - 1
+    return { m: mm, n, t: Math.max(1, Math.floor(tDesign || 1)) }
+  }, [encoderMode, msgBitsLen, m, tDesign])
+
+  
 
   const onEncode = async () => {
-    setErr(''); setDecoded(null)
+    setErr(''); setDecoded(null); setRecovered(null)
     try {
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
-  // 原始多項式は現状 API で指定不可のため、標準の狭義BCHを自動生成
-  const bch = wasm.BCH.newAuto(Math.max(2, Math.floor(m||2)), Math.max(1, Math.floor(tDesign||1)))
+      let bch: any
+      if (encoderMode === 'auto') {
+        const { m: mm } = liveParams
+        // t は仮に 2 以上で開始。実際の k は bch.k() から取得。
+        bch = wasm.BCH.newAuto(mm, Math.max(1, liveParams.t))
+      } else {
+        bch = wasm.BCH.newAuto(Math.max(2, Math.floor(m||2)), Math.max(1, Math.floor(tDesign||1)))
+      }
       const kEff: number = bch.k()
       const tEff: number = bch.t()
-  const nAuto: number = bch.n()
-  setK(kEff); setT(tEff); setNEff(nAuto)
+      const nAuto: number = bch.n()
+      setK(kEff); setT(tEff); setNEff(nAuto)
       const bits = getMsgBits()
       const blocks = chunk(bits, kEff)
       if (blocks.length && blocks[blocks.length-1].length < kEff) {
@@ -102,36 +134,83 @@ export default function BCHCodePage() {
       if (!noisy) return
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
-      const bch = wasm.BCH.newAuto(Math.max(2, Math.floor(m||2)), Math.max(1, Math.floor(tDesign||1)))
-      const nLocal: number = bch.n()
+      // 復号時の n を推定
+      let nLocal: number
+      if (encoderMode === 'auto') {
+        nLocal = liveParams.n
+      } else {
+        const mm = Math.max(2, Math.floor(m||2))
+        nLocal = (1 << mm) - 1
+      }
+      const bch = wasm.BCH.newAuto(Math.max(2, Math.floor(liveParams.m||2)), Math.max(1, Math.floor(liveParams.t||1)))
       setNEff(nLocal)
+      const kEff: number = bch.k(); setK(kEff)
       // 受信語長は n の倍数である必要がある
       const r = new Uint8Array(noisy)
       if (r.length % nLocal !== 0) {
         throw new Error(`受信語の長さ (${r.length}) は n (${nLocal}) の倍数である必要があります`)
       }
       const out: number[] = []
+      const msgOut: number[] = []
       for (let i = 0; i < r.length; i += nLocal) {
         const block = r.subarray(i, i + nLocal)
         // BM + Chien の復号
         const corr: Uint8Array = bch.decodeBM(block)
         out.push(...Array.from(corr))
+        // systematic エンコードのため、各ブロック末尾 k ビットがメッセージ
+        const msgBits = Array.from(corr.slice(nLocal - kEff, nLocal))
+        msgOut.push(...msgBits)
       }
       setDecoded(new Uint8Array(out))
+      setRecovered(new Uint8Array(msgOut))
     } catch (e:any) {
       setErr(e?.message || String(e))
     }
   }
 
+  const recoveredText = React.useMemo(() => recovered ? bitsToText(Array.from(recovered)) : '' , [recovered])
+
 
   return (
     <PageContainer title="BCH Code (GF(2))" stickyHeader>
+      <div style={{ background:'#fffbe6', border:'1px solid #f0e6a6', padding:8, marginBottom:12, borderRadius:6, fontSize:13 }}>
+        このページは統合版に移行しました。新しい <a href="/coding/channel">チャネル符号（統合）</a> をご利用ください。
+      </div>
       <div style={{ display:'grid', gap:12 }}>
         {/* ページ全体の表現トグル */}
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
           <label><input type="radio" checked={mode==='text'} onChange={()=> setMode('text')} /> テキスト</label>
           <label><input type="radio" checked={mode==='binary'} onChange={()=> setMode('binary')} /> 2進</label>
         </div>
+
+        {/* 符号器設定ブロック（入力モード対応） */}
+        <SectionPanelWithTitle title="符号器設定">
+          <div style={{ display:'grid', gap:8 }}>
+            <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+              <label>入力モード:
+                <select value={encoderMode} onChange={(e)=> setEncoderMode(e.target.value as any)} style={{ marginLeft:8 }}>
+                  <option value="auto">自動</option>
+                  <option value="standard">標準設定</option>
+                  <option value="advanced">高度な設定</option>
+                </select>
+              </label>
+            </div>
+            {encoderMode !== 'auto' && (
+              <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+                <label>m: <input type="number" value={m} onChange={(e)=> setM(Math.max(2, Math.floor(Number(e.target.value)||2)))} style={{ width: 120 }} /></label>
+                <label>t (設計誤り訂正能力): <input type="number" value={tDesign} onChange={(e)=> setTDesign(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 160 }} /></label>
+              </div>
+            )}
+            {encoderMode === 'advanced' && (
+              <div style={{ marginTop:8 }}>
+                <div style={{ fontSize:12, opacity:0.85, marginBottom:6 }}>原始多項式（UIのみ・未適用）</div>
+                <PolynomialInput value={px ?? { coeffs: [] }} onChange={(p)=> setPx({ coeffs: p.coeffs.map((x)=> Math.round(x) & 1) })} />
+                <div style={{ fontSize:12, opacity:0.75, marginTop:6 }}>注: 現状の WASM API では原始多項式の指定に未対応のため、この入力は未適用です。</div>
+              </div>
+            )}
+            <div style={{ fontSize:12, opacity:0.8 }}>現在の有効パラメータ（推定）: m={liveParams.m}, t={liveParams.t}</div>
+          </div>
+        </SectionPanelWithTitle>
 
         <OperationBaseBlock
           left={
@@ -150,17 +229,6 @@ export default function BCHCodePage() {
 
         <SectionPanelWithTitle title="エンコード入力">
           <div style={{ display:'grid', gap:8 }}>
-            <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
-              <label>m: <input type="number" value={m} onChange={(e)=> setM(Math.max(2, Math.floor(Number(e.target.value)||2)))} style={{ width: 120 }} /></label>
-              <label>t (設計誤り訂正能力): <input type="number" value={tDesign} onChange={(e)=> setTDesign(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 160 }} /></label>
-            </div>
-      <details>
-              <summary style={{ cursor:'pointer', opacity:0.85 }}>高度な設定（原始多項式の指定）</summary>
-              <div style={{ marginTop:8 }}>
-                <PolynomialInput value={px ?? { coeffs: [] }} onChange={(p)=> setPx({ coeffs: p.coeffs.map((x)=> Math.round(x) & 1) })} />
-                <div style={{ fontSize:12, opacity:0.75, marginTop:6 }}>注: 現状の WASM API では原始多項式の指定に未対応のため、この入力は未適用です。</div>
-              </div>
-            </details>
             {mode==='text' ? (
               <textarea value={text} onChange={(e)=> setText(e.target.value)} rows={3} style={{ width: '100%', boxSizing:'border-box' }} />
             ) : (
@@ -197,7 +265,7 @@ export default function BCHCodePage() {
         />
 
         <div style={{ opacity:0.75, fontSize:12 }}>
-          注) 復号は BM + Chien（狭義 BCH）で行います。受信語は n の倍数長で入力してください。
+          注) 復号は BM + Chien（狭義 BCH）で「訂正後コード語」を返します。BCH はsystematicエンコードのため、各ブロック末尾 k ビットをメッセージとして復元します。受信語は n の倍数長で入力してください。
         </div>
 
         {/* 受信語入力（2進） */}
@@ -217,10 +285,24 @@ export default function BCHCodePage() {
         <SectionPanelWithTitle title="復号結果（訂正後コード語）">
           <div style={{ display:'grid', gap:8 }}>
             <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap' }}>{decoded ? Array.from(decoded).join('') : '-'}</div>
+            {decoded && noisy && (
+              <div style={{ fontSize:12, opacity:0.8 }}>
+                訂正ビット数（総和）: {Array.from(decoded).reduce((s, b, i)=> s + ((b ^ (noisy![i] ?? 0)) & 1), 0)}
+              </div>
+            )}
+          </div>
+        </SectionPanelWithTitle>
+
+        {/* 復元メッセージ（systematic: 各ブロック末尾 k ビット） */}
+        <SectionPanelWithTitle title="復元メッセージ（各ブロック末尾 k ビット）">
+          <div style={{ display:'grid', gap:8 }}>
+            <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap', wordBreak:'break-all' }}>
+              {recovered ? Array.from(recovered).map((b, i)=> ((i>0 && k!=null && i% (k||1)===0) ? ' ' : '') + String(b)).join('') : '-'}
+            </div>
             {mode==='text' && (
               <>
-                <div>復号（テキスト解釈）:</div>
-                <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap' }}>{decoded ? bitsToText(Array.from(decoded)) : '-'}</div>
+                <div>メッセージ（テキスト解釈）:</div>
+                <div style={{ fontFamily:'monospace', whiteSpace:'pre-wrap' }}>{recovered ? recoveredText : '-'}</div>
               </>
             )}
           </div>

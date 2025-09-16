@@ -161,12 +161,14 @@ impl WasmReedSolomonGF256 {
 		Ok(WasmReedSolomonGF256(rs))
 	}
 	/// Construct with a custom primitive polynomial over GF(2).
-	/// `px` are GF(2) coefficients in low->high order, length m+1, with px[0]=px[m]=1.
+	/// Note: This class is GF(2^8)-fixed; `px` must be degree-8 (length 9) with low->high GF(2) coefficients and px[0]=px[8]=1.
+	/// Example (AES modulus x^8 + x^4 + x^3 + x + 1): new Wasm.ReedSolomon().newWithPrimitive([1,1,0,1,1,0,0,0,1], k, n)
 	#[wasm_bindgen(js_name = newWithPrimitive)]
 	pub fn new_with_primitive(px: Vec<u8>, k: usize, n: usize) -> Result<WasmReedSolomonGF256, JsError> {
 		if px.len() < 3 { return Err(JsError::new("px length must be >= 3 (m >= 2)")); }
 		let m = px.len() - 1;
-		if m < 2 || m > 15 { return Err(JsError::new("supported m is 2..=15")); }
+		// This WASM class encodes/decodes symbols as u8, so support GF(2^8) only.
+		if m != 8 { return Err(JsError::new("ReedSolomon (GF256) expects m == 8; provide 9 coeffs for x^8+...+1")); }
 		if (px[0] & 1) == 0 || (px[m] & 1) == 0 { return Err(JsError::new("px[0] and px[m] must be 1")); }
 		let coeffs: Vec<finite_field::gfp::GFp<2>> = px.into_iter().map(|b| finite_field::gfp::GFp::<2>((b & 1) as u16)).collect();
 		let field = finite_field::field2m::FiniteField2m::new(&coeffs);

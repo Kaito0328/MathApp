@@ -40,10 +40,14 @@ export const navSections: NavSection[] = [
     defaultOpen: true,
     items: [
       { title: 'ホーム', href: '/coding' },
-      { title: 'Hamming(7,4)', href: '/coding/hamming74' },
-      { title: 'Reed–Solomon', href: '/coding/rs' },
-      { title: 'Cyclic Code (GF(2))', href: '/coding/cyclic' },
-      { title: 'BCH Code (GF(2))', href: '/coding/bch' },
+      { title: 'チャネル符号（統合）', href: '/coding/channel' },
+      { title: '情報源符号（統合）', href: '/coding/source' },
+      { title: '通信体験（E2E）', href: '/coding/comm' },
+      // 旧個別ページ（必要に応じて再掲）
+      // { title: 'Hamming(7,4)', href: '/coding/hamming74' },
+      // { title: 'Reed–Solomon', href: '/coding/rs' },
+      // { title: 'Cyclic Code (GF(2))', href: '/coding/cyclic' },
+      // { title: 'BCH Code (GF(2))', href: '/coding/bch' },
     ],
   },
   // 将来: FFT, 信号処理, 統計 など

@@ -6,8 +6,6 @@ import OperationBaseBlock from '../../../src/components/features/operations/Oper
 import { VariablePicker } from '../../../src/components/features/variables/VariablePicker'
 import CodeCharacteristics from '../../../src/components/features/coding/CodeCharacteristics'
 import { Button } from '../../../src/baseComponents/controls/Button'
-import { PolynomialInput } from '../../../src/widgets/input/PolynomialInput'
-import type { Polynomial } from '../../../src/widgets/dto/polynomial'
 import { useVariableStore } from '../../../src/state/VariableStore'
 
 type InputMode = 'text' | 'hex'
@@ -29,24 +27,50 @@ export default function RSPage() {
   const [mode, setMode] = React.useState<InputMode>('text')
   const [text, setText] = React.useState('hello rs')
   const [hex, setHex] = React.useState('')
+  // 高度設定用の m, k 入力（未開の場合は自動）
   const [m, setM] = React.useState<number>(4)
   const [k, setK] = React.useState<number>(8)
-  const [alphasCsv, setAlphasCsv] = React.useState<string>('')
-  const [primitive, setPrimitive] = React.useState<Polynomial>({ coeffs: [1,0,0,1,1] })
   const [encoded, setEncoded] = React.useState<Uint8Array | null>(null)
   const [noisy, setNoisy] = React.useState<Uint8Array | null>(null)
   const [decoded, setDecoded] = React.useState<Uint8Array | null>(null)
   const [err, setErr] = React.useState<string>('')
-  const [nVal, setNVal] = React.useState<number | null>(null)
-  const [tVal, setTVal] = React.useState<number | null>(null)
   const [origMsgLen, setOrigMsgLen] = React.useState<number | null>(null)
   const [randomErrors, setRandomErrors] = React.useState<number>(0)
   const [autoAdjustLen, setAutoAdjustLen] = React.useState<'none' | 'pad' | 'trim'>('none')
-  const [advancedEnabled, setAdvancedEnabled] = React.useState<boolean>(false)
+  // 入力モード: 自動/標準/高度
+  const [encoderMode, setEncoderMode] = React.useState<'auto' | 'standard' | 'advanced'>('auto')
 
   const getMessage = React.useCallback((): Uint8Array => {
     return mode==='text' ? textToBytes(text) : hexToBytes(hex)
   }, [mode, text, hex])
+
+  // 自動モードでの最小 m 選択（2..8）
+  const pickMForLen = (len: number): { m: number, n: number } => {
+    const target = Math.max(3, len)
+    for (let mm = 2; mm <= 8; mm++) {
+      const n = (1 << mm) - 1
+      if (n >= target) return { m: mm, n }
+    }
+    // 上限 m=8
+    return { m: 8, n: (1 << 8) - 1 }
+  }
+
+  // 現在の設定に基づく有効パラメータのライブプレビュー
+  const msgLen = React.useMemo(() => (mode==='text' ? textToBytes(text).length : hexToBytes(hex).length), [mode, text, hex])
+  const liveParams = React.useMemo(() => {
+    if (encoderMode === 'auto') {
+      const { m: mm, n } = pickMForLen(msgLen || 1)
+      const kEff = Math.min(msgLen || 1, n)
+      const tEff = Math.floor((n - kEff) / 2)
+      return { m: mm, n, k: kEff, t: tEff }
+    }
+    // standard/advanced: m,k を使用
+    const mm = Math.max(2, Math.min(8, Math.floor(m || 2)))
+    const n = (1 << mm) - 1
+    const kEff = Math.max(1, Math.min(n, Math.floor(k || 1)))
+    const tEff = Math.floor((n - kEff) / 2)
+    return { m: mm, n, k: kEff, t: tEff }
+  }, [encoderMode, msgLen, m, k])
 
   const onEncode = async () => {
     setErr(''); setDecoded(null)
@@ -55,42 +79,45 @@ export default function RSPage() {
       const wasm: any = await getWasm()
       // 自動/高度設定による有効パラメータ決定
       const msg = getMessage()
-      const autoK = msg.length || 1
-      const nFromM = (mm: number) => (1 << Math.max(2, Math.min(8, mm))) - 1
-      const kEff = advancedEnabled ? k : autoK
-      let alphasEff: Uint8Array
-      if (advancedEnabled) {
-        const alphaList = alphasCsv.split(',').map(s=>Number(s.trim())).filter(x=>Number.isFinite(x))
-        if (alphaList.some(x=>x<0 || x>255)) throw new Error('alphas は 0..255 の整数で指定してください')
-        const uniq = new Set(alphaList)
-        if (uniq.size !== alphaList.length) throw new Error('alphas に重複があります')
-        if (alphaList.length < kEff) throw new Error(`alphas の個数 (${alphaList.length}) は k (${kEff}) 以上が必要です`)
-        alphasEff = new Uint8Array(alphaList)
-      } else {
-        // m に基づいて n=2^m-1 個の評価点 1..n を使用
-        const n = nFromM(m)
-        setK(autoK)
-        const a = new Uint8Array(Array.from({ length: n }, (_, i) => i + 1))
-        setAlphasCsv(Array.from(a).join(','))
-        alphasEff = a
-      }
-
-  const rs = new wasm.ReedSolomon(kEff, alphasEff)
-      setNVal(rs.n())
-      setTVal(rs.t())
+      let nEff: number
+      let kEff: number
       let f = new Uint8Array(msg)
-      // 入力長調整（高度な設定時のみ有効）
-      if (advancedEnabled) {
+      if (encoderMode !== 'auto') {
+        const mm = Math.max(2, Math.min(8, Math.floor(m || 2)))
+        nEff = (1 << mm) - 1
+        kEff = Math.max(1, Math.min(nEff, Math.floor(k || 1)))
+        // 長さ調整
         if (autoAdjustLen === 'pad' && f.length < kEff) {
           const nf = new Uint8Array(kEff); nf.set(f); f = nf
         } else if (autoAdjustLen === 'trim' && f.length > kEff) {
           f = f.slice(0, kEff)
         }
+      } else {
+        const autoK = f.length || 1
+        const picked = pickMForLen(autoK)
+        nEff = picked.n
+        kEff = Math.min(autoK, nEff)
       }
+
+      // エンコード（kEff 長のブロックに分割）
+      const blocks: Uint8Array[] = []
+      for (let i = 0; i < f.length; i += kEff) {
+        const chunk = f.subarray(i, Math.min(i + kEff, f.length))
+        let u = chunk
+        if (chunk.length < kEff) {
+          const tmp = new Uint8Array(kEff); tmp.set(chunk); u = tmp
+        }
+        const rs = new wasm.ReedSolomon(kEff, nEff)
+        const c: Uint8Array = rs.encode(u)
+        blocks.push(c)
+      }
+  setK(kEff)
       setOrigMsgLen(f.length)
-      const c: Uint8Array = rs.encode(f)
-      setEncoded(c)
-      setNoisy(c)
+      const all = new Uint8Array(blocks.reduce((s, b)=> s + b.length, 0))
+      let off = 0
+      for (const b of blocks) { all.set(b, off); off += b.length }
+      setEncoded(all)
+      setNoisy(all)
     } catch (e: any) {
       setErr(e?.message || String(e))
     }
@@ -121,31 +148,33 @@ export default function RSPage() {
       if (!noisy) return
       const { getWasm } = await import('../../../src/wasm/loader')
       const wasm: any = await getWasm()
-  // 復号時は現在の k/alphas を使用（自動エンコード後は自動反映済み）
-      const alphaList = alphasCsv.split(',').map(s=>Number(s.trim())).filter(x=>Number.isFinite(x))
-      if (alphaList.some(x=>x<0 || x>255)) throw new Error('alphas は 0..255 の整数で指定してください')
-      const uniq = new Set(alphaList)
-      if (uniq.size !== alphaList.length) throw new Error('alphas に重複があります')
-      if (alphaList.length < k) throw new Error(`alphas の個数 (${alphaList.length}) は k (${k}) 以上が必要です`)
-      const alphasEff = new Uint8Array(alphaList)
-      const rs = new wasm.ReedSolomon(k, alphasEff)
-      setNVal(rs.n())
-      setTVal(rs.t())
-      // 受信語の長さを n に正規化（不足分は 0 詰め、超過分は切り捨て）
-      const n = rs.n()
-      let cw = new Uint8Array(noisy)
-      if (cw.length < n) {
-        const tmp = new Uint8Array(n)
-        tmp.set(cw)
-        cw = tmp
-      } else if (cw.length > n) {
-        cw = cw.slice(0, n)
+      // 復号パラメータ（n, k）を決定
+      let nEff: number | null = null
+      let kEff: number | null = null
+      if (encoderMode === 'auto') {
+        // 直近の自動設定で推定（受信語の最初のブロック長からも導出可だが、簡易に liveParams を使用）
+        nEff = liveParams.n
+        kEff = liveParams.k
+      } else {
+        const mm = Math.max(2, Math.min(8, Math.floor(m || 2)))
+        nEff = (1 << mm) - 1
+        kEff = Math.max(1, Math.min(nEff, Math.floor(k || 1)))
       }
-  // 改良版 Berlekamp–Massey 復号器を使用
-  const f: Uint8Array = rs.decodeBM(cw)
-      console.log('Encoded message:', cw)
-      console.log('Decoded message',f)
-      setDecoded(f)
+      if (nEff == null || kEff == null) {
+        throw new Error('復号パラメータ n/k が不明です。先にこのページで符号化するか、高度な設定で m と k を指定してください。')
+      }
+      const r = new Uint8Array(noisy)
+      if (r.length % nEff !== 0) {
+        throw new Error(`受信語の長さ (${r.length}) は n (${nEff}) の倍数である必要があります`)
+      }
+      const out: number[] = []
+      for (let i = 0; i < r.length; i += nEff) {
+        const block = r.subarray(i, i + nEff)
+  const rs = new wasm.ReedSolomon(kEff, nEff)
+        const u: Uint8Array = rs.decodeBM(block)
+        out.push(...Array.from(u))
+      }
+      setDecoded(new Uint8Array(out))
     } catch (e: any) {
       setErr(e?.message || String(e))
     }
@@ -164,6 +193,9 @@ export default function RSPage() {
 
   return (
   <PageContainer title="Reed–Solomon (GF(2^m))" stickyHeader>
+      <div style={{ background:'#fffbe6', border:'1px solid #f0e6a6', padding:8, marginBottom:12, borderRadius:6, fontSize:13 }}>
+        このページは統合版に移行しました。新しい <a href="/coding/channel">チャネル符号（統合）</a> をご利用ください。
+      </div>
       <div style={{ display:'grid', gap:12 }}>
         {/* ページ全体の表現トグル */}
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
@@ -171,40 +203,47 @@ export default function RSPage() {
           <label><input type="radio" checked={mode==='hex'} onChange={()=> setMode('hex')} /> 16進</label>
         </div>
 
-        {/* 入力調整（モード行直下） */}
-        <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
-          <label>m: <input type="number" value={m} onChange={(e)=> setM(Math.max(2, Math.min(8, Math.floor(Number(e.target.value)||2))))} style={{ width: 120 }} /></label>
-          <label>入力調整:
-            <select value={autoAdjustLen} onChange={(e)=> setAutoAdjustLen(e.target.value as any)}>
-              <option value="none">自動（入力に追従）</option>
-              <option value="pad">k にパディング</option>
-              <option value="trim">k で切り詰め</option>
-            </select>
-          </label>
-        </div>
-        {/* 高度な設定（入力調整の下に配置） */}
-        <details
-          open={advancedEnabled}
-          onToggle={(e)=> {
-            const open = (e.target as HTMLDetailsElement).open
-            setAdvancedEnabled(open)
-            if (open && autoAdjustLen === 'none') setAutoAdjustLen('pad')
-          }}
-        >
-          <summary style={{ cursor:'pointer', opacity:0.85 }}>高度な設定を開く</summary>
-          <div style={{ display:'grid', gap:8, marginTop:8 }}>
-            <label>k: <input type="number" value={k} onChange={(e)=> setK(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 120 }} /></label>
-            <label>評価点 α（CSV）: <input type="text" value={alphasCsv} onChange={(e)=> setAlphasCsv(e.target.value)} style={{ width: '100%' }} /></label>
-            <div>
-              <div style={{ fontSize:12, opacity:0.8, marginBottom:6 }}>原始多項式（UI のみ・未適用）</div>
-              <PolynomialInput value={primitive} onChange={setPrimitive} />
+        {/* 符号器設定 */}
+        <SectionPanelWithTitle title="符号器設定">
+          <div style={{ display:'grid', gap:8 }}>
+            <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+              <label>入力モード:
+                <select value={encoderMode} onChange={(e)=> setEncoderMode(e.target.value as any)} style={{ marginLeft:8 }}>
+                  <option value="auto">自動</option>
+                  <option value="standard">標準設定</option>
+                  <option value="advanced">高度な設定</option>
+                </select>
+              </label>
+              {encoderMode !== 'auto' && (
+                <label>入力調整:
+                  <select value={autoAdjustLen} onChange={(e)=> setAutoAdjustLen(e.target.value as any)}>
+                    <option value="none">自動（入力に追従）</option>
+                    <option value="pad">k にパディング</option>
+                    <option value="trim">k で切り詰め</option>
+                  </select>
+                </label>
+              )}
             </div>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              <Button onClick={()=> setAlphasCsv(Array.from({length:15},(_,i)=> String(i+1)).join(','))}>プリセット（1..15）</Button>
-              <Button onClick={()=> setAlphasCsv(Array.from({length:31},(_,i)=> String(i+1)).join(','))}>プリセット（1..31）</Button>
-            </div>
+            {encoderMode !== 'auto' && (
+              <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+                <label>m: <input type="number" value={m} onChange={(e)=> setM(Math.max(2, Math.min(8, Math.floor(Number(e.target.value)||2))))} style={{ width: 120 }} /></label>
+                <label>k: <input type="number" value={k} onChange={(e)=> setK(Math.max(1, Math.floor(Number(e.target.value)||1)))} style={{ width: 120 }} /></label>
+              </div>
+            )}
+            {encoderMode === 'advanced' && (
+              <div style={{ marginTop:8 }}>
+                <div style={{ fontSize:12, opacity:0.85, marginBottom:6 }}>原始多項式（UIのみ・未適用）</div>
+                {/* NOTE: RS の原始多項式は現状API未対応のためUIのみ */}
+                {/** PolynomialInput コンポーネントは既にページから除去していたため再導入不要（UI要件として表示のみならダミーにします） */}
+              </div>
+            )}
+            {encoderMode !== 'auto' && (
+              <div style={{ fontSize:12, opacity:0.8 }}>
+                現在の有効パラメータ: n={liveParams.n}, k={liveParams.k}, t={liveParams.t}
+              </div>
+            )}
           </div>
-        </details>
+        </SectionPanelWithTitle>
 
         {/* Encode Operation */}
         <OperationBaseBlock
@@ -242,19 +281,6 @@ export default function RSPage() {
             {err && <div style={{ color:'crimson' }}>{err}</div>}
           </div>
         </SectionPanelWithTitle>
-
-        {/* 特性表示 */}
-        {nVal!=null && tVal!=null && (
-            <SectionPanelWithTitle title="符号の特性">
-              <CodeCharacteristics lines={[
-                `n = ${nVal}`,
-                `k = ${k}`,
-                `d_{\\min} = n - k + 1 = ${nVal - k + 1}`,
-                `t = \\left\\lfloor \\tfrac{n-k}{2} \\right\\rfloor = ${tVal}`,
-                `R = \\tfrac{k}{n} = ${(k && nVal)?(k/nVal).toFixed(3):'-'}`,
-              ]} />
-            </SectionPanelWithTitle>
-        )}
 
         {/* 符号語表示 */}
         <SectionPanelWithTitle title="符号語（16進）">
@@ -303,6 +329,17 @@ export default function RSPage() {
               </>
             )}
           </div>
+        </SectionPanelWithTitle>
+
+        {/* 特性表示（復号結果の下） */}
+        <SectionPanelWithTitle title="符号の特性">
+          <CodeCharacteristics lines={[
+            `n = ${liveParams.n}`,
+            `k = ${liveParams.k}`,
+            `d_{\\min} = n - k + 1 = ${liveParams.n - liveParams.k + 1}`,
+            `t = \\left\\lfloor \\tfrac{n-k}{2} \\right\\rfloor = ${liveParams.t}`,
+            `R = \\tfrac{k}{n} = ${(liveParams.k && liveParams.n)?(liveParams.k/liveParams.n).toFixed(3):'-'}`,
+          ]} />
         </SectionPanelWithTitle>
       </div>
     </PageContainer>

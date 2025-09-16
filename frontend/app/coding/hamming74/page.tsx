@@ -119,6 +119,9 @@ export default function Hamming74Page() {
 
   return (
     <PageContainer title="Hamming(7,4)" stickyHeader>
+      <div style={{ background:'#fffbe6', border:'1px solid #f0e6a6', padding:8, marginBottom:12, borderRadius:6, fontSize:13 }}>
+        このページは統合版に移行しました。新しい <a href="/coding/channel">チャネル符号（統合）</a> をご利用ください。
+      </div>
       <div style={{ display:'grid', gap:12 }}>
         {/* ページ全体の表現トグル */}
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
