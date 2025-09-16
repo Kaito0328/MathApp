@@ -11,6 +11,8 @@ export default function CodingIndexPage() {
         <ul>
           <li><Link href="/coding/hamming74">Hamming(7,4)</Link></li>
           <li><Link href="/coding/rs">Reed–Solomon</Link></li>
+          <li><Link href="/coding/cyclic">Cyclic Code (GF(2))</Link></li>
+          <li><Link href="/coding/bch">BCH Code (GF(2))</Link></li>
         </ul>
         <div style={{ opacity:0.8, fontSize:13 }}>ユーティリティや他の符号（Linear, Cyclic, BCH）は順次追加します。</div>
       </div>

@@ -11,3 +11,4 @@ pub mod number_theory;
 pub mod signal_processing;
 pub mod statistics;
 pub mod statsmodels;
+pub mod source_coding;

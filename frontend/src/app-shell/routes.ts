@@ -42,6 +42,8 @@ export const navSections: NavSection[] = [
       { title: 'ホーム', href: '/coding' },
       { title: 'Hamming(7,4)', href: '/coding/hamming74' },
       { title: 'Reed–Solomon', href: '/coding/rs' },
+      { title: 'Cyclic Code (GF(2))', href: '/coding/cyclic' },
+      { title: 'BCH Code (GF(2))', href: '/coding/bch' },
     ],
   },
   // 将来: FFT, 信号処理, 統計 など

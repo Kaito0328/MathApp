@@ -1,15 +1,16 @@
 use coding::types::{Codeword, Message};
 use coding::{ReedSolomon, GF256};
-use finite_field::gf256::gf256_from_u8;
+use finite_field::gf256::{gf256_from_u8, gf256_modulus};
+use finite_field::field2m::FiniteField2m;
 use linalg::Vector;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // GF(256) の元 α^i を単純化のために 1..=n の u8 から生成
+    // GF(256) フィールド（AES多項式）を使い、評価点は α^0..α^{n-1}
     let n = 8; // 小さめの n でデモ
     let k = 4; // 2t = n-k -> t = 2
-    let alphas: Vec<GF256> = (1u8..=n as u8).map(gf256_from_u8).collect();
-
-    let rs = ReedSolomon::<GF256>::new(k, alphas)?;
+    let px = gf256_modulus();
+    let field = FiniteField2m::new(&px);
+    let rs = ReedSolomon::new_with_field(k, n, &field)?;
 
     // メッセージ f (長さ k)
     let f = Vector::new(vec![

@@ -27,6 +27,7 @@ lti-systems = { path = "../lti-systems" }
 number-theory = { path = "../number-theory" }
 statistics = { path = "../statistics" }
 statsmodels = { path = "../statsmodels" }
+source-coding = { path = "../source-coding" }
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 wasm-macros = { path = "../wasm-macros" }

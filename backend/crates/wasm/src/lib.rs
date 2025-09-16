@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 
 pub mod classes;
+pub use classes::source_coding::*;
 
 // Re-export finite field classes
 pub use classes::finite_field::{WasmGF2, WasmGF3, WasmGF256, WasmGFExtGF2};

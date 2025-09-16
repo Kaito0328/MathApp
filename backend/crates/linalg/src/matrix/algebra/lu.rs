@@ -35,9 +35,11 @@ impl<T: LinalgField> Matrix<T> {
             if pivot_row != k {
                 p.swap_rows(k, pivot_row)?;
                 u.swap_rows(k, pivot_row)?;
+                // これまでに確定している列 (0..k) の L の要素は行入れ替えに追随してスワップする
                 for j in 0..k {
+                    let tmp = l[(k, j)].clone();
                     l[(k, j)] = l[(pivot_row, j)].clone();
-                    l[(pivot_row, j)] = T::zero();
+                    l[(pivot_row, j)] = tmp;
                 }
             }
 

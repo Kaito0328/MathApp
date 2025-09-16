@@ -7,6 +7,8 @@ pub mod linear;
 pub mod rs;
 pub mod types;
 pub mod error;
+pub mod lfsr;
+pub mod codec_common;
 pub mod prelude { pub use crate::error::{CodingError, Result as CodingResult}; }
 
 pub use bch::BCHCode;

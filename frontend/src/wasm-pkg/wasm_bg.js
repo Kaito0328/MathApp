@@ -258,68 +258,6 @@ function getArrayI32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getInt32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
-/**
- * @param {Float64Array} x
- * @param {Float64Array} h
- * @returns {Float64Array}
- */
-export function convolveNaiveF64(x, h) {
-    const ptr0 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(h, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.convolveNaiveF64(ptr0, len0, ptr1, len1);
-    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v3;
-}
-
-/**
- * @param {Float64Array} x
- * @param {Float64Array} h
- * @returns {Float64Array}
- */
-export function convolveFftF64(x, h) {
-    const ptr0 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(h, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.convolveFftF64(ptr0, len0, ptr1, len1);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v3;
-}
-
-/**
- * @param {Float64Array} x
- * @param {Float64Array} h
- * @param {number} threshold
- * @returns {Float64Array}
- */
-export function convolveAutoF64(x, h, threshold) {
-    const ptr0 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(h, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.convolveAutoF64(ptr0, len0, ptr1, len1, threshold);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v3;
-}
-
-/**
- * @returns {number}
- */
-export function defaultConvolutionThreshold() {
-    const ret = wasm.defaultConvolutionThreshold();
-    return ret >>> 0;
-}
 
 function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
@@ -332,153 +270,251 @@ function getArrayU8FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
+
+export function init() {
+    wasm.init();
+}
+
 /**
- * @param {Uint8Array} a
- * @param {Uint8Array} b
  * @returns {number}
  */
-export function hammingDistanceGF2(a, b) {
-    const ptr0 = passArray8ToWasm0(a, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray8ToWasm0(b, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.hammingDistanceGF2(ptr0, len0, ptr1, len1);
-    return ret >>> 0;
-}
-
-function getArrayU32FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
-}
-/**
- * @param {Uint8Array} codebook_flat
- * @param {number} n
- * @returns {Uint32Array}
- */
-export function weightDistributionGF2(codebook_flat, n) {
-    const ptr0 = passArray8ToWasm0(codebook_flat, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.weightDistributionGF2(ptr0, len0, n);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-    return v2;
+export function __probe() {
+    const ret = wasm.__probe();
+    return ret;
 }
 
 /**
- * @param {number} k
- * @param {number} n
- * @param {Uint8Array} g_flat
- * @returns {Uint8Array}
- */
-export function parityCheckFromGeneratorGF2(k, n, g_flat) {
-    const ptr0 = passArray8ToWasm0(g_flat, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.parityCheckFromGeneratorGF2(k, n, ptr0, len0);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
-    return v2;
-}
-
-/**
- * @param {Uint8Array} h_flat
  * @param {number} rows
- * @param {number} n
- * @param {Uint8Array} r
- * @returns {Uint8Array}
+ * @param {number} cols
+ * @param {Float64Array} a_data
+ * @param {Float64Array} b
+ * @returns {Float64Array}
  */
-export function computeSyndromeGF2(h_flat, rows, n, r) {
-    const ptr0 = passArray8ToWasm0(h_flat, wasm.__wbindgen_malloc);
+export function solveLinearSystem(rows, cols, a_data, b) {
+    const ptr0 = passArrayF64ToWasm0(a_data, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray8ToWasm0(r, wasm.__wbindgen_malloc);
+    const ptr1 = passArrayF64ToWasm0(b, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.computeSyndromeGF2(ptr0, len0, rows, n, ptr1, len1);
+    const ret = wasm.solveLinearSystem(rows, cols, ptr0, len0, ptr1, len1);
     if (ret[3]) {
         throw takeFromExternrefTable0(ret[2]);
     }
-    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v3;
 }
 
 /**
- * @param {Uint8Array} h_flat
  * @param {number} rows
- * @param {number} n
- * @param {Uint8Array} r
- * @param {number} t
- * @returns {Uint8Array}
+ * @param {number} cols
+ * @param {Float64Array} a_data
+ * @param {Float64Array} b
+ * @param {number} alpha
+ * @returns {Float64Array}
  */
-export function syndromeDecodeGF2(h_flat, rows, n, r, t) {
-    const ptr0 = passArray8ToWasm0(h_flat, wasm.__wbindgen_malloc);
+export function ridgeRegression(rows, cols, a_data, b, alpha) {
+    const ptr0 = passArrayF64ToWasm0(a_data, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray8ToWasm0(r, wasm.__wbindgen_malloc);
+    const ptr1 = passArrayF64ToWasm0(b, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.syndromeDecodeGF2(ptr0, len0, rows, n, ptr1, len1, t);
+    const ret = wasm.ridgeRegression(rows, cols, ptr0, len0, ptr1, len1, alpha);
     if (ret[3]) {
         throw takeFromExternrefTable0(ret[2]);
     }
-    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v3;
 }
 
 /**
- * @param {Uint8Array} h_flat
  * @param {number} rows
- * @param {number} n
- * @param {Uint8Array} r
- * @param {number} t
- * @returns {Uint8Array}
+ * @param {number} cols
+ * @param {Float64Array} a_data
+ * @param {Float64Array} b
+ * @param {number} alpha
+ * @param {number} max_iter
+ * @param {number} tol
+ * @returns {Float64Array}
  */
-export function boundedDistanceDecodeGF2(h_flat, rows, n, r, t) {
-    const ptr0 = passArray8ToWasm0(h_flat, wasm.__wbindgen_malloc);
+export function lassoRegression(rows, cols, a_data, b, alpha, max_iter, tol) {
+    const ptr0 = passArrayF64ToWasm0(a_data, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray8ToWasm0(r, wasm.__wbindgen_malloc);
+    const ptr1 = passArrayF64ToWasm0(b, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.boundedDistanceDecodeGF2(ptr0, len0, rows, n, ptr1, len1, t);
+    const ret = wasm.lassoRegression(rows, cols, ptr0, len0, ptr1, len1, alpha, max_iter, tol);
     if (ret[3]) {
         throw takeFromExternrefTable0(ret[2]);
     }
-    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v3;
 }
 
 /**
- * @param {Uint8Array} codebook_flat
- * @param {number} n
- * @returns {number}
+ * @param {number} rows
+ * @param {number} cols
+ * @param {Float64Array} x_data
+ * @param {Float64Array} y
+ * @param {number} lr
+ * @param {number} max_iter
+ * @returns {Float64Array}
  */
-export function hammingDMinGF2(codebook_flat, n) {
-    const ptr0 = passArray8ToWasm0(codebook_flat, wasm.__wbindgen_malloc);
+export function logisticFit(rows, cols, x_data, y, lr, max_iter) {
+    const ptr0 = passArrayF64ToWasm0(x_data, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.hammingDMinGF2(ptr0, len0, n);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
+    const ptr1 = passArrayF64ToWasm0(y, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.logisticFit(rows, cols, ptr0, len0, ptr1, len1, lr, max_iter);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
     }
-    return ret[0] >>> 0;
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v3;
 }
 
 /**
- * @param {number} k
- * @param {number} n
- * @param {Uint8Array} g_flat
+ * @param {number} cols
+ * @param {Float64Array} coeffs
+ * @param {Float64Array} x
  * @returns {number}
  */
-export function codingRateFromGeneratorGF2(k, n, g_flat) {
-    const ptr0 = passArray8ToWasm0(g_flat, wasm.__wbindgen_malloc);
+export function logisticPredictProba(cols, coeffs, x) {
+    const ptr0 = passArrayF64ToWasm0(coeffs, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.codingRateFromGeneratorGF2(k, n, ptr0, len0);
+    const ptr1 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.logisticPredictProba(cols, ptr0, len0, ptr1, len1);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }
     return ret[0];
+}
+
+/**
+ * @param {number} n_samples
+ * @param {number} n_features
+ * @param {Float64Array} data
+ * @param {number} k
+ * @param {number} max_iter
+ * @param {number} tol
+ * @returns {Float64Array}
+ */
+export function gmmFit(n_samples, n_features, data, k, max_iter, tol) {
+    const ptr0 = passArrayF64ToWasm0(data, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.gmmFit(n_samples, n_features, ptr0, len0, k, max_iter, tol);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v2;
+}
+
+/**
+ * @param {number} n_features
+ * @param {Float64Array} params
+ * @param {Float64Array} x
+ * @returns {Float64Array}
+ */
+export function gmmPredictProba(n_features, params, x) {
+    const ptr0 = passArrayF64ToWasm0(params, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.gmmPredictProba(n_features, ptr0, len0, ptr1, len1);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v3;
+}
+
+/**
+ * @param {number} rows
+ * @param {number} cols
+ * @param {Float64Array} x_data
+ * @param {Float64Array} y
+ * @param {Float64Array} prior_mean
+ * @param {Float64Array} prior_cov
+ * @param {Float64Array} noise_cov
+ * @returns {Float64Array}
+ */
+export function bayesianLinearPosterior(rows, cols, x_data, y, prior_mean, prior_cov, noise_cov) {
+    const ptr0 = passArrayF64ToWasm0(x_data, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(y, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArrayF64ToWasm0(prior_mean, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArrayF64ToWasm0(prior_cov, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ptr4 = passArrayF64ToWasm0(noise_cov, wasm.__wbindgen_malloc);
+    const len4 = WASM_VECTOR_LEN;
+    const ret = wasm.bayesianLinearPosterior(rows, cols, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v6 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v6;
+}
+
+/**
+ * @param {number} n
+ * @param {Float64Array} f_flat
+ * @param {Float64Array} q_flat
+ * @param {Float64Array} x_flat
+ * @param {Float64Array} p_flat
+ * @returns {Float64Array}
+ */
+export function kalmanPredict(n, f_flat, q_flat, x_flat, p_flat) {
+    const ptr0 = passArrayF64ToWasm0(f_flat, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(q_flat, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArrayF64ToWasm0(x_flat, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArrayF64ToWasm0(p_flat, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.kalmanPredict(n, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v5;
+}
+
+/**
+ * @param {number} n
+ * @param {Float64Array} h_flat
+ * @param {Float64Array} r_flat
+ * @param {Float64Array} z_flat
+ * @param {Float64Array} x_flat
+ * @param {Float64Array} p_flat
+ * @returns {Float64Array}
+ */
+export function kalmanUpdate(n, h_flat, r_flat, z_flat, x_flat, p_flat) {
+    const ptr0 = passArrayF64ToWasm0(h_flat, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(r_flat, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArrayF64ToWasm0(z_flat, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArrayF64ToWasm0(x_flat, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ptr4 = passArrayF64ToWasm0(p_flat, wasm.__wbindgen_malloc);
+    const len4 = WASM_VECTOR_LEN;
+    const ret = wasm.kalmanUpdate(n, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v6 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v6;
 }
 
 /**
@@ -1155,32 +1191,6 @@ function passArrayJsValueToWasm0(array, malloc) {
     return ptr;
 }
 /**
- * @param {Float64Array} x_flat
- * @returns {Float64Array}
- */
-export function dftComplexF64(x_flat) {
-    const ptr0 = passArrayF64ToWasm0(x_flat, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.dftComplexF64(ptr0, len0);
-    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v2;
-}
-
-/**
- * @param {Float64Array} x_flat
- * @returns {Float64Array}
- */
-export function iftComplexF64(x_flat) {
-    const ptr0 = passArrayF64ToWasm0(x_flat, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.iftComplexF64(ptr0, len0);
-    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v2;
-}
-
-/**
  * @param {number} n
  * @param {number} k
  * @returns {number}
@@ -1310,250 +1320,279 @@ export function partialSum(cf) {
     return ClosedForm.__wrap(ret);
 }
 
-export function init() {
-    wasm.init();
-}
-
 /**
- * @returns {number}
- */
-export function __probe() {
-    const ret = wasm.__probe();
-    return ret;
-}
-
-/**
- * @param {number} rows
- * @param {number} cols
- * @param {Float64Array} a_data
- * @param {Float64Array} b
- * @returns {Float64Array}
- */
-export function solveLinearSystem(rows, cols, a_data, b) {
-    const ptr0 = passArrayF64ToWasm0(a_data, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(b, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.solveLinearSystem(rows, cols, ptr0, len0, ptr1, len1);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v3;
-}
-
-/**
- * @param {number} rows
- * @param {number} cols
- * @param {Float64Array} a_data
- * @param {Float64Array} b
- * @param {number} alpha
- * @returns {Float64Array}
- */
-export function ridgeRegression(rows, cols, a_data, b, alpha) {
-    const ptr0 = passArrayF64ToWasm0(a_data, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(b, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.ridgeRegression(rows, cols, ptr0, len0, ptr1, len1, alpha);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v3;
-}
-
-/**
- * @param {number} rows
- * @param {number} cols
- * @param {Float64Array} a_data
- * @param {Float64Array} b
- * @param {number} alpha
- * @param {number} max_iter
- * @param {number} tol
- * @returns {Float64Array}
- */
-export function lassoRegression(rows, cols, a_data, b, alpha, max_iter, tol) {
-    const ptr0 = passArrayF64ToWasm0(a_data, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(b, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.lassoRegression(rows, cols, ptr0, len0, ptr1, len1, alpha, max_iter, tol);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v3;
-}
-
-/**
- * @param {number} rows
- * @param {number} cols
- * @param {Float64Array} x_data
- * @param {Float64Array} y
- * @param {number} lr
- * @param {number} max_iter
- * @returns {Float64Array}
- */
-export function logisticFit(rows, cols, x_data, y, lr, max_iter) {
-    const ptr0 = passArrayF64ToWasm0(x_data, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(y, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.logisticFit(rows, cols, ptr0, len0, ptr1, len1, lr, max_iter);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v3;
-}
-
-/**
- * @param {number} cols
- * @param {Float64Array} coeffs
  * @param {Float64Array} x
+ * @param {Float64Array} h
+ * @returns {Float64Array}
+ */
+export function convolveNaiveF64(x, h) {
+    const ptr0 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(h, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.convolveNaiveF64(ptr0, len0, ptr1, len1);
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v3;
+}
+
+/**
+ * @param {Float64Array} x
+ * @param {Float64Array} h
+ * @returns {Float64Array}
+ */
+export function convolveFftF64(x, h) {
+    const ptr0 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(h, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.convolveFftF64(ptr0, len0, ptr1, len1);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v3;
+}
+
+/**
+ * @param {Float64Array} x
+ * @param {Float64Array} h
+ * @param {number} threshold
+ * @returns {Float64Array}
+ */
+export function convolveAutoF64(x, h, threshold) {
+    const ptr0 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArrayF64ToWasm0(h, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.convolveAutoF64(ptr0, len0, ptr1, len1, threshold);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v3;
+}
+
+/**
  * @returns {number}
  */
-export function logisticPredictProba(cols, coeffs, x) {
-    const ptr0 = passArrayF64ToWasm0(coeffs, wasm.__wbindgen_malloc);
+export function defaultConvolutionThreshold() {
+    const ret = wasm.defaultConvolutionThreshold();
+    return ret >>> 0;
+}
+
+/**
+ * @param {Uint8Array} a
+ * @param {Uint8Array} b
+ * @returns {number}
+ */
+export function hammingDistanceGF2(a, b) {
+    const ptr0 = passArray8ToWasm0(a, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
+    const ptr1 = passArray8ToWasm0(b, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.logisticPredictProba(cols, ptr0, len0, ptr1, len1);
+    const ret = wasm.hammingDistanceGF2(ptr0, len0, ptr1, len1);
+    return ret >>> 0;
+}
+
+function getArrayU32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+/**
+ * @param {Uint8Array} codebook_flat
+ * @param {number} n
+ * @returns {Uint32Array}
+ */
+export function weightDistributionGF2(codebook_flat, n) {
+    const ptr0 = passArray8ToWasm0(codebook_flat, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.weightDistributionGF2(ptr0, len0, n);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v2;
+}
+
+/**
+ * @param {number} k
+ * @param {number} n
+ * @param {Uint8Array} g_flat
+ * @returns {Uint8Array}
+ */
+export function parityCheckFromGeneratorGF2(k, n, g_flat) {
+    const ptr0 = passArray8ToWasm0(g_flat, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.parityCheckFromGeneratorGF2(k, n, ptr0, len0);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
+ * @param {Uint8Array} h_flat
+ * @param {number} rows
+ * @param {number} n
+ * @param {Uint8Array} r
+ * @returns {Uint8Array}
+ */
+export function computeSyndromeGF2(h_flat, rows, n, r) {
+    const ptr0 = passArray8ToWasm0(h_flat, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(r, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.computeSyndromeGF2(ptr0, len0, rows, n, ptr1, len1);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v3;
+}
+
+/**
+ * @param {Uint8Array} h_flat
+ * @param {number} rows
+ * @param {number} n
+ * @param {Uint8Array} r
+ * @param {number} t
+ * @returns {Uint8Array}
+ */
+export function syndromeDecodeGF2(h_flat, rows, n, r, t) {
+    const ptr0 = passArray8ToWasm0(h_flat, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(r, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.syndromeDecodeGF2(ptr0, len0, rows, n, ptr1, len1, t);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v3;
+}
+
+/**
+ * @param {Uint8Array} h_flat
+ * @param {number} rows
+ * @param {number} n
+ * @param {Uint8Array} r
+ * @param {number} t
+ * @returns {Uint8Array}
+ */
+export function boundedDistanceDecodeGF2(h_flat, rows, n, r, t) {
+    const ptr0 = passArray8ToWasm0(h_flat, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(r, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.boundedDistanceDecodeGF2(ptr0, len0, rows, n, ptr1, len1, t);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v3;
+}
+
+/**
+ * @param {Uint8Array} codebook_flat
+ * @param {number} n
+ * @returns {number}
+ */
+export function hammingDMinGF2(codebook_flat, n) {
+    const ptr0 = passArray8ToWasm0(codebook_flat, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.hammingDMinGF2(ptr0, len0, n);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0] >>> 0;
+}
+
+/**
+ * @param {number} k
+ * @param {number} n
+ * @param {Uint8Array} g_flat
+ * @returns {number}
+ */
+export function codingRateFromGeneratorGF2(k, n, g_flat) {
+    const ptr0 = passArray8ToWasm0(g_flat, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.codingRateFromGeneratorGF2(k, n, ptr0, len0);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }
     return ret[0];
 }
 
+let cachedBigUint64ArrayMemory0 = null;
+
+function getBigUint64ArrayMemory0() {
+    if (cachedBigUint64ArrayMemory0 === null || cachedBigUint64ArrayMemory0.byteLength === 0) {
+        cachedBigUint64ArrayMemory0 = new BigUint64Array(wasm.memory.buffer);
+    }
+    return cachedBigUint64ArrayMemory0;
+}
+
+function getArrayU64FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getBigUint64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
+}
 /**
- * @param {number} n_samples
- * @param {number} n_features
- * @param {Float64Array} data
- * @param {number} k
- * @param {number} max_iter
- * @param {number} tol
+ * @param {bigint} n
+ * @returns {BigUint64Array}
+ */
+export function nt_factor_u64(n) {
+    const ret = wasm.nt_factor_u64(n);
+    var v1 = getArrayU64FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
+    return v1;
+}
+
+/**
+ * @param {string} n_str
+ * @returns {string[]}
+ */
+export function nt_factor_bigint_str(n_str) {
+    const ptr0 = passStringToWasm0(n_str, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.nt_factor_bigint_str(ptr0, len0);
+    var v2 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+    return v2;
+}
+
+/**
+ * @param {Float64Array} x_flat
  * @returns {Float64Array}
  */
-export function gmmFit(n_samples, n_features, data, k, max_iter, tol) {
-    const ptr0 = passArrayF64ToWasm0(data, wasm.__wbindgen_malloc);
+export function dftComplexF64(x_flat) {
+    const ptr0 = passArrayF64ToWasm0(x_flat, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.gmmFit(n_samples, n_features, ptr0, len0, k, max_iter, tol);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
+    const ret = wasm.dftComplexF64(ptr0, len0);
     var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v2;
 }
 
 /**
- * @param {number} n_features
- * @param {Float64Array} params
- * @param {Float64Array} x
- * @returns {Float64Array}
- */
-export function gmmPredictProba(n_features, params, x) {
-    const ptr0 = passArrayF64ToWasm0(params, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(x, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.gmmPredictProba(n_features, ptr0, len0, ptr1, len1);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v3 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v3;
-}
-
-/**
- * @param {number} rows
- * @param {number} cols
- * @param {Float64Array} x_data
- * @param {Float64Array} y
- * @param {Float64Array} prior_mean
- * @param {Float64Array} prior_cov
- * @param {Float64Array} noise_cov
- * @returns {Float64Array}
- */
-export function bayesianLinearPosterior(rows, cols, x_data, y, prior_mean, prior_cov, noise_cov) {
-    const ptr0 = passArrayF64ToWasm0(x_data, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(y, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArrayF64ToWasm0(prior_mean, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ptr3 = passArrayF64ToWasm0(prior_cov, wasm.__wbindgen_malloc);
-    const len3 = WASM_VECTOR_LEN;
-    const ptr4 = passArrayF64ToWasm0(noise_cov, wasm.__wbindgen_malloc);
-    const len4 = WASM_VECTOR_LEN;
-    const ret = wasm.bayesianLinearPosterior(rows, cols, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v6 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v6;
-}
-
-/**
- * @param {number} n
- * @param {Float64Array} f_flat
- * @param {Float64Array} q_flat
  * @param {Float64Array} x_flat
- * @param {Float64Array} p_flat
  * @returns {Float64Array}
  */
-export function kalmanPredict(n, f_flat, q_flat, x_flat, p_flat) {
-    const ptr0 = passArrayF64ToWasm0(f_flat, wasm.__wbindgen_malloc);
+export function iftComplexF64(x_flat) {
+    const ptr0 = passArrayF64ToWasm0(x_flat, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(q_flat, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArrayF64ToWasm0(x_flat, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ptr3 = passArrayF64ToWasm0(p_flat, wasm.__wbindgen_malloc);
-    const len3 = WASM_VECTOR_LEN;
-    const ret = wasm.kalmanPredict(n, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v5 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
+    const ret = wasm.iftComplexF64(ptr0, len0);
+    var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v5;
-}
-
-/**
- * @param {number} n
- * @param {Float64Array} h_flat
- * @param {Float64Array} r_flat
- * @param {Float64Array} z_flat
- * @param {Float64Array} x_flat
- * @param {Float64Array} p_flat
- * @returns {Float64Array}
- */
-export function kalmanUpdate(n, h_flat, r_flat, z_flat, x_flat, p_flat) {
-    const ptr0 = passArrayF64ToWasm0(h_flat, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF64ToWasm0(r_flat, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArrayF64ToWasm0(z_flat, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ptr3 = passArrayF64ToWasm0(x_flat, wasm.__wbindgen_malloc);
-    const len3 = WASM_VECTOR_LEN;
-    const ptr4 = passArrayF64ToWasm0(p_flat, wasm.__wbindgen_malloc);
-    const len4 = WASM_VECTOR_LEN;
-    const ret = wasm.kalmanUpdate(n, ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3, ptr4, len4);
-    if (ret[3]) {
-        throw takeFromExternrefTable0(ret[2]);
-    }
-    var v6 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v6;
+    return v2;
 }
 
 /**
@@ -1640,43 +1679,6 @@ export function logBeta(a, b) {
 export function regularizedBeta(a, b, x) {
     const ret = wasm.regularizedBeta(a, b, x);
     return ret;
-}
-
-let cachedBigUint64ArrayMemory0 = null;
-
-function getBigUint64ArrayMemory0() {
-    if (cachedBigUint64ArrayMemory0 === null || cachedBigUint64ArrayMemory0.byteLength === 0) {
-        cachedBigUint64ArrayMemory0 = new BigUint64Array(wasm.memory.buffer);
-    }
-    return cachedBigUint64ArrayMemory0;
-}
-
-function getArrayU64FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
-    return getBigUint64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
-}
-/**
- * @param {bigint} n
- * @returns {BigUint64Array}
- */
-export function nt_factor_u64(n) {
-    const ret = wasm.nt_factor_u64(n);
-    var v1 = getArrayU64FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
-    return v1;
-}
-
-/**
- * @param {string} n_str
- * @returns {string[]}
- */
-export function nt_factor_bigint_str(n_str) {
-    const ptr0 = passStringToWasm0(n_str, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.nt_factor_bigint_str(ptr0, len0);
-    var v2 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-    return v2;
 }
 
 /**
@@ -1773,6 +1775,22 @@ export class BCH {
         var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
         return v3;
+    }
+    /**
+     * 生成多項式から内部で標準的な巡回G/Hを構成し、GF(2)シンドロームLUTで復号
+     * @param {Uint8Array} r
+     * @returns {Uint8Array}
+     */
+    decodeLUT(r) {
+        const ptr0 = passArray8ToWasm0(r, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bch_decodeLUT(this.__wbg_ptr, ptr0, len0);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
     }
 }
 
@@ -1981,6 +1999,59 @@ export class Binomial {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+}
+
+const BlockHuffmanFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_blockhuffman_free(ptr >>> 0, 1));
+
+export class BlockHuffman {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        BlockHuffmanFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_blockhuffman_free(ptr, 0);
+    }
+    /**
+     * @param {number} q
+     * @param {Array<any>} blocks
+     * @param {Float64Array} probs
+     */
+    constructor(q, blocks, probs) {
+        const ptr0 = passArrayF64ToWasm0(probs, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.blockhuffman_new(q, blocks, ptr0, len0);
+        this.__wbg_ptr = ret >>> 0;
+        BlockHuffmanFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {Array<any>} blocks
+     * @returns {Uint32Array}
+     */
+    encode(blocks) {
+        const ret = wasm.blockhuffman_encode(this.__wbg_ptr, blocks);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * @param {number} length
+     * @param {Uint32Array} digits
+     * @returns {Array<any>}
+     */
+    decode(length, digits) {
+        const ptr0 = passArray32ToWasm0(digits, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.blockhuffman_decode(this.__wbg_ptr, length, ptr0, len0);
+        return ret;
     }
 }
 
@@ -2694,6 +2765,36 @@ export class ContinuousZpk {
     }
 }
 
+const CraftCodeFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_craftcode_free(ptr >>> 0, 1));
+
+export class CraftCode {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        CraftCodeFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_craftcode_free(ptr, 0);
+    }
+    /**
+     * @param {number} alphabet_size
+     * @param {Uint32Array} code_lengths
+     * @returns {Array<any>}
+     */
+    static build(alphabet_size, code_lengths) {
+        const ptr0 = passArray32ToWasm0(code_lengths, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.craftcode_build(alphabet_size, ptr0, len0);
+        return ret;
+    }
+}
+
 const CyclicCodeFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_cycliccode_free(ptr >>> 0, 1));
@@ -2765,6 +2866,22 @@ export class CyclicCode {
         var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
         return v3;
+    }
+    /**
+     * 生成多項式から内部でHを構成し、GF(2)シンドロームLUTで復号（t=(n-k)/2）
+     * @param {Uint8Array} r
+     * @returns {Uint8Array}
+     */
+    decodeLUT(r) {
+        const ptr0 = passArray8ToWasm0(r, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.cycliccode_decodeLUT(this.__wbg_ptr, ptr0, len0);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
     }
 }
 
@@ -3187,6 +3304,46 @@ export class DiscreteZpk {
      */
     sample_rate() {
         const ret = wasm.discretezpk_sample_rate(this.__wbg_ptr);
+        return ret;
+    }
+}
+
+const EliasGammaFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_eliasgamma_free(ptr >>> 0, 1));
+
+export class EliasGamma {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        EliasGammaFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_eliasgamma_free(ptr, 0);
+    }
+    /**
+     * @param {bigint} n
+     * @returns {Uint8Array}
+     */
+    static encode(n) {
+        const ret = wasm.eliasgamma_encode(n);
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @param {Uint8Array} bits
+     * @param {number} start
+     * @returns {Array<any> | undefined}
+     */
+    static decode(bits, start) {
+        const ptr0 = passArray8ToWasm0(bits, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.eliasgamma_decode(ptr0, len0, start);
         return ret;
     }
 }
@@ -4045,6 +4202,74 @@ export class Hamming74 {
     }
 }
 
+const JonesFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_jones_free(ptr >>> 0, 1));
+
+export class Jones {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        JonesFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_jones_free(ptr, 0);
+    }
+    /**
+     * @param {string} alphabet
+     * @param {Float64Array} probs
+     * @param {number} total
+     */
+    constructor(alphabet, probs, total) {
+        const ptr0 = passStringToWasm0(alphabet, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArrayF64ToWasm0(probs, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.jones_new(ptr0, len0, ptr1, len1, total);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        JonesFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {string} symbols
+     * @returns {Uint8Array}
+     */
+    encode(symbols) {
+        const ptr0 = passStringToWasm0(symbols, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.jones_encode(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
+    /**
+     * @param {number} length
+     * @param {Uint8Array} bits
+     * @returns {string}
+     */
+    decode(length, bits) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ptr0 = passArray8ToWasm0(bits, wasm.__wbindgen_malloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ret = wasm.jones_decode(this.__wbg_ptr, length, ptr0, len0);
+            deferred2_0 = ret[0];
+            deferred2_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+}
+
 const LinearCodeFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_linearcode_free(ptr >>> 0, 1));
@@ -4143,6 +4368,101 @@ export class LinearCode {
         var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
         return v3;
+    }
+}
+
+const Lz78Finalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_lz78_free(ptr >>> 0, 1));
+
+export class Lz78 {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        Lz78Finalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_lz78_free(ptr, 0);
+    }
+    constructor() {
+        const ret = wasm.lz78_new();
+        this.__wbg_ptr = ret >>> 0;
+        Lz78Finalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {string} input
+     * @returns {Array<any>}
+     */
+    encodeInternal(input) {
+        const ptr0 = passStringToWasm0(input, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.lz78_encodeInternal(this.__wbg_ptr, ptr0, len0);
+        return ret;
+    }
+    /**
+     * @param {Array<any>} pairs
+     * @returns {string}
+     */
+    decodeInternal(pairs) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.lz78_decodeInternal(this.__wbg_ptr, pairs);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+}
+
+const MarkovFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_markov_free(ptr >>> 0, 1));
+
+export class Markov {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        MarkovFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_markov_free(ptr, 0);
+    }
+    /**
+     * @param {string} alphabet
+     * @param {Float64Array} init_pr
+     * @param {Array<any>} cond_pr
+     */
+    constructor(alphabet, init_pr, cond_pr) {
+        const ptr0 = passStringToWasm0(alphabet, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArrayF64ToWasm0(init_pr, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.markov_new(ptr0, len0, ptr1, len1, cond_pr);
+        this.__wbg_ptr = ret >>> 0;
+        MarkovFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {string} symbols
+     * @returns {number}
+     */
+    blockPr(symbols) {
+        const ptr0 = passStringToWasm0(symbols, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.markov_blockPr(this.__wbg_ptr, ptr0, len0);
+        return ret;
     }
 }
 
@@ -4458,21 +4778,21 @@ export class MatrixF32 {
      * @returns {number}
      */
     rows() {
-        const ret = wasm.matrixf32_rows(this.__wbg_ptr);
+        const ret = wasm.matrix_rows(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {number}
      */
     cols() {
-        const ret = wasm.matrixf32_cols(this.__wbg_ptr);
+        const ret = wasm.matrix_cols(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {boolean}
      */
     is_square() {
-        const ret = wasm.matrixf32_is_square(this.__wbg_ptr);
+        const ret = wasm.matrix_is_square(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -4532,8 +4852,43 @@ export class MatrixF32 {
      * @returns {number}
      */
     columns() {
-        const ret = wasm.matrixf32_cols(this.__wbg_ptr);
+        const ret = wasm.matrix_cols(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * 既約行基本形（RREF）を返す
+     * @returns {MatrixF32}
+     */
+    rref() {
+        const ret = wasm.matrixf32_rref(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return MatrixF32.__wrap(ret[0]);
+    }
+    /**
+     * 連立の拡大行列のRREFを返す（左：係数側のRREF，右：右辺側のRREF）
+     * @param {MatrixF32} other
+     * @returns {any}
+     */
+    rrefWith(other) {
+        _assertClass(other, MatrixF32);
+        const ret = wasm.matrixf32_rrefWith(this.__wbg_ptr, other.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * LU 分解（部分ピボット付き）。{ p, l, u } を返す
+     * @returns {any}
+     */
+    lu() {
+        const ret = wasm.matrixf32_lu(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
     }
 }
 
@@ -4584,7 +4939,7 @@ export class MatrixF64 {
      * @returns {MatrixF64}
      */
     static with_default(rows, cols) {
-        const ret = wasm.matrixf64_with_default(rows, cols);
+        const ret = wasm.matrix_with_default(rows, cols);
         return MatrixF64.__wrap(ret);
     }
     /**
@@ -4601,28 +4956,28 @@ export class MatrixF64 {
      * @returns {MatrixF64}
      */
     static identity(size) {
-        const ret = wasm.matrixf64_identity(size);
+        const ret = wasm.matrix_identity(size);
         return MatrixF64.__wrap(ret);
     }
     /**
      * @returns {number}
      */
     rows() {
-        const ret = wasm.matrixf32_rows(this.__wbg_ptr);
+        const ret = wasm.matrix_rows(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {number}
      */
     cols() {
-        const ret = wasm.matrixf32_cols(this.__wbg_ptr);
+        const ret = wasm.matrix_cols(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {boolean}
      */
     is_square() {
-        const ret = wasm.matrixf32_is_square(this.__wbg_ptr);
+        const ret = wasm.matrix_is_square(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -4823,8 +5178,43 @@ export class MatrixF64 {
      * @returns {number}
      */
     columns() {
-        const ret = wasm.matrixf32_cols(this.__wbg_ptr);
+        const ret = wasm.matrix_cols(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * 既約行基本形（RREF）を返す
+     * @returns {MatrixF64}
+     */
+    rref() {
+        const ret = wasm.matrixf64_rref(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return MatrixF64.__wrap(ret[0]);
+    }
+    /**
+     * 連立の拡大行列のRREFを返す（左：係数側のRREF，右：右辺側のRREF）
+     * @param {MatrixF64} other
+     * @returns {any}
+     */
+    rrefWith(other) {
+        _assertClass(other, MatrixF64);
+        const ret = wasm.matrixf64_rrefWith(this.__wbg_ptr, other.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
+    }
+    /**
+     * LU 分解（部分ピボット付き）。{ p, l, u } を返す
+     * @returns {any}
+     */
+    lu() {
+        const ret = wasm.matrixf64_lu(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return takeFromExternrefTable0(ret[0]);
     }
 }
 
@@ -4926,21 +5316,21 @@ export class MatrixI32 {
      * @returns {number}
      */
     rows() {
-        const ret = wasm.matrixf32_rows(this.__wbg_ptr);
+        const ret = wasm.matrix_rows(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {number}
      */
     cols() {
-        const ret = wasm.matrixf32_cols(this.__wbg_ptr);
+        const ret = wasm.matrix_cols(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {boolean}
      */
     is_square() {
-        const ret = wasm.matrixf32_is_square(this.__wbg_ptr);
+        const ret = wasm.matrix_is_square(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -4973,7 +5363,7 @@ export class MatrixI32 {
      * @returns {number}
      */
     columns() {
-        const ret = wasm.matrixf32_cols(this.__wbg_ptr);
+        const ret = wasm.matrix_cols(this.__wbg_ptr);
         return ret >>> 0;
     }
 }
@@ -6078,6 +6468,165 @@ export class ReedSolomon {
         const ret = wasm.reedsolomon_t(this.__wbg_ptr);
         return ret >>> 0;
     }
+    /**
+     * Berlekamp–Massey ベースの代替復号器
+     * @param {Uint8Array} r
+     * @returns {Uint8Array}
+     */
+    decodeBM(r) {
+        const ptr0 = passArray8ToWasm0(r, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.reedsolomon_decodeBM(this.__wbg_ptr, ptr0, len0);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
+}
+
+const SourceArithmeticFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_sourcearithmetic_free(ptr >>> 0, 1));
+
+export class SourceArithmetic {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        SourceArithmeticFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_sourcearithmetic_free(ptr, 0);
+    }
+    /**
+     * @param {string} alphabet
+     * @param {Float64Array} probs
+     */
+    constructor(alphabet, probs) {
+        const ptr0 = passStringToWasm0(alphabet, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArrayF64ToWasm0(probs, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.sourcearithmetic_new(ptr0, len0, ptr1, len1);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        SourceArithmeticFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {string} symbols
+     * @returns {Uint8Array}
+     */
+    encode(symbols) {
+        const ptr0 = passStringToWasm0(symbols, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.sourcearithmetic_encode(this.__wbg_ptr, ptr0, len0);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
+    /**
+     * @param {number} length
+     * @param {Uint8Array} bits
+     * @returns {string}
+     */
+    decode(length, bits) {
+        let deferred3_0;
+        let deferred3_1;
+        try {
+            const ptr0 = passArray8ToWasm0(bits, wasm.__wbindgen_malloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ret = wasm.sourcearithmetic_decode(this.__wbg_ptr, length, ptr0, len0);
+            var ptr2 = ret[0];
+            var len2 = ret[1];
+            if (ret[3]) {
+                ptr2 = 0; len2 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred3_0 = ptr2;
+            deferred3_1 = len2;
+            return getStringFromWasm0(ptr2, len2);
+        } finally {
+            wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+        }
+    }
+}
+
+const SourceHuffmanFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_sourcehuffman_free(ptr >>> 0, 1));
+
+export class SourceHuffman {
+
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        SourceHuffmanFinalization.unregister(this);
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_sourcehuffman_free(ptr, 0);
+    }
+    /**
+     * @param {string} alphabet
+     * @param {Float64Array} probs
+     */
+    constructor(alphabet, probs) {
+        const ptr0 = passStringToWasm0(alphabet, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passArrayF64ToWasm0(probs, wasm.__wbindgen_malloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.sourcehuffman_new(ptr0, len0, ptr1, len1);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        this.__wbg_ptr = ret[0] >>> 0;
+        SourceHuffmanFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {string} symbols
+     * @returns {Uint8Array}
+     */
+    encode(symbols) {
+        const ptr0 = passStringToWasm0(symbols, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.sourcehuffman_encode(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
+    /**
+     * @param {number} length
+     * @param {Uint8Array} bits
+     * @returns {string}
+     */
+    decode(length, bits) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ptr0 = passArray8ToWasm0(bits, wasm.__wbindgen_malloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ret = wasm.sourcehuffman_decode(this.__wbg_ptr, length, ptr0, len0);
+            deferred2_0 = ret[0];
+            deferred2_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
 }
 
 const StudentTFinalization = (typeof FinalizationRegistry === 'undefined')
@@ -6668,7 +7217,7 @@ export class VectorF64 {
     constructor(data) {
         const ptr0 = passArrayF64ToWasm0(data, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.vectorf64_new(ptr0, len0);
+        const ret = wasm.vector_new(ptr0, len0);
         this.__wbg_ptr = ret >>> 0;
         VectorF64Finalization.register(this, this.__wbg_ptr, this);
         return this;
@@ -6693,21 +7242,21 @@ export class VectorF64 {
      * @returns {number}
      */
     dim() {
-        const ret = wasm.vectorf64_dim(this.__wbg_ptr);
+        const ret = wasm.vector_dim(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {number}
      */
     len() {
-        const ret = wasm.vectorf64_dim(this.__wbg_ptr);
+        const ret = wasm.vector_dim(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
      * @returns {boolean}
      */
     is_empty() {
-        const ret = wasm.vectorf64_is_empty(this.__wbg_ptr);
+        const ret = wasm.vector_is_empty(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -6723,14 +7272,14 @@ export class VectorF64 {
      * @returns {number | undefined}
      */
     argmax() {
-        const ret = wasm.vectorf64_argmax(this.__wbg_ptr);
+        const ret = wasm.vector_argmax(this.__wbg_ptr);
         return ret === 0x100000001 ? undefined : ret;
     }
     /**
      * @returns {number | undefined}
      */
     argmin() {
-        const ret = wasm.vectorf64_argmin(this.__wbg_ptr);
+        const ret = wasm.vector_argmin(this.__wbg_ptr);
         return ret === 0x100000001 ? undefined : ret;
     }
     /**
@@ -7052,7 +7601,7 @@ export class WasmGF2 {
      * @param {bigint} value
      */
     constructor(value) {
-        const ret = wasm.gf2_new(value);
+        const ret = wasm.wasmgf2_new(value);
         this.__wbg_ptr = ret >>> 0;
         WasmGF2Finalization.register(this, this.__wbg_ptr, this);
         return this;
@@ -7061,7 +7610,7 @@ export class WasmGF2 {
      * @returns {number}
      */
     static modulus() {
-        const ret = wasm.gf2_modulus();
+        const ret = wasm.wasmgf2_modulus();
         return ret;
     }
     /**
@@ -7078,14 +7627,14 @@ export class WasmGF2 {
      * @returns {WasmGF2}
      */
     static zero() {
-        const ret = wasm.gf2_zero();
+        const ret = wasm.wasmgf2_zero();
         return WasmGF2.__wrap(ret);
     }
     /**
      * @returns {WasmGF2}
      */
     static one() {
-        const ret = wasm.gf2_one();
+        const ret = wasm.wasmgf2_one();
         return WasmGF2.__wrap(ret);
     }
     /**
@@ -7119,7 +7668,7 @@ export class WasmGF2 {
      * @returns {bigint}
      */
     get value() {
-        const ret = wasm.gf2_value(this.__wbg_ptr);
+        const ret = wasm.wasmgf2_value(this.__wbg_ptr);
         return ret;
     }
     /**
@@ -7145,14 +7694,14 @@ export class WasmGF2 {
      * @returns {boolean}
      */
     get isZero() {
-        const ret = wasm.gf2_is_zero(this.__wbg_ptr);
+        const ret = wasm.wasmgf2_is_zero(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
      * @returns {boolean}
      */
     get isOne() {
-        const ret = wasm.gf2_is_one(this.__wbg_ptr);
+        const ret = wasm.wasmgf2_is_one(this.__wbg_ptr);
         return ret !== 0;
     }
 }
@@ -7217,14 +7766,14 @@ export class WasmGF256 {
      * @returns {WasmGF256}
      */
     static zero() {
-        const ret = wasm.gfextgf2_zero();
+        const ret = wasm.wasmgf256_zero();
         return WasmGF256.__wrap(ret);
     }
     /**
      * @returns {WasmGF256}
      */
     static one() {
-        const ret = wasm.gfextgf2_one();
+        const ret = wasm.wasmgf256_one();
         return WasmGF256.__wrap(ret);
     }
     /**
@@ -7348,7 +7897,7 @@ export class WasmGF3 {
      * @param {bigint} value
      */
     constructor(value) {
-        const ret = wasm.gf3_new(value);
+        const ret = wasm.wasmgf3_new(value);
         this.__wbg_ptr = ret >>> 0;
         WasmGF3Finalization.register(this, this.__wbg_ptr, this);
         return this;
@@ -7357,7 +7906,7 @@ export class WasmGF3 {
      * @returns {number}
      */
     static modulus() {
-        const ret = wasm.gf3_modulus();
+        const ret = wasm.wasmgf3_modulus();
         return ret;
     }
     /**
@@ -7374,14 +7923,14 @@ export class WasmGF3 {
      * @returns {WasmGF3}
      */
     static zero() {
-        const ret = wasm.gf2_zero();
+        const ret = wasm.wasmgf2_zero();
         return WasmGF3.__wrap(ret);
     }
     /**
      * @returns {WasmGF3}
      */
     static one() {
-        const ret = wasm.gf2_one();
+        const ret = wasm.wasmgf2_one();
         return WasmGF3.__wrap(ret);
     }
     /**
@@ -7415,7 +7964,7 @@ export class WasmGF3 {
      * @returns {bigint}
      */
     get value() {
-        const ret = wasm.gf2_value(this.__wbg_ptr);
+        const ret = wasm.wasmgf2_value(this.__wbg_ptr);
         return ret;
     }
     /**
@@ -7441,14 +7990,14 @@ export class WasmGF3 {
      * @returns {boolean}
      */
     get isZero() {
-        const ret = wasm.gf2_is_zero(this.__wbg_ptr);
+        const ret = wasm.wasmgf2_is_zero(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
      * @returns {boolean}
      */
     get isOne() {
-        const ret = wasm.gf2_is_one(this.__wbg_ptr);
+        const ret = wasm.wasmgf2_is_one(this.__wbg_ptr);
         return ret !== 0;
     }
 }
@@ -7506,14 +8055,14 @@ export class WasmGFExtGF2 {
      * @returns {WasmGFExtGF2}
      */
     static zero() {
-        const ret = wasm.gfextgf2_zero();
+        const ret = wasm.wasmgf256_zero();
         return WasmGFExtGF2.__wrap(ret);
     }
     /**
      * @returns {WasmGFExtGF2}
      */
     static one() {
-        const ret = wasm.gfextgf2_one();
+        const ret = wasm.wasmgf256_one();
         return WasmGFExtGF2.__wrap(ret);
     }
     /**
@@ -8141,6 +8690,11 @@ export function __wbg_error_7534b8e9a36f1ab4(arg0, arg1) {
     }
 };
 
+export function __wbg_from_2a5d3e218e67aa85(arg0) {
+    const ret = Array.from(arg0);
+    return ret;
+};
+
 export function __wbg_generalterm_unwrap(arg0) {
     const ret = GeneralTerm.__unwrap(arg0);
     return ret;
@@ -8150,8 +8704,28 @@ export function __wbg_getRandomValues_b8f5dbd5f3995a9e() { return handleError(fu
     arg0.getRandomValues(arg1);
 }, arguments) };
 
+export function __wbg_get_b9b93047fe3cf45b(arg0, arg1) {
+    const ret = arg0[arg1 >>> 0];
+    return ret;
+};
+
 export function __wbg_length_a446193dc22c12f8(arg0) {
     const ret = arg0.length;
+    return ret;
+};
+
+export function __wbg_length_e2d2a49132c1b256(arg0) {
+    const ret = arg0.length;
+    return ret;
+};
+
+export function __wbg_matrixf32_new(arg0) {
+    const ret = MatrixF32.__wrap(arg0);
+    return ret;
+};
+
+export function __wbg_matrixf64_new(arg0) {
+    const ret = MatrixF64.__wrap(arg0);
     return ret;
 };
 
@@ -8225,6 +8799,11 @@ export function __wbg_process_dc0fbacc7c1c06f7(arg0) {
     return ret;
 };
 
+export function __wbg_push_737cfc8c1432c2c6(arg0, arg1) {
+    const ret = arg0.push(arg1);
+    return ret;
+};
+
 export function __wbg_randomFillSync_ac0988aba3254290() { return handleError(function (arg0, arg1) {
     arg0.randomFillSync(arg1);
 }, arguments) };
@@ -8245,6 +8824,11 @@ export function __wbg_set_3f1d0b984ed272ed(arg0, arg1, arg2) {
 export function __wbg_set_65595bdd868b3009(arg0, arg1, arg2) {
     arg0.set(arg1, arg2 >>> 0);
 };
+
+export function __wbg_set_bb8cecf6a62b9f46() { return handleError(function (arg0, arg1, arg2) {
+    const ret = Reflect.set(arg0, arg1, arg2);
+    return ret;
+}, arguments) };
 
 export function __wbg_stack_0ed75d68575b0f3c(arg0, arg1) {
     const ret = arg1.stack;
@@ -8344,9 +8928,25 @@ export function __wbindgen_memory() {
     return ret;
 };
 
+export function __wbindgen_number_get(arg0, arg1) {
+    const obj = arg1;
+    const ret = typeof(obj) === 'number' ? obj : undefined;
+    getDataViewMemory0().setFloat64(arg0 + 8 * 1, isLikeNone(ret) ? 0 : ret, true);
+    getDataViewMemory0().setInt32(arg0 + 4 * 0, !isLikeNone(ret), true);
+};
+
 export function __wbindgen_number_new(arg0) {
     const ret = arg0;
     return ret;
+};
+
+export function __wbindgen_string_get(arg0, arg1) {
+    const obj = arg1;
+    const ret = typeof(obj) === 'string' ? obj : undefined;
+    var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    var len1 = WASM_VECTOR_LEN;
+    getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+    getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
 };
 
 export function __wbindgen_string_new(arg0, arg1) {

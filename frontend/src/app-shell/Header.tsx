@@ -8,15 +8,16 @@ import Image from 'next/image'
 import { useTheme } from '../design/ThemeProvider'
 import { usePathname } from 'next/navigation'
 import { navSections } from './routes'
+import { Button } from '../baseComponents/controls/Button'
 
 export function AppHeader({ onMenu }: { onMenu: () => void }) {
   const { theme } = useTheme();
   return (
     <View color={CoreColorKey.Primary} size={SizeKey.MD} round={RoundKey.None} style={{ padding: 12 }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 12 }}>
-        <button aria-label="menu" onClick={onMenu} style={{ justifySelf: 'start', background: 'transparent', border: 'none', color: 'inherit', fontSize: 20 }}>
+        <Button aria-label="menu" onClick={onMenu} style={{ justifySelf: 'start' }}>
           ☰
-        </button>
+        </Button>
         <Link href="/" style={{ textDecoration: 'none', justifySelf: 'center' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'inherit' }}>
             <Image src={theme === 'dark' ? '/grath-logo-dark.svg' : '/grath-logo-light.svg'} alt="Grath" width={24} height={24} />
@@ -37,14 +38,14 @@ export function AppDrawer({ open, onClose }: { open: boolean; onClose: () => voi
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: open ? 'auto' : 'none', zIndex: 1000 }}>
       {/* backdrop */}
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', opacity: open ? 1 : 0, transition: 'opacity 150ms' }} />
+  <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', opacity: open ? 1 : 0, transition: 'opacity 150ms' }} />
       {/* drawer */}
       <View color={CoreColorKey.Base} size={SizeKey.MD} round={RoundKey.Md}
-        style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 300, borderRightWidth: 1, transform: `translateX(${open ? 0 : -320}px)`, transition: 'transform 220ms ease', boxShadow: '0 10px 30px rgba(0,0,0,0.25)', padding: 12 }}>
+        style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: 300, borderRightWidth: 1, transform: `translateX(${open ? 0 : -320}px)`, transition: 'transform 220ms ease', boxShadow: '0 10px 30px rgba(0,0,0,0.25)', padding: 12, overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Text weight={FontWeightKey.Medium}>メニュー</Text>
           <div style={{ marginLeft: 'auto' }}>
-            <button aria-label="close" onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: 18 }}>✕</button>
+            <Button aria-label="close" onClick={onClose}>✕</Button>
           </div>
         </div>
         <nav style={{ display: 'grid', gap: 10, marginTop: 12 }}>
@@ -54,10 +55,14 @@ export function AppDrawer({ open, onClose }: { open: boolean; onClose: () => voi
             const opened = openSections[section.title]
             return (
               <div key={section.title}>
-                <button onClick={() => toggle(section.title)} className="nav-toggle">
-                  <span aria-hidden style={{ transform: `rotate(${opened ? 90 : 0}deg)`, transition: 'transform 150ms' }}>▶</span>
+                <Button
+                  onClick={() => toggle(section.title)}
+                  className="nav-toggle"
+                  style={{ display:'flex', alignItems:'center', gap:8, width:'100%', justifyContent:'flex-start' }}
+                >
+                  <span aria-hidden>{opened ? '▾' : '▸'}</span>
                   <span>{section.title}</span>
-                </button>
+                </Button>
                 <div style={{ display: 'grid', gap: 6, marginTop: 6, maxHeight: opened ? 600 : 0, overflow: 'hidden', transition: 'max-height 200ms ease' }}>
                   {section.items.map(item => (
                     <Link key={item.href} href={item.href} onClick={onClose} className="nav-link" aria-current={isActive(item.href) ? 'page' : undefined} style={{ marginLeft: 12 }}>{item.title}</Link>

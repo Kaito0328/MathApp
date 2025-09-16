@@ -1,30 +1,19 @@
 use coding::GFExt;
 use coding::GFp;
 use coding::{BCHCode, Message, Poly};
-use std::sync::Arc;
+use finite_field::field2m::FiniteField2m;
 
 type GF2 = GFp<2>;
 type GF16 = GFExt<GF2>; // GF(2^4) for n=15 BCH
 
 fn main() {
-    // 実例: 二元 BCH(15,7, t=2)（狭義）
-    // 生成多項式 g(x) = lcm(m1(x), m3(x)) with primitive α in GF(2^4),
-    // ここで m1(x) = x^4 + x + 1, m3(x) = x^4 + x^3 + 1（原始多項式 x^4 + x + 1 を使用）
+    // 実例: 二元 BCH(15,7, t=2)（狭義、b=1）
     let n = 15usize;
-    // GF(2^4) の構築（原始多項式 x^4 + x + 1）と α
-    let px = Arc::new(vec![
-        GFp::<2>(1),
-        GFp::<2>(1),
-        GFp::<2>(0),
-        GFp::<2>(0),
-        GFp::<2>(1),
-    ]);
-    let alpha = GF16::new(px.clone(), vec![GFp::<2>(0), GFp::<2>(1)]); // x mod px
-                                                                       // 最小多項式（Frobenius 共役で生成）
-    let m1 = minimal_polynomial(&alpha, 1, n);
-    let m3 = minimal_polynomial(&alpha, 3, n);
-    let bch = BCHCode::new_from_minimal_polynomials(n, &[m1.clone(), m3.clone()]);
-    let k = bch.k(); // 15 - 8 = 7
+    // GF(2^4) の構築（原始多項式 x^4 + x + 1）
+    let px_vec = vec![GFp::<2>(1), GFp::<2>(1), GFp::<2>(0), GFp::<2>(0), GFp::<2>(1)];
+    let field = FiniteField2m::new(&px_vec);
+    let bch = BCHCode::new_with_field(field, n, 2);
+    let k = bch.k();
 
     // 情報語 u（長さ k = 7）をエンコードしてコード語 c を得る
     let u_bits = [1u16, 0, 1, 1, 0, 1, 0]; // 末尾0を保持するため直接フィールドに詰める
@@ -46,14 +35,8 @@ fn main() {
     println!("u: {}", bits_to_string(&u.coeffs));
     let c_vec: Vec<GF2> = c.as_ref().data.clone();
     println!("c: {}", bits_to_string(&c_vec));
-    // 検査: c のシンドローム（S1,S3）は 0 になるはず
-    let g_at_a1 = eval_poly_gf2_at_gf16(bch.g(), &gf16_pow(&alpha, 1));
-    let g_at_a3 = eval_poly_gf2_at_gf16(bch.g(), &gf16_pow(&alpha, 3));
-    eprintln!("g(α)={g_at_a1}");
-    eprintln!("g(α^3)={g_at_a3}");
-    let s1_c = compute_syndrome_at(&c_vec, n, &alpha, 1);
-    let s3_c = compute_syndrome_at(&c_vec, n, &alpha, 3);
-    eprintln!("check: S1(c)={s1_c}, S3(c)={s3_c}");
+    // 簡単なチェック: 長さ
+    assert_eq!(c_vec.len(), n);
 
     // 最大2ビットまでの誤りを注入して復号（訂正）
     let mut r: Vec<GF2> = c_vec.clone();
@@ -67,18 +50,9 @@ fn main() {
         bits_to_string(&r)
     );
 
-    // GF(2^4) の構築（原始多項式 x^4 + x + 1）と α
-    let px = Arc::new(vec![
-        GFp::<2>(1),
-        GFp::<2>(1),
-        GFp::<2>(0),
-        GFp::<2>(0),
-        GFp::<2>(1),
-    ]);
-    let alpha = GF16::new(px.clone(), vec![GFp::<2>(0), GFp::<2>(1)]); // x mod px
-
-    // 復号（Peterson t<=2 + Chien 検索, 根は α^{-i}）
-    let decoded = decode_bch_t2(&r, n, &alpha);
+    // 復号（BM+Chien）
+    let decoded_cw = bch.decode_bm(&coding::types::Codeword::from(linalg::Vector::new(r.clone())), 1).expect("decode");
+    let decoded = decoded_cw.0.data;
     println!("decoded: {}", bits_to_string(&decoded));
     println!("corrected equals original codeword? {}", decoded == c_vec);
 }
@@ -160,6 +134,7 @@ fn minimal_polynomial(alpha: &GF16, i: usize, n: usize) -> Poly<GF2> {
 
 // α^i の最小多項式（GF(2)係数）を計算
 // BCH(15,7), t<=2 向けの簡易復号（Peterson + Chien）
+/*
 fn decode_bch_t2(r: &[GF2], n: usize, alpha: &GF16) -> Vec<GF2> {
     // S1, S3 を計算（狭義・奇数べき）
     let s1 = compute_syndrome_at(r, n, alpha, 1);
@@ -198,6 +173,7 @@ fn decode_bch_t2(r: &[GF2], n: usize, alpha: &GF16) -> Vec<GF2> {
     }
     c
 }
+*/
 
 fn compute_syndrome_at(r: &[GF2], n: usize, alpha: &GF16, k: usize) -> GF16 {
     let ak = gf16_pow(alpha, k % n);

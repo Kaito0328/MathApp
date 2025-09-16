@@ -5,6 +5,7 @@
 members = [
     "crates/linalg",
     "crates/coding",
+    "crates/source-coding",
     "crates/polynomial",
     "crates/lti-systems",
     "crates/concrete-math",
@@ -27,6 +28,7 @@ resolver = "2"
 default-members = [
     "crates/linalg",
     "crates/coding",
+    "crates/source-coding",
     "crates/polynomial",
     "crates/lti-systems",
     "crates/concrete-math",

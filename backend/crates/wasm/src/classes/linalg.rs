@@ -16,6 +16,7 @@ use linalg::matrix::numerical::{CholeskyDecomposition, EigenDecomposition, Matri
 use linalg::traits::LinalgField;
 
 use wasm_bindgen::prelude::*;
+use js_sys::{Object, Reflect};
 
 // 内部型のエイリアス（属性マクロのパラメータで <T> を避けるため）
 type InternalMatrixF64 = linalg::Matrix<f64>;
@@ -259,6 +260,42 @@ impl MatrixF64 {
     pub fn columns(&self) -> usize { self.0.cols }
 }
 
+// === Added: RREF と LU 分解（f64） ===
+#[wasm_bindgen]
+impl MatrixF64 {
+    /// 既約行基本形（RREF）を返す
+    #[wasm_bindgen(js_name = rref)]
+    pub fn rref_js(&self) -> std::result::Result<MatrixF64, JsValue> {
+        self.0.rref().map(MatrixF64).map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+    }
+
+    /// 連立の拡大行列のRREFを返す（左：係数側のRREF，右：右辺側のRREF）
+    #[wasm_bindgen(js_name = rrefWith)]
+    pub fn rref_with_js(&self, other: &MatrixF64) -> std::result::Result<JsValue, JsValue> {
+        let (left, right) = self.0.rref_with(&other.0).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let obj = Object::new();
+        Reflect::set(&obj, &JsValue::from_str("left"), &MatrixF64(left).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Reflect::set(&obj, &JsValue::from_str("right"), &MatrixF64(right).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Ok(obj.into())
+    }
+
+    /// LU 分解（部分ピボット付き）。{ p, l, u } を返す
+    #[wasm_bindgen(js_name = lu)]
+    pub fn lu_js(&self) -> std::result::Result<JsValue, JsValue> {
+        let lu = self.0.lu_decompose().map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let obj = Object::new();
+        Reflect::set(&obj, &JsValue::from_str("p"), &MatrixF64(lu.p).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Reflect::set(&obj, &JsValue::from_str("l"), &MatrixF64(lu.l).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Reflect::set(&obj, &JsValue::from_str("u"), &MatrixF64(lu.u).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Ok(obj.into())
+    }
+}
+
 #[wasm_bindgen]
 impl VectorF64 {
     // ベクトルの転置（行/列ベクトル→行列）
@@ -319,6 +356,42 @@ impl MatrixF32 {
     pub fn data(&self) -> Vec<f32> { self.0.data.clone() }
     #[wasm_bindgen]
     pub fn columns(&self) -> usize { self.0.cols }
+}
+
+// === Added: RREF と LU 分解（f32） ===
+#[wasm_bindgen]
+impl MatrixF32 {
+    /// 既約行基本形（RREF）を返す
+    #[wasm_bindgen(js_name = rref)]
+    pub fn rref_js(&self) -> std::result::Result<MatrixF32, JsValue> {
+        self.0.rref().map(MatrixF32).map_err(|e| JsValue::from_str(&format!("{:?}", e)))
+    }
+
+    /// 連立の拡大行列のRREFを返す（左：係数側のRREF，右：右辺側のRREF）
+    #[wasm_bindgen(js_name = rrefWith)]
+    pub fn rref_with_js(&self, other: &MatrixF32) -> std::result::Result<JsValue, JsValue> {
+        let (left, right) = self.0.rref_with(&other.0).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let obj = Object::new();
+        Reflect::set(&obj, &JsValue::from_str("left"), &MatrixF32(left).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Reflect::set(&obj, &JsValue::from_str("right"), &MatrixF32(right).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Ok(obj.into())
+    }
+
+    /// LU 分解（部分ピボット付き）。{ p, l, u } を返す
+    #[wasm_bindgen(js_name = lu)]
+    pub fn lu_js(&self) -> std::result::Result<JsValue, JsValue> {
+        let lu = self.0.lu_decompose().map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        let obj = Object::new();
+        Reflect::set(&obj, &JsValue::from_str("p"), &MatrixF32(lu.p).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Reflect::set(&obj, &JsValue::from_str("l"), &MatrixF32(lu.l).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Reflect::set(&obj, &JsValue::from_str("u"), &MatrixF32(lu.u).into())
+            .map_err(|e| e.as_string().map(JsValue::from).unwrap_or_else(|| JsValue::from_str("reflect set failed")))?;
+        Ok(obj.into())
+    }
 }
 
 // ==============================

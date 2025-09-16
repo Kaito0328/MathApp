@@ -4,6 +4,9 @@ use linalg::{Field, Vector};
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use crate::types::{ParityCheckMatrix, GeneratorMatrix};
+use crate::code_utils::{parity_check_from_generator as g2h, syndrome_decode_gf2};
+use finite_field::gfp::GFp;
 
 // 循環符号（生成多項式 g(x) に基づく、長さ n）
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +55,28 @@ impl<F: Field + Clone + PartialEq + Zero + One> CyclicCode<F> {
             Ok(c) => c.0.data,
             Err(e) => panic!("valid message length: {e}"),
         }
+    }
+}
+
+impl CyclicCode<GFp<2>> {
+    // GF(2) 向け: 生成多項式から標準形 G を組み、H を構築してシンドロームLUT復号
+    pub fn decode_lut(&self, r: &crate::types::Codeword<GFp<2>>) -> crate::error::Result<crate::types::Codeword<GFp<2>>> {
+        // 生成多項式の巡回シフト行列を用いて G を構築（各行が x^i*g(x) を x^n-1 で縮約）
+        let k = self.k();
+        let n = self.n;
+        let rpar = n - k;
+        let mut gmat = linalg::Matrix::new(k, n, vec![GFp::<2>(0); k*n]).unwrap();
+        for i in 0..k {
+            for j in 0..self.g.len() {
+                if self.g[j] != GFp::<2>(0) {
+                    let col = (i + j) % n; // x^n ≡ 1 の巡回縮約
+                    gmat[(i, col)] = gmat[(i, col)] + GFp::<2>(1);
+                }
+            }
+        }
+        let g = GeneratorMatrix(gmat);
+        let h: ParityCheckMatrix<GFp<2>> = g2h(&g)?;
+        syndrome_decode_gf2(&h, r, rpar/2)
     }
 }
 

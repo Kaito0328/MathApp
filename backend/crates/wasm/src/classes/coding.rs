@@ -134,18 +134,30 @@ impl WasmCyclicCodeGF2 {
 			.map_err(|e| JsError::new(&e.to_string()))?;
 		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
 	}
+
+	/// 生成多項式から内部でHを構成し、GF(2)シンドロームLUTで復号（t=(n-k)/2）
+	#[wasm_bindgen(js_name = decodeLUT)]
+	pub fn decode_lut(&self, r: Vec<u8>) -> Result<Vec<u8>, JsError> {
+		let v = linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect());
+		let cw = CodewordGF2::from(v);
+		let corrected = self.0.decode_lut(&cw).map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
+	}
 }
 
-// ReedSolomon<GF256> 簡易（alphas は Uint8Array として渡す）
+// ReedSolomon over GF(2^8)
 #[wasm_bindgen(js_name = ReedSolomon)]
-pub struct WasmReedSolomonGF256(coding::ReedSolomon<GF256>);
+pub struct WasmReedSolomonGF256(coding::ReedSolomon);
 
 #[wasm_bindgen(js_class = "ReedSolomon")]
 impl WasmReedSolomonGF256 {
 	#[wasm_bindgen(constructor)]
-	pub fn new(k: usize, alphas: Vec<u8>) -> Result<WasmReedSolomonGF256, JsError> {
-		let a: Vec<GF256> = alphas.into_iter().map(finite_field::gf256::gf256_from_u8).collect();
-		let rs = coding::ReedSolomon::new(k, a).map_err(|e| JsError::new(&e.to_string()))?;
+	pub fn new(k: usize, n: usize) -> Result<WasmReedSolomonGF256, JsError> {
+		// Use default GF(2^8) AES modulus and primitive RS evaluation points α^0..α^{n-1}
+		let px = finite_field::gf256::gf256_modulus();
+		let field = finite_field::field2m::FiniteField2m::new(px.as_ref());
+		let rs = coding::ReedSolomon::new_with_field(k, n, &field)
+			.map_err(|e| JsError::new(&e.to_string()))?;
 		Ok(WasmReedSolomonGF256(rs))
 	}
 	pub fn encode(&self, f: Vec<u8>) -> Result<Vec<u8>, JsError> {
@@ -160,11 +172,19 @@ impl WasmReedSolomonGF256 {
 	}
 	pub fn n(&self) -> usize { self.0.n }
 	pub fn t(&self) -> usize { self.0.t }
+
+	/// Berlekamp–Massey ベースの代替復号器
+	#[wasm_bindgen(js_name = decodeBM)]
+	pub fn decode_bm(&self, r: Vec<u8>) -> Result<Vec<u8>, JsError> {
+		let cw = CodewordGF256::from(linalg::Vector::new(r.into_iter().map(finite_field::gf256::gf256_from_u8).collect()));
+		let out = self.0.decode_bm(&cw).map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(out.decoded.0.into_iter().map(|g| g.to_u8()).collect())
+	}
 }
 
 // BCH Code over GF(2) with generator polynomial provided directly
 #[wasm_bindgen(js_name = BCH)]
-pub struct WasmBCHGF2(coding::BCHCode<GF2>);
+pub struct WasmBCHGF2(coding::BCHCode);
 
 #[wasm_bindgen(js_class = "BCH")]
 impl WasmBCHGF2 {
@@ -175,8 +195,20 @@ impl WasmBCHGF2 {
 		let poly = coding::Poly::new(g_vec);
 		let deg = if poly.is_zero() { 0 } else { poly.deg() as usize };
 		let t = (deg.max(1)) / 2; // heuristic; encode uses only n and g
-		WasmBCHGF2(coding::BCHCode { n, t, g: poly })
+		// Build a dummy field for given n via AES poly if n<=255; otherwise this path is for LUT decode only.
+		let px = finite_field::gf256::gf256_modulus();
+	let field = finite_field::field2m::FiniteField2m::new(px.as_ref());
+	let mut code = coding::BCHCode::new_with_field(field, n, t);
+		// Override generator polynomial to provided one and recompute k
+		code.n = n;
+		code.g = poly;
+		code.k = n - (code.g.coeffs.len() - 1);
+		WasmBCHGF2(code)
 	}
+
+	/// Construct BCH automatically from m (GF(2^m)) and designed t (n = 2^m - 1). Narrow-sense (b=1).
+	#[wasm_bindgen(js_name = newAuto)]
+	pub fn new_auto(m: usize, t: usize) -> WasmBCHGF2 { WasmBCHGF2(coding::BCHCode::new_auto(m, t)) }
 	pub fn encode(&self, u: Vec<u8>) -> Result<Vec<u8>, JsError> {
 		let msg = MessageGF2::from(linalg::Vector::new(u.into_iter().map(|x| GF2::new(x as i64)).collect()));
 		let cw = self.0.encode(&msg).map_err(|e| JsError::new(&e.to_string()))?;
@@ -198,6 +230,24 @@ impl WasmBCHGF2 {
 		let cw = CodewordGF2::from(v);
 		let corrected = coding::code_utils::syndrome_decode_gf2(&h, &cw, t)
 			.map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
+	}
+
+	/// 生成多項式から内部で標準的な巡回G/Hを構成し、GF(2)シンドロームLUTで復号
+	#[wasm_bindgen(js_name = decodeLUT)]
+	pub fn decode_lut(&self, r: Vec<u8>) -> Result<Vec<u8>, JsError> {
+		let v = linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect());
+		let cw = CodewordGF2::from(v);
+		let corrected = self.0.decode_lut(&cw).map_err(|e| JsError::new(&e.to_string()))?;
+		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
+	}
+
+	/// BM + Chien の復号（狭義BCH, b=1）
+	#[wasm_bindgen(js_name = decodeBM)]
+	pub fn decode_bm(&self, r: Vec<u8>) -> Result<Vec<u8>, JsError> {
+		let v = linalg::Vector::new(r.into_iter().map(|x| GF2::new(x as i64)).collect());
+		let cw = CodewordGF2::from(v);
+		let corrected = self.0.decode_bm(&cw, 1).map_err(|e| JsError::new(&e.to_string()))?;
 		Ok(corrected.0.into_iter().map(|g| g.value() as u8).collect())
 	}
 }

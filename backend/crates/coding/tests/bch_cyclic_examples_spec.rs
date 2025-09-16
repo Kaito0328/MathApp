@@ -1,4 +1,4 @@
-use coding::{BCHCode, CyclicCode, GFp, Poly, GF256, Message};
+use coding::{CyclicCode, GFp, Poly, GF256, Message};
 use finite_field::gf256::gf256_from_u8;
 
 #[test]
@@ -17,7 +17,11 @@ fn bch_encode_minimal_demo_compiles_and_has_length_n() {
     let m1 = Poly::<GF256>::new(vec![gf256_from_u8(1), gf256_from_u8(1)]);
     let m2 = Poly::<GF256>::new(vec![gf256_from_u8(1), gf256_from_u8(0), gf256_from_u8(1)]);
     let n = 15usize;
-    let bch = BCHCode::new_from_minimal_polynomials(n, &[m1, m2]);
+    // g = lcm(m1,m2) を使って CyclicCode で代替
+    let mut g = Poly::<GF256>::one();
+    g = Poly::lcm(&g, &m1);
+    g = Poly::lcm(&g, &m2);
+    let bch = CyclicCode::<GF256>::new(n, g.coeffs.clone());
     let k = bch.k();
 
     let u = Poly::new((0..k).map(|i| gf256_from_u8(i as u8 + 1)).collect());
